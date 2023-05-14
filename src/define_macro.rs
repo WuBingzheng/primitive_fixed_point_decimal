@@ -16,8 +16,8 @@ macro_rules! define_fixdec {
         use std::ops::{Neg, Add, Sub, AddAssign, SubAssign};
         use super::{ParseError, Rounding};
 
-        #[doc = concat!("Approximate number of significant digits of FixDec", $bits)]
-        /// in base 10. This is also the limit of precision.
+        #[doc = concat!("Approximate number of significant decimal digits of FixDec", $bits, ".")]
+        /// This is also the precision limit.
         pub const DIGITS: u32 = $digits;
 
         #[doc = concat!("A ", $bits, "-bits primitive fixed-point decimal type, ")]
