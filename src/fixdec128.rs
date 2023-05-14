@@ -1,14 +1,14 @@
+use crate::define_macro::*;
+
 // define and implement FixDec128.
-use crate::define_macro::define_fixdec;
 define_fixdec!(FixDec128, i128, 38, 128, 127);
 
 // convert FixDec64 into other FixDec types.
-use crate::define_macro::convert_try_into;
 convert_try_into!(FixDec128, fixdec16, FixDec16);
 convert_try_into!(FixDec128, fixdec32, FixDec32);
 convert_try_into!(FixDec128, fixdec64, FixDec64);
 
-// need by define_fixdec
+// internal stuff needed by define_macro
 const ALL_EXPS: [i128; 38 + 1] = [1,
     10_i128.pow(1), 10_i128.pow(2), 10_i128.pow(3), 10_i128.pow(4),
     10_i128.pow(5), 10_i128.pow(6), 10_i128.pow(7), 10_i128.pow(8),
@@ -24,7 +24,15 @@ const ALL_EXPS: [i128; 38 + 1] = [1,
 
 const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
     if let Some(r) = a.checked_mul(b) {
-        rounding_div(r, c, rounding)
+        rounding_div_i128(r, c, rounding)
+    } else {
+        None // todo!("mul overflow");
+    }
+}
+
+const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
+    if let Some(r) = b.checked_mul(c) {
+        rounding_div_i128(a, r, rounding)
     } else {
         None // todo!("mul overflow");
     }

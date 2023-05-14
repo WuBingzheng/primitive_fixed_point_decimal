@@ -1,14 +1,14 @@
+use crate::define_macro::*;
+
 // define and implement FixDec64.
-use crate::define_macro::define_fixdec;
 define_fixdec!(FixDec64, i64, 18, 64, 63);
 
 // convert FixDec64 into other FixDec types.
-use crate::define_macro::{convert_into, convert_try_into};
 convert_try_into!(FixDec64, fixdec16, FixDec16);
 convert_try_into!(FixDec64, fixdec32, FixDec32);
 convert_into!(FixDec64, fixdec128, FixDec128);
 
-// need by define_fixdec
+// internal stuff needed by define_macro
 const ALL_EXPS: [i64; 19] = [1,
     10_i64.pow(1), 10_i64.pow(2), 10_i64.pow(3), 10_i64.pow(4),
     10_i64.pow(5), 10_i64.pow(6), 10_i64.pow(7), 10_i64.pow(8),
@@ -20,10 +20,17 @@ const ALL_EXPS: [i64; 19] = [1,
 const fn calc_mul_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64> {
     // try i64 first because I guess it's faster than i128
     if let Some(r) = a.checked_mul(b) {
-        rounding_div(r, c, rounding)
-    } else if c == 0 {
-        None
+        rounding_div_i64(r, c, rounding)
     } else {
-        Some((a as i128 * b as i128 / c as i128) as i64)
+        convert_opt_i128_to_i64(rounding_div_i128(a as i128 * b as i128, c as i128, rounding))
+    }
+}
+
+const fn calc_div_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64> {
+    // try i64 first because I guess it's faster than i128
+    if let Some(r) = b.checked_mul(c) {
+        rounding_div_i64(a, r, rounding)
+    } else {
+        convert_opt_i128_to_i64(rounding_div_i128(a as i128, b as i128 * c as i128, rounding))
     }
 }

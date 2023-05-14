@@ -1,3 +1,6 @@
+// define and implement FixDecX type.
+//
+// ALL_EXPS, calc_mul_div and calc_div_div are needed to use this macro.
 macro_rules! define_fixdec {
     (
         $fixdec_type:ident,
@@ -233,10 +236,7 @@ macro_rules! define_fixdec {
                     calc_mul_div(self.inner, ALL_EXPS[(Q + R - P) as usize], rhs.inner, rounding)
                 } else {
                     // self.inner / (diff_exp * rhs.inner)
-                    match rhs.inner.checked_mul(ALL_EXPS[(P - Q - R) as usize]) {
-                        Some(tmp) => rounding_div(self.inner, tmp, rounding),
-                        None => None,
-                    }
+                    calc_div_div(self.inner, ALL_EXPS[(P - Q - R) as usize], rhs.inner, rounding)
                 };
                 $fixdec_type::<R>::from_opt_inner(opt_inner)
             }
@@ -391,20 +391,6 @@ macro_rules! define_fixdec {
             }
         }
 
-        const fn rounding_div(lhs: $inner_type, rhs: $inner_type, rounding: Rounding) -> Option<$inner_type> {
-            if rhs == 0 {
-                return None;
-            }
-            let d = lhs / rhs;
-            let r = lhs % rhs;
-            match rounding {
-                Rounding::Down => Some(d),
-                Rounding::Up => if r == 0 { Some(d) } else { Some(d+1) }
-                Rounding::Round => if r * 2 < rhs { Some(d) } else { Some(d+1) }
-                Rounding::Unexpected => if r == 0 { Some(d) } else { None }
-            }
-        }
-
         impl<const P: u32> fmt::Debug for $fixdec_type<P> {
             fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 write!(f, "Dec({},{})", self.inner, P)
@@ -508,6 +494,7 @@ macro_rules! define_fixdec {
     };
 }
 
+// convert FixDecX to another FixDecY type, where Y > X
 macro_rules! convert_into {
     ($from_type:ident, $into_mod:ident, $into_type:ident) => {
         use crate::$into_mod::$into_type;
@@ -521,6 +508,7 @@ macro_rules! convert_into {
     }
 }
 
+// try to convert FixDecX to another FixDecY type, where Y < X
 macro_rules! convert_try_into {
     ($from_type:ident, $into_mod:ident, $into_type:ident) => {
         use crate::$into_mod::$into_type;
@@ -539,6 +527,53 @@ macro_rules! convert_try_into {
     }
 }
 
+// define rounding_div_X functions used outside by fixdecX.rs
+macro_rules! make_rounding_div {
+    ($fn_name:ident, $inner_type:ty) => {
+        pub const fn $fn_name(lhs: $inner_type, rhs: $inner_type, rounding: Rounding) -> Option<$inner_type> {
+            if rhs == 0 {
+                return None;
+            }
+            let d = lhs / rhs;
+            let r = lhs % rhs;
+            match rounding {
+                Rounding::Down => Some(d),
+                Rounding::Up => if r == 0 { Some(d) } else { Some(d+1) }
+                Rounding::Round => if r * 2 < rhs { Some(d) } else { Some(d+1) }
+                Rounding::Unexpected => if r == 0 { Some(d) } else { None }
+            }
+        }
+    }
+}
+use super::Rounding;
+make_rounding_div!(rounding_div_i32, i32);
+make_rounding_div!(rounding_div_i64, i64);
+make_rounding_div!(rounding_div_i128, i128);
+
+// define convert_opt_X_to_Y functions used outside by fixdecX.rs
+macro_rules! make_convert_to_lower {
+    ($fn_name:ident, $inner_type:ty, $lower_type:ty) => {
+        pub const fn $fn_name(a: Option<$inner_type>) -> Option<$lower_type> {
+            match a {
+                None => None,
+                Some(r) => {
+                    let lower = r as $lower_type;
+                    if r > 0 {
+                        if lower <= <$lower_type>::MAX { Some(lower) } else { None }
+                    } else {
+                        if lower >= <$lower_type>::MIN { Some(lower) } else { None }
+                    }
+                }
+            }
+        }
+    }
+}
+make_convert_to_lower!(convert_opt_i128_to_i64, i128, i64);
+make_convert_to_lower!(convert_opt_i64_to_i32, i64, i32);
+make_convert_to_lower!(convert_opt_i32_to_i16, i32, i16);
+
+
+// export macros
 pub(crate) use define_fixdec;
 pub(crate) use convert_into;
 pub(crate) use convert_try_into;
