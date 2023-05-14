@@ -3,6 +3,8 @@ name = "primitive_fixed_point_decimal"
 version = "0.1.0"
 edition = "2021"
 authors = ["Wu Bingzheng <wubingzheng@gmail.com>"]
+description = "Primitive fixed-point decimal types."
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
