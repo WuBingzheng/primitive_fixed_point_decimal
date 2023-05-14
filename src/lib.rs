@@ -57,6 +57,11 @@
 //!
 //! Not ready for production.
 //!
+//! Todo list: 
+//!
+//! - Multiplication overflow case in `calc_mul_div()` in `fixdec128.rs`.
+//! - More test.
+//!
 //! # Example
 //!
 //! Let's see an example of foreign exchange trading.

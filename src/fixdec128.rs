@@ -34,6 +34,17 @@ const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
     if let Some(r) = b.checked_mul(c) {
         rounding_div_i128(a, r, rounding)
     } else {
-        None // todo!("mul overflow");
+        match rounding {
+            Rounding::Down => Some(0),
+            Rounding::Up => if a == 0 { Some(0) } else { Some(1) }
+            Rounding::Unexpected => if a == 0 { Some(0) } else { None }
+            Rounding::Round => {
+                if let Some(r) = b.checked_mul(c/2) {
+                    if a < r { Some(0) } else { Some(1) } // TODO accurately?
+                } else {
+                    Some(0)
+                }
+            }
+        }
     }
 }
