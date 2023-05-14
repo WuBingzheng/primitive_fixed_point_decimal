@@ -13,7 +13,7 @@ const ALL_EXPS: [i16; 1 + 4] = [1,
     10_i16.pow(1), 10_i16.pow(2), 10_i16.pow(3), 10_i16.pow(4),
 ];
 
-const fn calc_mul_div(a: i16, b: i16, c: i16) -> Option<i16> {
+const fn calc_mul_div(a: i16, b: i16, c: i16, _: Rounding) -> Option<i16> {
     if c == 0 {
         None
     } else {

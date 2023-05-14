@@ -15,7 +15,7 @@ const ALL_EXPS: [i32; 10] = [1,
     10_i32.pow(9)
 ];
 
-const fn calc_mul_div(a: i32, b: i32, c: i32) -> Option<i32> {
+const fn calc_mul_div(a: i32, b: i32, c: i32, _: Rounding) -> Option<i32> {
     if c == 0 {
         None
     } else {

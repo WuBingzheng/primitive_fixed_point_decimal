@@ -22,9 +22,9 @@ const ALL_EXPS: [i128; 38 + 1] = [1,
     10_i128.pow(37), 10_i128.pow(38),
 ];
 
-const fn calc_mul_div(a: i128, b: i128, c: i128) -> Option<i128> {
+const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
     if let Some(r) = a.checked_mul(b) {
-        r.checked_div(c)
+        rounding_div(r, c, rounding)
     } else {
         None // todo!("mul overflow");
     }

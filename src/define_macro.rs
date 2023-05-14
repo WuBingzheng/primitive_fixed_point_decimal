@@ -136,15 +136,19 @@ macro_rules! define_fixdec {
                 Self::from_opt_inner(self.inner.checked_sub(rhs.inner))
             }
 
+            /// Checked multiplication. Equivalent to
+            #[doc = concat!("[`FixDec", $bits, "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
+            pub const fn checked_mul<const Q: u32, const R: u32>(self, rhs: $fixdec_type<Q>) -> Option<$fixdec_type<R>> {
+                self.checked_mul_with_rounding(rhs, Rounding::Round)
+            }
+
             /// Checked multiplication. Computes `self * rhs`, returning `None` if overflow
-            /// occurred.
+            /// occurred, or precison loss with Rounding::Unexpected specified.
             ///
             /// The right operand and the result both could have different precisions
-            /// against self. So you can multiple
+            /// against Self. So you can multiple
             #[doc = concat!("`FixDec", $bits, "::<4>` by `FixDec", $bits, "::<3>` ")]
             #[doc = concat!("and get a `FixDec", $bits, "::<2>`.")]
-            ///
-            /// The result's extra precisions will be truncated if any.
             ///
             /// # Panics
             ///
@@ -154,7 +158,7 @@ macro_rules! define_fixdec {
             /// 
             /// ```
             /// use std::str::FromStr;
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("use primitive_fixed_point_decimal::{FixDec", $bits, ", Rounding};")]
             #[doc = concat!("type Balance = FixDec", $bits, "::<4>;")]
             #[doc = concat!("type FeeRate = FixDec", $bits, "::<3>; // different precision")]
             ///
@@ -162,13 +166,20 @@ macro_rules! define_fixdec {
             /// let rate = FeeRate::from_str("0.015").unwrap();
             ///
             /// let fee = Balance::from_str("0.03").unwrap();
-            /// assert_eq!(balance.checked_mul(rate), Some(fee));
+            /// assert_eq!(balance.checked_mul_with_rounding(rate, Rounding::Round), Some(fee));
             /// ```
-            pub const fn checked_mul<const Q: u32, const R: u32>(self, rhs: $fixdec_type<Q>) -> Option<$fixdec_type<R>> {
+            pub const fn checked_mul_with_rounding<const Q: u32, const R: u32>(
+                self,
+                rhs: $fixdec_type<Q>,
+                rounding: Rounding
+           ) -> Option<$fixdec_type<R>> {
+
                 let opt_inner = if P + Q > R {
+                    // self.inner * rhs.inner / diff_exp
                     debug_assert!(P + Q - R <= DIGITS);
-                    calc_mul_div(self.inner, rhs.inner, ALL_EXPS[(P + Q - R) as usize])
+                    calc_mul_div(self.inner, rhs.inner, ALL_EXPS[(P + Q - R) as usize], rounding)
                 } else {
+                    // self.inner * rhs.inner * diff_exp
                     let Some(r) = self.inner.checked_mul(rhs.inner) else {
                         return None;
                     };
@@ -177,15 +188,19 @@ macro_rules! define_fixdec {
                 $fixdec_type::<R>::from_opt_inner(opt_inner)
             }
 
+            /// Checked division. Equivalent to
+            #[doc = concat!("[`FixDec", $bits, "::checked_div_with_rounding`] with `rounding=Rounding::Round`.")]
+            pub const fn checked_div<const Q: u32, const R: u32>(self, rhs: $fixdec_type<Q>) -> Option<$fixdec_type<R>> {
+                self.checked_div_with_rounding(rhs, Rounding::Round)
+            }
+
             /// Checked division. Computes `self / rhs`, returning `None` if `rhs == 0` or
-            /// the division results in overflow.
+            /// the division results in overflow, or precison loss with Rounding::Unexpected specified.
             ///
             /// The right operand and the result both could have different precisions
-            /// against self. So you can divide
+            /// against Self. So you can divide
             #[doc = concat!("`FixDec", $bits, "::<4>` by `FixDec", $bits, "::<3>` ")]
             #[doc = concat!("and get a `FixDec", $bits, "::<2>`.")]
-            ///
-            /// The result's extra precisions will be truncated if any.
             ///
             /// # Panics
             ///
@@ -195,7 +210,7 @@ macro_rules! define_fixdec {
             /// 
             /// ```
             /// use std::str::FromStr;
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("use primitive_fixed_point_decimal::{FixDec", $bits, ", Rounding};")]
             #[doc = concat!("type Balance = FixDec", $bits, "::<4>;")]
             #[doc = concat!("type FeeRate = FixDec", $bits, "::<3>; // different precision")]
             ///
@@ -203,15 +218,25 @@ macro_rules! define_fixdec {
             /// let fee = Balance::from_str("0.03").unwrap();
             /// let rate = FeeRate::from_str("0.015").unwrap();
             ///
-            /// assert_eq!(fee.checked_div(balance), Some(rate));
-            /// assert_eq!(fee.checked_div(rate), Some(balance));
+            /// assert_eq!(fee.checked_div_with_rounding(balance, Rounding::Round), Some(rate));
+            /// assert_eq!(fee.checked_div_with_rounding(rate, Rounding::Round), Some(balance));
             /// ```
-            pub const fn checked_div<const Q: u32, const R: u32>(self, rhs: $fixdec_type<Q>) -> Option<$fixdec_type<R>> {
+            pub const fn checked_div_with_rounding<const Q: u32, const R: u32>(
+                self,
+                rhs: $fixdec_type<Q>,
+                rounding: Rounding
+            ) -> Option<$fixdec_type<R>> {
+
                 let opt_inner = if P < Q + R {
+                    // self.inner * diff_exp / rhs.inner
                     debug_assert!(Q + R - P <= DIGITS);
-                    calc_mul_div(self.inner, ALL_EXPS[(Q + R - P) as usize], rhs.inner)
+                    calc_mul_div(self.inner, ALL_EXPS[(Q + R - P) as usize], rhs.inner, rounding)
                 } else {
-                    (self.inner / ALL_EXPS[(P - Q - R) as usize]).checked_div(rhs.inner)
+                    // self.inner / (diff_exp * rhs.inner)
+                    match rhs.inner.checked_mul(ALL_EXPS[(P - Q - R) as usize]) {
+                        Some(tmp) => rounding_div(self.inner, tmp, rounding),
+                        None => None,
+                    }
                 };
                 $fixdec_type::<R>::from_opt_inner(opt_inner)
             }
@@ -260,23 +285,24 @@ macro_rules! define_fixdec {
 
             /// Read decimal from string, with specified precision.
             ///
-            #[doc = concat!("Equivalent to [`FixDec", $bits, "::with_precision_and_rounding`] with `round_kind=Rounding::Round`.")]
+            #[doc = concat!("Equivalent to [`FixDec", $bits, "::with_precision_and_rounding`] ")]
+            /// "with `rounding=Rounding::Round`.
             pub fn with_precision(s: &str, precision: u32) -> Result<Self, ParseError> {
                 Self::with_precision_and_rounding(s, precision, Rounding::Round)
             }
         
-            /// Read decimal from string, with specified precision and round-up kind.
+            /// Read decimal from string, with specified precision and rounding kind.
             ///
             /// # Examples:
             ///
             /// ```
             /// use std::str::FromStr;
-            /// use primitive_fixed_point_decimal::Rounding;
+            /// use primitive_fixed_point_decimal::{Rounding, ParseError};
             #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
             #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
             ///
-            /// fn check(origin: &str, p: u32, round_kind: Rounding, expect: &str) {
-            ///     let fd = Decimal::with_precision_and_rounding(origin, p, round_kind).unwrap();
+            /// fn check(origin: &str, p: u32, rounding: Rounding, expect: &str) {
+            ///     let fd = Decimal::with_precision_and_rounding(origin, p, rounding).unwrap();
             ///     assert_eq!(fd, Decimal::from_str(expect).unwrap());
             /// }
             /// check("1.23789", 2, Rounding::Down, "1.23");
@@ -287,8 +313,11 @@ macro_rules! define_fixdec {
             /// check("-1.23789", 2, Rounding::Up, "-1.24");
             /// check("-1.23789", 2, Rounding::Round, "-1.24");
             /// check("-1.23500", 2, Rounding::Round, "-1.24");
+            ///
+            /// assert_eq!(Decimal::with_precision_and_rounding("1.23789", 2, Rounding::Unexpected),
+            ///            Err(ParseError::Precision));
             /// ```
-            pub fn with_precision_and_rounding(s: &str, precision: u32, round_kind: Rounding)
+            pub fn with_precision_and_rounding(s: &str, precision: u32, rounding: Rounding)
                 -> Result<Self, ParseError> {
         
                 // sign part
@@ -308,7 +337,7 @@ macro_rules! define_fixdec {
                     let mut precision = u32::min(precision, P) as usize;
                     let frac_num = if precision < frac_str.len() {
                         let (keep, discard) = frac_str.split_at(precision);
-                        parse_int(keep)? + round_up(discard, round_kind)?
+                        parse_int(keep)? + rounding_carry(discard, rounding)?
                     } else {
                         precision = frac_str.len();
                         parse_int(frac_str)?
@@ -342,7 +371,7 @@ macro_rules! define_fixdec {
         }
 
         // return Ok(0) for drop and Ok(1) for carry
-        fn round_up(s: &str, kind: Rounding) -> Result<$inner_type, ParseError> {
+        fn rounding_carry(s: &str, kind: Rounding) -> Result<$inner_type, ParseError> {
             if s.chars().any(|ch| ch.to_digit(10).is_none()) {
                 return Err(ParseError::Invalid);
             }
@@ -357,6 +386,22 @@ macro_rules! define_fixdec {
                         Ok(0)
                     }
                 }
+                Rounding::Unexpected =>
+                    if s.trim_matches('0').is_empty() { Ok(0) } else { Err(ParseError::Precision) }
+            }
+        }
+
+        const fn rounding_div(lhs: $inner_type, rhs: $inner_type, rounding: Rounding) -> Option<$inner_type> {
+            if rhs == 0 {
+                return None;
+            }
+            let d = lhs / rhs;
+            let r = lhs % rhs;
+            match rounding {
+                Rounding::Down => Some(d),
+                Rounding::Up => if r == 0 { Some(d) } else { Some(d+1) }
+                Rounding::Round => if r * 2 < rhs { Some(d) } else { Some(d+1) }
+                Rounding::Unexpected => if r == 0 { Some(d) } else { None }
             }
         }
 
@@ -403,7 +448,7 @@ macro_rules! define_fixdec {
             /// Read decimal from string.
             ///
             #[doc = concat!("Equivalent to [`FixDec", $bits, "::with_precision_and_rounding`] ")]
-            /// with `precision=P` and `round_kind=Rounding::Round`.
+            /// with `precision=P` and `rounding=Rounding::Round`.
             fn from_str(s: &str) -> Result<Self, ParseError> {
                 Self::with_precision(s, P)
             }

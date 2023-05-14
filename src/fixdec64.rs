@@ -17,10 +17,10 @@ const ALL_EXPS: [i64; 19] = [1,
     10_i64.pow(17), 10_i64.pow(18),
 ];
 
-const fn calc_mul_div(a: i64, b: i64, c: i64) -> Option<i64> {
+const fn calc_mul_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64> {
     // try i64 first because I guess it's faster than i128
     if let Some(r) = a.checked_mul(b) {
-        r.checked_div(c)
+        rounding_div(r, c, rounding)
     } else if c == 0 {
         None
     } else {
