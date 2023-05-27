@@ -549,6 +549,7 @@ use super::Rounding;
 make_rounding_div!(rounding_div_i32, i32);
 make_rounding_div!(rounding_div_i64, i64);
 make_rounding_div!(rounding_div_i128, i128);
+make_rounding_div!(rounding_div_u128, u128);
 
 // define convert_opt_X_to_Y functions used outside by fixdecX.rs
 macro_rules! make_convert_to_lower {
