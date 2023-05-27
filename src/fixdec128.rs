@@ -51,7 +51,7 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
             let remainder1 = part1 % c;
 
             let part2 = (remainder1 << 64) | (mlow & u64::MAX as u128);
-            let Some(quotient2) = rounding_div_u128(part2, c, rounding) else {
+            let Some(quotient2) = rounding_div_u128(part2, c, is_neg, rounding) else {
                 return None;
             };
 
@@ -75,7 +75,7 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
                 } else {
                     let shft = 128 - total_shft;
                     dividend = dividend << shft | mlow << total_shft >> (128 - shft);
-                    let Some(quotient) = rounding_div_u128(dividend, c, rounding) else {
+                    let Some(quotient) = rounding_div_u128(dividend, c, is_neg, rounding) else {
                         return None;
                     };
                     break r << shft | quotient;
@@ -95,18 +95,32 @@ const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
     if let Some(r) = b.checked_mul(c) {
         rounding_div_i128(a, r, rounding)
     } else {
-        match rounding {
-            Rounding::Down => Some(0),
-            Rounding::Up => if a == 0 { Some(0) } else { Some(1) }
-            Rounding::Unexpected => if a == 0 { Some(0) } else { None }
-            Rounding::Round => {
-                if let Some(r) = b.checked_mul(c/2) {
-                    if a < r { Some(0) } else { Some(1) } // TODO accurately?
-                } else {
-                    Some(0)
-                }
-            }
+        let is_neg = (a < 0) ^ (b < 0) ^ (c < 0);
+        let more_half = if let Some(r) = b.checked_mul(c/2) {
+            a >= r
+        } else {
+            false
+        };
+
+        if let Some(carry) = rounding_carry(a == 0, more_half, is_neg, rounding) {
+            Some(carry as i128)
+        } else {
+            None
         }
+    }
+}
+
+const fn rounding_div_u128(lhs: u128, rhs: u128, is_neg: bool, kind: Rounding) -> Option<u128> {
+    let d = lhs / rhs;
+    let r = lhs % rhs;
+    if let Some(carry) = rounding_carry(r == 0, r >= rhs / 2, is_neg, kind) {
+        if carry == -1 {
+            Some(d - 1)
+        } else {
+            Some(d + carry as u128)
+        }
+    } else {
+        None
     }
 }
 
@@ -130,7 +144,7 @@ mod tests {
     fn test_mul_div() {
         assert_eq!(calc_mul_div(1, 1, 0, Rounding::Round), None);
 
-        assert_eq!(calc_mul_div(-100, 100, 7, Rounding::Round), Some(-1428)); // XXX -1429
+        assert_eq!(calc_mul_div(-100, 100, 7, Rounding::Round), Some(-1429));
         assert_eq!(calc_mul_div(100, -100, 7, Rounding::Up), Some(-1427)); // -1428
         assert_eq!(calc_mul_div(100, 100, -7, Rounding::Down), Some(-1428));
         assert_eq!(calc_mul_div(-100, -100, 7, Rounding::Unexpected), None);

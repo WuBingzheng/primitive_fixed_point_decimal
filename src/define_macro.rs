@@ -321,7 +321,7 @@ macro_rules! define_fixdec {
                 -> Result<Self, ParseError> {
         
                 // sign part
-                let (s, is_negative) = match s.as_bytes().first() {
+                let (s, is_neg) = match s.as_bytes().first() {
                     None => return Err(ParseError::Empty),
                     Some(b'-') => (&s[1..], true),
                     Some(b'+') => (&s[1..], false),
@@ -337,7 +337,7 @@ macro_rules! define_fixdec {
                     let mut precision = u32::min(precision, P) as usize;
                     let frac_num = if precision < frac_str.len() {
                         let (keep, discard) = frac_str.split_at(precision);
-                        parse_int(keep)? + rounding_carry(discard, rounding)?
+                        parse_int(keep)? + parse_rounding(discard, rounding, is_neg)? as $inner_type
                     } else {
                         precision = frac_str.len();
                         parse_int(frac_str)?
@@ -355,7 +355,7 @@ macro_rules! define_fixdec {
                     return Err(ParseError::Overflow);
                 };
                 inner += frac_num;
-                if is_negative {
+                if is_neg {
                     inner = -inner;
                 }
                 Ok(Self::from_inner(inner))
@@ -367,27 +367,6 @@ macro_rules! define_fixdec {
                 Ok(0)
             } else { // TODO check '+' and '-'
                 <$inner_type>::from_str(s).map_err(|_|ParseError::Invalid)
-            }
-        }
-
-        // return Ok(0) for drop and Ok(1) for carry
-        fn rounding_carry(s: &str, kind: Rounding) -> Result<$inner_type, ParseError> {
-            if s.chars().any(|ch| ch.to_digit(10).is_none()) {
-                return Err(ParseError::Invalid);
-            }
-            match kind {
-                Rounding::Down => Ok(0),
-                Rounding::Up =>
-                    if s.trim_matches('0').is_empty() { Ok(0) } else { Ok(1) }
-                Rounding::Round => {
-                    if let Some(first) = s.chars().next() {
-                        if first < '5' { Ok(0) } else { Ok(1) }
-                    } else {
-                        Ok(0)
-                    }
-                }
-                Rounding::Unexpected =>
-                    if s.trim_matches('0').is_empty() { Ok(0) } else { Err(ParseError::Precision) }
             }
         }
 
@@ -494,6 +473,41 @@ macro_rules! define_fixdec {
     };
 }
 
+use super::{ParseError, Rounding};
+pub fn parse_rounding(s: &str, kind: Rounding, is_neg: bool) -> Result<i8, ParseError> {
+    if s.chars().any(|ch| ch.to_digit(10).is_none()) {
+        return Err(ParseError::Invalid);
+    }
+    rounding_carry_c(|| s.trim_matches('0').is_empty(), // is_zero
+        || if let Some(first) = s.chars().next() { first >= '5'} else { false }, // more_half
+        is_neg,
+        kind).ok_or(ParseError::Precision)
+}
+
+pub fn rounding_carry_c<F, G>(is_zero: F, more_half: G, is_neg: bool, kind: Rounding) -> Option<i8>
+    where F: FnOnce() -> bool, G: FnOnce() -> bool
+{
+    Some(match kind {
+        Rounding::Round => if more_half() { if is_neg { -1 } else { 1 } } else { 0 }
+        Rounding::Down => 0,
+        Rounding::Up => !is_zero() as i8,
+        Rounding::Floor => -((is_neg && !is_zero()) as i8),
+        Rounding::Ceil => (!is_neg && !is_zero()) as i8,
+        Rounding::Unexpected => if is_zero() { 0 } else { return None; }
+    })
+}
+
+pub const fn rounding_carry(is_zero: bool, more_half: bool, is_neg: bool, kind: Rounding) -> Option<i8> {
+    Some(match kind {
+        Rounding::Round => if more_half { if is_neg { -1 } else { 1 } } else { 0 }
+        Rounding::Down => 0,
+        Rounding::Up => !is_zero as i8,
+        Rounding::Floor => -((is_neg && !is_zero) as i8),
+        Rounding::Ceil => (!is_neg && !is_zero) as i8,
+        Rounding::Unexpected => if is_zero { 0 } else { return None; }
+    })
+}
+
 // convert FixDecX to another FixDecY type, where Y > X
 macro_rules! convert_into {
     ($from_type:ident, $into_mod:ident, $into_type:ident) => {
@@ -530,26 +544,23 @@ macro_rules! convert_try_into {
 // define rounding_div_X functions used outside by fixdecX.rs
 macro_rules! make_rounding_div {
     ($fn_name:ident, $inner_type:ty) => {
-        pub const fn $fn_name(lhs: $inner_type, rhs: $inner_type, rounding: Rounding) -> Option<$inner_type> {
+        pub const fn $fn_name(lhs: $inner_type, rhs: $inner_type, kind: Rounding) -> Option<$inner_type> {
             if rhs == 0 {
                 return None;
             }
             let d = lhs / rhs;
             let r = lhs % rhs;
-            match rounding {
-                Rounding::Down => Some(d),
-                Rounding::Up => if r == 0 { Some(d) } else { Some(d+1) }
-                Rounding::Round => if r * 2 < rhs { Some(d) } else { Some(d+1) }
-                Rounding::Unexpected => if r == 0 { Some(d) } else { None }
+            if let Some(carry) = rounding_carry(r == 0, r.abs() * 2 >= rhs.abs(), (lhs < 0) ^ (rhs < 0), kind) {
+                Some(d + carry as $inner_type)
+            } else {
+                None
             }
         }
     }
 }
-use super::Rounding;
 make_rounding_div!(rounding_div_i32, i32);
 make_rounding_div!(rounding_div_i64, i64);
 make_rounding_div!(rounding_div_i128, i128);
-make_rounding_div!(rounding_div_u128, u128);
 
 // define convert_opt_X_to_Y functions used outside by fixdecX.rs
 macro_rules! make_convert_to_lower {

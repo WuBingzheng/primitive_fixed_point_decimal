@@ -148,6 +148,10 @@ pub enum Rounding {
     /// Round away from 0. It's equivalent to `Ceiling` for positive numbers,
     /// and `Floor` for negative numbers.
     Up,
+    /// Floor
+    Floor,
+    /// Ceil
+    Ceil,
     /// Return Option::None or Result::Err if need rounding.
     Unexpected,
 }
