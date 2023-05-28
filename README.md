@@ -55,15 +55,6 @@ The conversion keeps the precision.
 Different precisions of same type are converted into each other by
 `higher_precision()` and `lower_precision()` functions.
 
-## Status
-
-Not ready for production.
-
-Todo list:
-
-- Multiplication overflow case in `calc_mul_div()` in `fixdec128.rs`.
-- More test.
-
 ## Example
 
 Let's see an example of foreign exchange trading.
@@ -107,5 +98,9 @@ account_cny += get_cny - fee_cny;
 assert_eq!(account_usd, Balance::from_str("20000").unwrap());
 assert_eq!(account_cny, Balance::from_str("71592.45").unwrap());
 ```
+
+## Status
+
+More tests are need before ready for production.
 
 License: MIT
