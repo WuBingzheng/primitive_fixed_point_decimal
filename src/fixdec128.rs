@@ -38,56 +38,36 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
         let (mlow, carry2) = (alow * blow).overflowing_add(mid << 64);
         let mhigh = ahigh * bhigh + (mid >> 64) + carry1 as u128 + carry2 as u128;
 
-        // overflow or c==0
+        // check overflow or c==0
         if mhigh * 2 >= c {
             return None;
         }
 
         // calculate: r = (mhigh,mlow) / c
-        let r = if c <= u64::MAX as u128 {
-            // special case: `c` has no more 64 bits
-            let part1 = (mhigh << 64) | (mlow >> 64);
-            let quotient1 = part1 / c;
-            let remainder1 = part1 % c;
+        let mut dividend = mhigh;
+        let mut r = 0;
+        let mut total_shft = 0;
+        loop {
+            let zeros = dividend.leading_zeros();
+            if zeros + total_shft < 128 {
+                dividend = dividend << zeros | mlow << total_shft >> (128 - zeros);
+                r = r << zeros | dividend / c;
 
-            let part2 = (remainder1 << 64) | (mlow & u64::MAX as u128);
-            let Some(quotient2) = rounding_div_u128(part2, c, is_neg, rounding) else {
-                return None;
-            };
+                dividend %= c;
+                total_shft += zeros;
+            } else {
+                let shft = 128 - total_shft;
+                dividend = dividend << shft | mlow << total_shft >> (128 - shft);
+                let Some(quotient) = rounding_div_u128(dividend, c, rounding) else {
+                    return None;
+                };
+                r = (r << shft) + quotient; // use '+' but not '|' because of rounding up
 
-            debug_assert!(quotient1 <= u64::MAX as u128);
-            debug_assert!(quotient2 <= u64::MAX as u128);
-            quotient1 << 64 | quotient2
-
-        } else {
-            // generic case
-            let mut dividend = mhigh;
-            let mut r = 0;
-            let mut total_shft = 0;
-            loop {
-                let zeros = dividend.leading_zeros();
-                if zeros + total_shft < 128 {
-                    dividend = dividend << zeros | mlow << total_shft >> (128 - zeros);
-                    r = r << zeros | dividend / c;
-
-                    dividend %= c;
-                    total_shft += zeros;
-                } else {
-                    let shft = 128 - total_shft;
-                    dividend = dividend << shft | mlow << total_shft >> (128 - shft);
-                    let Some(quotient) = rounding_div_u128(dividend, c, is_neg, rounding) else {
-                        return None;
-                    };
-                    break r << shft | quotient;
-                }
+                debug_assert!(r <= i128::MAX as u128);
+                let r = r as i128;
+                break if is_neg { Some(-r) } else { Some(r) };
             }
-        };
-
-        if r > i128::MAX as u128 {
-            return None;
         }
-        let r = r as i128;
-        if is_neg { Some(-r) } else { Some(r) }
     }
 }
 
@@ -95,14 +75,13 @@ const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
     if let Some(r) = b.checked_mul(c) {
         rounding_div_i128(a, r, rounding)
     } else {
-        let is_neg = (a < 0) ^ (b < 0) ^ (c < 0);
         let more_half = if let Some(r) = b.checked_mul(c/2) {
             a >= r
         } else {
             false
         };
 
-        if let Some(carry) = rounding_carry(a == 0, more_half, is_neg, rounding) {
+        if let Some(carry) = rounding_carry(a == 0, more_half, rounding) {
             Some(carry as i128)
         } else {
             None
@@ -110,19 +89,6 @@ const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
     }
 }
 
-const fn rounding_div_u128(lhs: u128, rhs: u128, is_neg: bool, kind: Rounding) -> Option<u128> {
-    let d = lhs / rhs;
-    let r = lhs % rhs;
-    if let Some(carry) = rounding_carry(r == 0, r >= rhs / 2, is_neg, kind) {
-        if carry == -1 {
-            Some(d - 1)
-        } else {
-            Some(d + carry as u128)
-        }
-    } else {
-        None
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -130,6 +96,10 @@ mod tests {
 
     fn check_mul_div(a: i128, b: i128, c: i128, r: i128) {
         assert_eq!(calc_mul_div(a, b, c, Rounding::Unexpected), Some(r));
+        assert_eq!(calc_mul_div(-a, b, c, Rounding::Unexpected), Some(-r));
+        assert_eq!(calc_mul_div(a, b, -c, Rounding::Unexpected), Some(-r));
+        assert_eq!(calc_mul_div(a, -b, -c, Rounding::Unexpected), Some(r));
+        assert_eq!(calc_mul_div(-a, -b, -c, Rounding::Unexpected), Some(-r));
     }
 
     fn check_mul_div_pow(a: u32, b: u32, c: u32) {
@@ -142,30 +112,46 @@ mod tests {
 
     #[test]
     fn test_mul_div() {
+        let max16 = u16::MAX as i128;
+        let max64 = u64::MAX as i128;
+        let big64 = u64::MAX as i128 - 15;
+        let max128 = i128::MAX;
+
         assert_eq!(calc_mul_div(1, 1, 0, Rounding::Round), None);
 
-        assert_eq!(calc_mul_div(-100, 100, 7, Rounding::Round), Some(-1429));
-        assert_eq!(calc_mul_div(100, -100, 7, Rounding::Up), Some(-1427)); // -1428
-        assert_eq!(calc_mul_div(100, 100, -7, Rounding::Down), Some(-1428));
-        assert_eq!(calc_mul_div(-100, -100, 7, Rounding::Unexpected), None);
+        assert_eq!(calc_mul_div(23, 1, 10, Rounding::Round), Some(2));
+        assert_eq!(calc_mul_div(23, 1, 10, Rounding::Floor), Some(2));
+        assert_eq!(calc_mul_div(23, 1, 10, Rounding::Ceil), Some(3));
+        assert_eq!(calc_mul_div(23, 1, 10, Rounding::Unexpected), None);
+        assert_eq!(calc_mul_div(27, 1, 10, Rounding::Round), Some(3));
+        assert_eq!(calc_mul_div(27, 1, 10, Rounding::Floor), Some(2));
+        assert_eq!(calc_mul_div(27, 1, 10, Rounding::Ceil), Some(3));
+        assert_eq!(calc_mul_div(27, 1, 10, Rounding::Unexpected), None);
+        assert_eq!(calc_mul_div(max128, 4, 16, Rounding::Round), Some(max128 / 4 + 1));
+        assert_eq!(calc_mul_div(max128, 4, 16, Rounding::Floor), Some(max128 / 4));
+        assert_eq!(calc_mul_div(max128, 4, 16, Rounding::Ceil), Some(max128 / 4 + 1));
+        assert_eq!(calc_mul_div(max128, 4, 16, Rounding::Unexpected), None);
+        assert_eq!(calc_mul_div(max128, 4, max128-1, Rounding::Round), Some(4));
+        assert_eq!(calc_mul_div(max128, 4, max128-1, Rounding::Floor), Some(4));
+        assert_eq!(calc_mul_div(max128, 4, max128-1, Rounding::Ceil), Some(5));
+        assert_eq!(calc_mul_div(max128, 4, max128-1, Rounding::Unexpected), None);
 
-        let max16 = u16::MAX as i128;
+        assert_eq!(calc_mul_div(max64, max64*2, 1, Rounding::Round), None);
+        assert_eq!(calc_mul_div(max64, max64*8, 0, Rounding::Round), None);
+
         check_mul_div(max16, max16, max16, max16);
         check_mul_div(max16/2, max16*2, max16, max16-1);
 
-        let max64 = u64::MAX as i128;
         check_mul_div(max64/2, max64, max64, max64/2);
         check_mul_div(max64*99, max64*99, max64*99*9, max64*11);
         check_mul_div(max64*2, max64*2, max64, max64*4);
         check_mul_div(max64*8, max64*9, max64*6, max64*12);
 
-        let big64 = u64::MAX as i128 - 15;
         check_mul_div(big64*2, big64*2, big64/2, big64*8);
         check_mul_div(big64/2, big64/2, big64*2, big64/8);
         check_mul_div(big64/2, big64/2, big64/2, big64/2);
         check_mul_div(big64*2, big64*2, big64*2, big64*2);
 
-        let max128 = i128::MAX;
         check_mul_div(max128, max128, max128, max128);
         check_mul_div(max64, max64/2, 1, max128-max64-max64/2);
 
@@ -181,8 +167,5 @@ mod tests {
         check_mul_div_pow(38, 10, 12);
         check_mul_div_pow(38, 1, 10);
         check_mul_div_pow(37, 37, 37);
-
-        assert_eq!(calc_mul_div(max64, max64*2, 1, Rounding::Round), None);
-        assert_eq!(calc_mul_div(max64, max64*8, 0, Rounding::Round), None);
     }
 }

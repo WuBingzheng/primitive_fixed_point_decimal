@@ -138,19 +138,13 @@ pub enum ParseError {
 }
 
 /// Rounding kind.
+///
+/// This works right for non-negative numbers only by now, for
+/// perfomance considerations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rounding {
-    /// Return the nearest number. Round away from 0 for half-way (0.5).
     Round,
-    /// Round toward 0. Just truncate the extra precision. It's equivalent
-    /// to `Floor` for positive numbers, and `Ceiling` for negative numbers.
-    Down,
-    /// Round away from 0. It's equivalent to `Ceiling` for positive numbers,
-    /// and `Floor` for negative numbers.
-    Up,
-    /// Floor
     Floor,
-    /// Ceil
     Ceil,
     /// Return Option::None or Result::Err if need rounding.
     Unexpected,
