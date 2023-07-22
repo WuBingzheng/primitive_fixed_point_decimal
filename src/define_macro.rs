@@ -283,6 +283,69 @@ macro_rules! define_fixdec {
                 Self { inner }
             }
 
+            /// Read decimal from float, with specified precision.
+            ///
+            #[doc = concat!("Equivalent to [`FixDec", $bits, "::try_from_float_with_precision_and_rounding`] ")]
+            /// "with `rounding=Rounding::Round`.
+            pub fn try_from_float_with_precision(f: f64, precision: u32) -> Result<Self, ParseError>
+            {
+                Self::try_from_float_with_precision_and_rounding(f, precision, Rounding::Round)
+            }
+
+            /// Read decimal from float, with specified precision and rounding kind.
+            ///
+            /// # Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            /// use primitive_fixed_point_decimal::{Rounding, ParseError};
+            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
+            ///
+            /// fn check(origin: f64, p: u32, rounding: Rounding, expect: &str) {
+            ///     let fd = Decimal::try_from_float_with_precision_and_rounding(origin, p, rounding).unwrap();
+            ///     assert_eq!(fd, Decimal::from_str(expect).unwrap());
+            /// }
+            /// check(1.23789, 2, Rounding::Floor, "1.23");
+            /// check(1.23789, 2, Rounding::Ceil, "1.24");
+            /// check(1.23789, 2, Rounding::Round, "1.24");
+            /// check(1.23500, 2, Rounding::Round, "1.24");
+            ///
+            /// assert_eq!(Decimal::try_from_float_with_precision_and_rounding(f64::MAX, 2, Rounding::Round),
+            ///            Err(ParseError::Overflow));
+            /// assert_eq!(Decimal::try_from_float_with_precision_and_rounding(1.23789, 2, Rounding::Unexpected),
+            ///            Err(ParseError::Precision));
+            /// ```
+            pub fn try_from_float_with_precision_and_rounding(mut f: f64,
+                precision: u32, rounding: Rounding) -> Result<Self, ParseError>
+            {
+                debug_assert!(precision <= P);
+
+                f *= ALL_EXPS[precision as usize] as f64;
+                if !f.is_finite() {
+                    return Err(ParseError::Overflow);
+                }
+                let mut inner_f = match rounding {
+                    Rounding::Round => f.round(),
+                    Rounding::Floor => f.floor(),
+                    Rounding::Ceil => f.ceil(),
+                    Rounding::Unexpected => {
+                        if f.fract() != 0.0 {
+                            return Err(ParseError::Precision);
+                        }
+                        f.floor()
+                    }
+                };
+                if precision < P {
+                    inner_f *= ALL_EXPS[(P - precision) as usize] as f64;
+                }
+                let inner_i = inner_f as $inner_type;
+                if (inner_i as f64 != inner_f) {
+                    return Err(ParseError::Overflow);
+                }
+                Ok(Self::from_inner(inner_i))
+            }
+
             /// Read decimal from string, with specified precision.
             ///
             #[doc = concat!("Equivalent to [`FixDec", $bits, "::with_precision_and_rounding`] ")]
@@ -290,7 +353,7 @@ macro_rules! define_fixdec {
             pub fn with_precision(s: &str, precision: u32) -> Result<Self, ParseError> {
                 Self::with_precision_and_rounding(s, precision, Rounding::Round)
             }
-        
+
             /// Read decimal from string, with specified precision and rounding kind.
             ///
             /// # Examples:
@@ -431,6 +494,43 @@ macro_rules! define_fixdec {
             fn try_from(i: $inner_type) -> Result<Self, Self::Error> {
                 let inner = i.checked_mul(ALL_EXPS[P as usize]).ok_or(())?;
                 Ok(Self::from_inner(inner))
+            }
+        }
+
+        impl<const P: u32> TryFrom<f64> for $fixdec_type<P> {
+            type Error = ParseError;
+
+            /// Try to convert float into FixDec. Fail if overflow occurred.
+            ///
+            #[doc = concat!("Equivalent to [`FixDec", $bits, "::try_from_float_with_precision`] ")]
+            /// "with `precision=P`.
+            ///
+            /// # Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
+            /// assert_eq!(Decimal::try_from(123.456).unwrap(), Decimal::from_str("123.46").unwrap());
+            /// ```
+            fn try_from(f: f64) -> Result<Self, Self::Error> {
+                Self::try_from_float_with_precision(f, P)
+            }
+        }
+
+        impl<const P: u32> Into<f64> for $fixdec_type<P> {
+            /// Convert FixDec into float.
+            ///
+            /// # Examples:
+            ///
+            /// ```
+            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
+            /// let f: f64 = Decimal::try_from(123.45).unwrap().into();
+            /// assert_eq!(f, 123.45);
+            /// ```
+            fn into(self) -> f64 {
+                (self.inner as f64) / (Self::EXP as f64)
             }
         }
 
