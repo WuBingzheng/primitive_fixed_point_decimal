@@ -283,15 +283,7 @@ macro_rules! define_fixdec {
                 Self { inner }
             }
 
-            /// Read decimal from string, with specified precision.
-            ///
-            #[doc = concat!("Equivalent to [`FixDec", $bits, "::with_precision_and_rounding`] ")]
-            /// "with `rounding=Rounding::Round`.
-            pub fn with_precision(s: &str, precision: u32) -> Result<Self, ParseError> {
-                Self::with_precision_and_rounding(s, precision, Rounding::Round)
-            }
-
-            /// Read decimal from string, with specified precision and rounding kind.
+            /// Read decimal from string, with specified rounding kind.
             ///
             /// # Examples:
             ///
@@ -301,19 +293,20 @@ macro_rules! define_fixdec {
             #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
             #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
             ///
-            /// fn check(origin: &str, p: u32, rounding: Rounding, expect: &str) {
-            ///     let fd = Decimal::with_precision_and_rounding(origin, p, rounding).unwrap();
+            /// fn check(origin: &str, rounding: Rounding, expect: &str) {
+            ///     let fd = Decimal::from_str_with_rounding(origin, rounding).unwrap();
             ///     assert_eq!(fd, Decimal::from_str(expect).unwrap());
             /// }
-            /// check("1.23789", 2, Rounding::Floor, "1.23");
-            /// check("1.23789", 2, Rounding::Ceil, "1.24");
-            /// check("1.23789", 2, Rounding::Round, "1.24");
-            /// check("1.23500", 2, Rounding::Round, "1.24");
+            /// check("1.23456789", Rounding::Floor, "1.2345");
+            /// check("1.23456789", Rounding::Ceil, "1.2346");
+            /// check("1.23456789", Rounding::Round, "1.2346");
+            /// check("1.23455000", Rounding::Round, "1.2346");
+            /// check("1.23", Rounding::Round, "1.23");
             ///
-            /// assert_eq!(Decimal::with_precision_and_rounding("1.23789", 2, Rounding::Unexpected),
+            /// assert_eq!(Decimal::from_str_with_rounding("1.23789", Rounding::Unexpected),
             ///            Err(ParseError::Precision));
             /// ```
-            pub fn with_precision_and_rounding(s: &str, precision: u32, rounding: Rounding)
+            pub fn from_str_with_rounding(s: &str, rounding: Rounding)
                 -> Result<Self, ParseError> {
         
                 // sign part
@@ -330,16 +323,15 @@ macro_rules! define_fixdec {
         
                 let (int_str, frac_num) = if let Some((int_str, frac_str)) = s.split_once('.') {
                     // fraction part
-                    let mut precision = u32::min(precision, P) as usize;
-                    let frac_num = if precision < frac_str.len() {
-                        let (keep, discard) = frac_str.split_at(precision);
+                    let frac_len = frac_str.len();
+                    let frac_num = if (P as usize) < frac_len {
+                        let (keep, discard) = frac_str.split_at(P as usize);
                         parse_int(keep)? + parse_rounding(discard, rounding)? as $inner_type
                     } else {
-                        precision = frac_str.len();
-                        parse_int(frac_str)?
+                        parse_int(frac_str)? * ALL_EXPS[P as usize - frac_len]
                     };
         
-                    (int_str, frac_num * ALL_EXPS[P as usize - precision])
+                    (int_str, frac_num)
                 } else {
                     (s, 0)
                 };
@@ -408,10 +400,10 @@ macro_rules! define_fixdec {
 
             /// Read decimal from string.
             ///
-            #[doc = concat!("Equivalent to [`FixDec", $bits, "::with_precision_and_rounding`] ")]
-            /// with `precision=P` and `rounding=Rounding::Round`.
+            #[doc = concat!("Equivalent to [`FixDec", $bits, "::from_str_with_rounding`] ")]
+            /// with `rounding=Rounding::Round`.
             fn from_str(s: &str) -> Result<Self, ParseError> {
-                Self::with_precision(s, P)
+                Self::from_str_with_rounding(s, Rounding::Round)
             }
         }
 
