@@ -93,8 +93,7 @@ macro_rules! define_fixdec {
             #[doc = concat!("`FixDec", $bits, "::<4>` by `FixDec", $bits, "::<5>`.")]
             ///
             /// If you really want to add a value with different precision, convert it by
-            #[doc = concat!("[`FixDec", $bits, "::higher_precision`] or [`FixDec", $bits, "::lower_precision`]")]
-            /// first.
+            #[doc = concat!("[`FixDec", $bits, "::rescale`] first.")]
             ///
             /// # Examples
             /// 
@@ -119,8 +118,7 @@ macro_rules! define_fixdec {
             #[doc = concat!("`FixDec", $bits, "::<4>` by `FixDec", $bits, "::<5>`.")]
             ///
             /// If you really want to subtract a value with different precision, convert it by
-            #[doc = concat!("[`FixDec", $bits, "::higher_precision`] or [`FixDec", $bits, "::lower_precision`]")]
-            /// first.
+            #[doc = concat!("[`FixDec", $bits, "::rescale`] first.")]
             ///
             /// # Examples
             /// 
@@ -241,20 +239,36 @@ macro_rules! define_fixdec {
                 $fixdec_type::<R>::from_opt_inner(opt_inner)
             }
 
-            /// Convert the value to higher precision `Q`. Return `None` if overflow occurred.
-            pub const fn higher_precision<const Q: u32>(self) -> Option<$fixdec_type<Q>> {
-                debug_assert!(Q > P);
-                $fixdec_type::<Q>::from_opt_inner(self.inner.checked_mul(ALL_EXPS[(Q - P) as usize]))
-            }
-
-            /// Convert the value to lower precision `Q`. Return `None` if losing significant digits.
-            pub const fn lower_precision<const Q: u32>(self) -> Option<$fixdec_type<Q>> {
-                debug_assert!(Q < P);
-                let exp = ALL_EXPS[(P - Q) as usize];
-                if self.inner % exp == 0 {
-                    Some($fixdec_type::<Q>::from_inner(self.inner / exp))
+            /// Rescale to another precision representation.
+            ///
+            /// Fail if overflow occurred when to bigger precision, or losing significant
+            /// digits when to smaller precision.
+            ///
+            /// # Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("type Dec2 = FixDec", $bits, "::<2>;")]
+            #[doc = concat!("type Dec4 = FixDec", $bits, "::<4>;")]
+            /// let d2 = Dec2::from_str("1.23").unwrap();
+            /// let d4 = Dec4::from_str("1.23").unwrap();
+            /// assert_eq!(d4.rescale::<2>().unwrap(), d2);
+            /// assert_eq!(d2.rescale::<4>().unwrap(), d4);
+            pub const fn rescale<const Q: u32>(self) -> Option<$fixdec_type<Q>> {
+                if Q == P {
+                    Some($fixdec_type::<Q>::from_inner(self.inner))
+                } else if Q > P {
+                    // to bigger precision
+                    $fixdec_type::<Q>::from_opt_inner(self.inner.checked_mul(ALL_EXPS[(Q - P) as usize]))
                 } else {
-                    None
+                    // to smaller precision
+                    let exp = ALL_EXPS[(P - Q) as usize];
+                    if self.inner % exp == 0 {
+                        Some($fixdec_type::<Q>::from_inner(self.inner / exp))
+                    } else {
+                        None
+                    }
                 }
             }
 
