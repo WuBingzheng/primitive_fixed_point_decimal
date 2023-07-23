@@ -175,7 +175,7 @@ macro_rules! define_fixdec {
                 self,
                 rhs: $fixdec_type<Q>,
                 rounding: Rounding
-           ) -> Option<$fixdec_type<R>> {
+            ) -> Option<$fixdec_type<R>> {
 
                 let opt_inner = if P + Q > R {
                     // self.inner * rhs.inner / diff_exp
@@ -255,6 +255,62 @@ macro_rules! define_fixdec {
                     Some($fixdec_type::<Q>::from_inner(self.inner / exp))
                 } else {
                     None
+                }
+            }
+
+            /// Shrink to a lower precision. Equivalent to
+            #[doc = concat!("[`FixDec", $bits, "::shrink_to_with_rounding`] with `rounding=Rounding::Round`.")]
+            pub const fn shrink_to(self, precision: i32) -> Self {
+                match self.shrink_to_with_rounding(precision, Rounding::Round) {
+                    Some(d) => d,
+                    None => unreachable!(),
+                }
+            }
+
+            /// Shrink to a lower precision. Fail if lossing significant precision
+            /// with `rounding=Rounding::Unexpected`.
+            ///
+            /// Negative precision argument means integer part.
+            ///
+            /// # Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            #[doc = concat!("use primitive_fixed_point_decimal::{FixDec", $bits, ", Rounding};")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
+            /// let d = Decimal::from_str("1.2378").unwrap();
+            /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Floor).unwrap(), Decimal::from_str("1.23").unwrap());
+            /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Ceil).unwrap(), Decimal::from_str("1.24").unwrap());
+            /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Round).unwrap(), Decimal::from_str("1.24").unwrap());
+            /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Unexpected), None);
+            ///
+            /// // negative precision argument
+            #[doc = concat!("type Decimal1 = FixDec", $bits, "::<1>;")]
+            /// let d = Decimal1::from_str("1234.5").unwrap();
+            /// assert_eq!(d.shrink_to_with_rounding(-2, Rounding::Round).unwrap(), Decimal1::from_str("1200").unwrap());
+            /// ```
+            pub const fn shrink_to_with_rounding(self, precision: i32, rounding: Rounding)
+                -> Option<Self>
+            {
+                let diff = P as i32 - precision;
+                if diff <= 0 {
+                    Some(self)
+                } else if diff as u32 >= DIGITS {
+                    if matches!(rounding, Rounding::Unexpected) && self.inner != 0 {
+                        return None;
+                    }
+                    Some(Self::ZERO)
+                } else {
+                    let e = ALL_EXPS[diff as usize];
+                    let inner = self.inner / e * e;
+                    let remain = self.inner - inner;
+                    let carry = match rounding {
+                        Rounding::Floor => 0,
+                        Rounding::Ceil => if remain == 0 { 0 } else { e },
+                        Rounding::Round => if remain * 2 < e { 0 } else { e },
+                        Rounding::Unexpected => if remain == 0 { 0 } else { return None },
+                    };
+                    Some(Self::from_inner(inner + carry))
                 }
             }
 
