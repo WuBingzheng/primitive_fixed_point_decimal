@@ -75,17 +75,25 @@ const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
     if let Some(r) = b.checked_mul(c) {
         rounding_div_i128(a, r, rounding)
     } else {
-        let more_half = if let Some(r) = b.checked_mul(c/2) {
-            a >= r
-        } else {
-            false
+        let is_carry = match rounding {
+            Rounding::Floor => false,
+            Rounding::Ceil => a != 0,
+            Rounding::Round => {
+                if let Some(r) = b.checked_mul(c/2) {
+                    a >= r
+                } else {
+                    false
+                }
+            }
+            Rounding::Unexpected => {
+                if a == 0 {
+                    false
+                } else {
+                    return None;
+                }
+            }
         };
-
-        if let Some(carry) = rounding_carry(a == 0, more_half, rounding) {
-            Some(carry as i128)
-        } else {
-            None
-        }
+        Some(is_carry as i128) // 1 or 0
     }
 }
 

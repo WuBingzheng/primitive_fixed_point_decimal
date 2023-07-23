@@ -565,31 +565,26 @@ pub fn parse_rounding(s: &str, kind: Rounding) -> Result<bool, ParseError> {
     if s.chars().any(|ch| ch.to_digit(10).is_none()) {
         return Err(ParseError::Invalid);
     }
-    rounding_carry_c(|| s.trim_matches('0').is_empty(), // is_zero
-        || if let Some(first) = s.chars().next() { first >= '5'} else { false }, // more_half
-        kind).ok_or(ParseError::Precision)
-}
 
-// closure-arguments, quick but can't be `const fn`
-pub fn rounding_carry_c<F, G>(is_zero: F, more_half: G, kind: Rounding) -> Option<bool>
-    where F: FnOnce() -> bool, G: FnOnce() -> bool
-{
-    Some(match kind {
-        Rounding::Round => more_half(),
+    let is_carry = match kind {
         Rounding::Floor => false,
-        Rounding::Ceil => !is_zero(),
-        Rounding::Unexpected => if is_zero() { false } else { return None; }
-    })
-}
-
-// bool-arguments, `const fn`
-pub const fn rounding_carry(is_zero: bool, more_half: bool, kind: Rounding) -> Option<bool> {
-    Some(match kind {
-        Rounding::Round => more_half,
-        Rounding::Floor => false,
-        Rounding::Ceil => !is_zero,
-        Rounding::Unexpected => if is_zero { false } else { return None; }
-    })
+        Rounding::Ceil => !s.trim_matches('0').is_empty(),
+        Rounding::Round => {
+            if let Some(first) = s.chars().next() {
+                first >= '5'
+            } else {
+                false
+            }
+        }
+        Rounding::Unexpected => {
+            if s.trim_matches('0').is_empty() {
+                false
+            } else {
+                return Err(ParseError::Precision);
+            }
+        }
+    };
+    Ok(is_carry)
 }
 
 // convert FixDecX to another FixDecY type, where Y > X
@@ -634,11 +629,13 @@ macro_rules! make_rounding_div {
             }
             let d = lhs / rhs;
             let r = lhs % rhs;
-            if let Some(carry) = rounding_carry(r == 0, r * 2 >= rhs, kind) {
-                Some(d + carry as $inner_type)
-            } else {
-                None
-            }
+            let is_carry = match kind {
+                Rounding::Floor => false,
+                Rounding::Ceil => r != 0,
+                Rounding::Round => r * 2 >= rhs,
+                Rounding::Unexpected => if r == 0 { false } else { return None; }
+            };
+            Some(d + is_carry as $inner_type)
         }
     }
 }
