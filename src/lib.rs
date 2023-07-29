@@ -53,7 +53,7 @@
 //! Different precisions of same type are converted into each other by
 //! `rescale()` function.
 //!
-//! ## Features
+//! # Features
 //!
 //! - `serde` enables serde traits integration (`Serialize`/`Deserialize`)
 //!
