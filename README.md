@@ -53,7 +53,7 @@ use `TryInto` for the opposite direction because it may overflow.
 The conversion keeps the precision.
 
 Different precisions of same type are converted into each other by
-`higher_precision()` and `lower_precision()` functions.
+`rescale()` function.
 
 ### Features
 
