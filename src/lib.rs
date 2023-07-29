@@ -53,6 +53,10 @@
 //! Different precisions of same type are converted into each other by
 //! `higher_precision()` and `lower_precision()` functions.
 //!
+//! ## Features
+//!
+//! - `serde` enables serde traits integration (`Serialize`/`Deserialize`)
+//!
 //! # Example
 //!
 //! Let's see an example of foreign exchange trading.
