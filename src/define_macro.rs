@@ -613,6 +613,59 @@ macro_rules! define_fixdec {
                 self.inner -= rhs.inner;
             }
         }
+
+        #[cfg(feature="serde")]
+        use serde::{Serialize, Deserialize, Serializer, Deserializer};
+
+        #[cfg(feature="serde")]
+        impl<const P: u32> Serialize for $fixdec_type<P> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where S: Serializer
+            {
+                // XXX how to selete dump type?
+                if serializer.is_human_readable() {
+                    self.to_string().serialize(serializer)
+                } else {
+                    Into::<f64>::into((*self)).serialize(serializer)
+                }
+            }
+        }
+
+        #[cfg(feature="serde")]
+        impl<'de, const P: u32> Deserialize<'de> for $fixdec_type<P> {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where D: Deserializer<'de>
+            {
+                use serde::de::{self, Visitor};
+
+                struct FixDecVistor<const P: u32>;
+
+                impl<'de, const P: u32> Visitor<'de> for FixDecVistor<P> {
+                    type Value = $fixdec_type<P>;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        write!(formatter, "decimal")
+                    }
+
+                    fn visit_f64<E: de::Error>(self, f: f64) -> Result<Self::Value, E> {
+                        $fixdec_type::<P>::try_from(f)
+                            .map_err(|_| E::custom("decimal overflow"))
+                    }
+
+                    fn visit_f32<E: de::Error>(self, f: f32) -> Result<Self::Value, E> {
+                        $fixdec_type::<P>::try_from(f)
+                            .map_err(|_| E::custom("decimal overflow"))
+                    }
+
+                    fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
+                        $fixdec_type::<P>::from_str(s)
+                            .map_err(|e| E::custom(format!("decimal {:?}", e)))
+                    }
+                }
+
+                deserializer.deserialize_any(FixDecVistor)
+            }
+        }
     };
 }
 
