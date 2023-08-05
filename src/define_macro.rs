@@ -436,32 +436,46 @@ macro_rules! define_fixdec {
 
         /// Format the decimal.
         ///
-        /// The default precision is `P`. The precision can be specified by `{:.N}`,
-        /// which will be ignored if larger than `P`.
+        /// The tailing zeros of fraction are truncated by default, while the
+        /// precision can be specified by `{:.N}`.
         ///
         /// # Examples:
         ///
         /// ```
+        /// use std::str::FromStr;
         #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
         #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
-        /// assert_eq!(&format!("{}", Decimal::ONE), "1.0000");
-        /// assert_eq!(&format!("{:.2}", Decimal::ONE), "1.00");
+        /// let fd = Decimal::from_str("1.5670").unwrap();
+        /// assert_eq!(&format!("{}", fd), "1.567"); // omit tailing zeros
+        /// assert_eq!(&format!("{:.2}", fd), "1.57"); // rounding
         /// ```
         impl<const P: u32> fmt::Display for $fixdec_type<P> {
             fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 let intg = self.inner / Self::EXP;
-                let frac = self.inner % Self::EXP;
+                let mut frac = self.inner % Self::EXP;
+                write!(f, "{}.", intg)?;
 
-                let (frac, precision) = if let Some(precision) = f.precision() {
-                    if P as usize > precision {
-                        (frac / ALL_EXPS[P as usize - precision], precision)
+                if let Some(precision) = f.precision() {
+                    if precision < P as usize {
+                        let exp = ALL_EXPS[P as usize - precision];
+                        let rem = frac % exp;
+                        frac = frac / exp + if rem * 2 >= exp { 1 } else { 0 };
+                        write!(f, "{:0width$}", frac, width=precision)
                     } else {
-                        (frac, P as usize)
+                        write!(f, "{:0width$}", frac, width=P as usize)
                     }
+                } else if P > 0 {
+                    let mut ie = P as usize - 1;
+                    while frac != 0 {
+                        let exp = ALL_EXPS[ie];
+                        write!(f, "{}", frac / exp)?;
+                        frac %= exp;
+                        ie -= 1;
+                    }
+                    Ok(())
                 } else {
-                    (frac, P as usize)
-                };
-                write!(f, "{}.{:0width$}", intg, frac, width=precision)
+                    Ok(())
+                }
             }
         }
 
