@@ -491,109 +491,94 @@ macro_rules! define_fixdec {
             }
         }
 
-        impl<const P: u32> TryFrom<$inner_type> for $fixdec_type<P> {
-            type Error = ();
+        macro_rules! convert_from_int {
+            ($from_int_type:ty) => {
+                impl<const P: u32> TryFrom<$from_int_type> for $fixdec_type<P> {
+                    type Error = ();
 
-            /// Try to convert integer into FixDec. Fail if overflow occurred.
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            /// use std::str::FromStr;
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
-            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
-            /// assert_eq!(Decimal::try_from(100).unwrap(), Decimal::from_str("100").unwrap());
-            /// ```
-            fn try_from(i: $inner_type) -> Result<Self, Self::Error> {
-                let inner = i.checked_mul(ALL_EXPS[P as usize]).ok_or(())?;
-                Ok(Self::from_inner(inner))
-            }
-        }
-
-        impl<const P: u32> TryFrom<f64> for $fixdec_type<P> {
-            type Error = ();
-
-            /// Try to convert f64 into FixDec. Fail if overflow occurred.
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            /// use std::str::FromStr;
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
-            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
-            /// assert_eq!(Decimal::try_from(123.456_f64).unwrap(), Decimal::from_str("123.46").unwrap());
-            /// ```
-            fn try_from(f: f64) -> Result<Self, Self::Error> {
-                let inner_f = f * Self::EXP as f64;
-                if !inner_f.is_finite() {
-                    return Err(());
+                    #[doc = concat!("Try to convert ", stringify!($from_int_type), " into FixDec.")]
+                    /// Fail if overflow occurred.
+                    ///
+                    /// # Examples:
+                    ///
+                    /// ```
+                    /// use std::str::FromStr;
+                    #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+                    #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
+                    #[doc = concat!("assert_eq!(Decimal::try_from(100_", stringify!($from_int_type), ").unwrap(), Decimal::from_str(\"100\").unwrap());")]
+                    /// ```
+                    fn try_from(i: $from_int_type) -> Result<Self, Self::Error> {
+                        let i2: $inner_type = i as $inner_type;
+                        if i2 as $from_int_type != i || (i2 > 0) != (i > 0){
+                            return Err(());
+                        }
+                        let inner = i2.checked_mul(ALL_EXPS[P as usize]).ok_or(())?;
+                        Ok(Self::from_inner(inner))
+                    }
                 }
-                let inner_f = inner_f.round();
-                let inner_i = inner_f as $inner_type;
-                if (inner_i as f64 != inner_f) {
-                    return Err(());
+            }
+        }
+        convert_from_int!(i8);
+        convert_from_int!(u8);
+        convert_from_int!(i16);
+        convert_from_int!(u16);
+        convert_from_int!(i32);
+        convert_from_int!(u32);
+        convert_from_int!(i64);
+        convert_from_int!(u64);
+        convert_from_int!(i128);
+        convert_from_int!(u128);
+
+        macro_rules! convert_from_float {
+            ($from_float_type:ty) => {
+                impl<const P: u32> TryFrom<$from_float_type> for $fixdec_type<P> {
+                    type Error = ();
+
+                    #[doc = concat!("Try to convert ", stringify!($from_float_type), " into FixDec.")]
+                    /// Fail if overflow occurred.
+                    ///
+                    /// # Examples:
+                    ///
+                    /// ```
+                    /// use std::str::FromStr;
+                    #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+                    #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
+                    #[doc = concat!("assert_eq!(Decimal::try_from(123.456_", stringify!($from_float_type), ").unwrap(), Decimal::from_str(\"123.46\").unwrap());")]
+                    /// ```
+                    fn try_from(f: $from_float_type) -> Result<Self, Self::Error> {
+                        let inner_f = f * Self::EXP as $from_float_type;
+                        if !inner_f.is_finite() {
+                            return Err(());
+                        }
+                        let inner_f = inner_f.round();
+                        let inner_i = inner_f as $inner_type;
+                        if (inner_i as $from_float_type != inner_f) {
+                            return Err(());
+                        }
+                        Ok(Self::from_inner(inner_i))
+                    }
                 }
-                Ok(Self::from_inner(inner_i))
+
+                impl<const P: u32> Into<$from_float_type> for $fixdec_type<P> {
+                    #[doc = concat!("Convert FixDec into ", stringify!($from_float_type), ".")]
+                    ///
+                    /// # Examples:
+                    ///
+                    /// ```
+                    #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+                    #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
+                    #[doc = concat!("let f: ", stringify!($from_float_type), " = Decimal::try_from(123.45).unwrap().into();")]
+                    /// assert_eq!(f, 123.45);
+                    /// ```
+                    fn into(self) -> $from_float_type {
+                        (self.inner as $from_float_type) / (Self::EXP as $from_float_type)
+                    }
+                }
             }
         }
 
-        impl<const P: u32> TryFrom<f32> for $fixdec_type<P> {
-            type Error = ();
-
-            /// Try to convert f64 into FixDec. Fail if overflow occurred.
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            /// use std::str::FromStr;
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
-            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
-            /// assert_eq!(Decimal::try_from(123.456_f32).unwrap(), Decimal::from_str("123.46").unwrap());
-            /// ```
-            fn try_from(f: f32) -> Result<Self, Self::Error> {
-                let inner_f = f * Self::EXP as f32;
-                if !inner_f.is_finite() {
-                    return Err(());
-                }
-                let inner_f = inner_f.round();
-                let inner_i = inner_f as $inner_type;
-                if (inner_i as f32 != inner_f) {
-                    return Err(());
-                }
-                Ok(Self::from_inner(inner_i))
-            }
-        }
-
-        impl<const P: u32> Into<f64> for $fixdec_type<P> {
-            /// Convert FixDec into f32.
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
-            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
-            /// let f: f64 = Decimal::try_from(123.45).unwrap().into();
-            /// assert_eq!(f, 123.45);
-            /// ```
-            fn into(self) -> f64 {
-                (self.inner as f64) / (Self::EXP as f64)
-            }
-        }
-        impl<const P: u32> Into<f32> for $fixdec_type<P> {
-            /// Convert FixDec into f32.
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
-            #[doc = concat!("type Decimal = FixDec", $bits, "::<2>;")]
-            /// let f: f32 = Decimal::try_from(123.45).unwrap().into();
-            /// assert_eq!(f, 123.45);
-            /// ```
-            fn into(self) -> f32 {
-                (self.inner as f32) / (Self::EXP as f32)
-            }
-        }
+        convert_from_float!(f32);
+        convert_from_float!(f64);
 
         impl<const P: u32> Neg for $fixdec_type<P> {
             type Output = Self;
@@ -654,6 +639,15 @@ macro_rules! define_fixdec {
 
                 struct FixDecVistor<const P: u32>;
 
+                macro_rules! visit_num {
+                    ($func_name:ident, $num_type:ty) => {
+                        fn $func_name<E: de::Error>(self, n: $num_type) -> Result<Self::Value, E> {
+                            $fixdec_type::<P>::try_from(n)
+                                .map_err(|_| E::custom("decimal overflow"))
+                        }
+                    }
+                }
+
                 impl<'de, const P: u32> Visitor<'de> for FixDecVistor<P> {
                     type Value = $fixdec_type<P>;
 
@@ -661,20 +655,23 @@ macro_rules! define_fixdec {
                         write!(formatter, "decimal")
                     }
 
-                    fn visit_f64<E: de::Error>(self, f: f64) -> Result<Self::Value, E> {
-                        $fixdec_type::<P>::try_from(f)
-                            .map_err(|_| E::custom("decimal overflow"))
-                    }
-
-                    fn visit_f32<E: de::Error>(self, f: f32) -> Result<Self::Value, E> {
-                        $fixdec_type::<P>::try_from(f)
-                            .map_err(|_| E::custom("decimal overflow"))
-                    }
-
                     fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
                         $fixdec_type::<P>::from_str(s)
                             .map_err(|e| E::custom(format!("decimal {:?}", e)))
                     }
+
+                    visit_num!(visit_f32, f32);
+                    visit_num!(visit_f64, f64);
+                    visit_num!(visit_i8, i8);
+                    visit_num!(visit_u8, u8);
+                    visit_num!(visit_i16, i16);
+                    visit_num!(visit_u16, u16);
+                    visit_num!(visit_i32, i32);
+                    visit_num!(visit_u32, u32);
+                    visit_num!(visit_i64, i64);
+                    visit_num!(visit_u64, u64);
+                    visit_num!(visit_i128, i128);
+                    visit_num!(visit_u128, u128);
                 }
 
                 deserializer.deserialize_any(FixDecVistor)
