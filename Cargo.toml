@@ -1,6 +1,6 @@
 [package]
 name = "primitive_fixed_point_decimal"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Wu Bingzheng <wubingzheng@gmail.com>"]
 description = "Primitive fixed-point decimal types."
