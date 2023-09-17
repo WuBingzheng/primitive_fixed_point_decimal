@@ -453,7 +453,17 @@ macro_rules! define_fixdec {
             fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 let intg = self.inner / Self::EXP;
                 let mut frac = self.inner % Self::EXP;
-                write!(f, "{}.", intg)?;
+                if frac == 0 {
+                    return write!(f, "{}", intg);
+                }
+
+                if intg == 0 && self.inner < 0 {
+                    write!(f, "-0.")?;
+                    frac = -frac;
+                } else {
+                    write!(f, "{}.", intg)?;
+                    frac = frac.abs();
+                }
 
                 if let Some(precision) = f.precision() {
                     if precision < P as usize {
