@@ -68,6 +68,7 @@ macro_rules! define_fixdec {
             /// assert_eq!((-Decimal::MAX).abs(), Decimal::MAX);
             /// assert_eq!(Decimal::ZERO.abs(), Decimal::ZERO);
             /// ```
+            #[inline]
             pub const fn abs(self) -> Self {
                 Self { inner: self.inner.abs() }
             }
@@ -83,6 +84,7 @@ macro_rules! define_fixdec {
             /// assert_eq!((-Decimal::ONE).checked_abs(), Some(Decimal::ONE));
             /// assert_eq!(Decimal::MIN.checked_abs(), None);
             /// ```
+            #[inline]
             pub const fn checked_abs(self) -> Option<Self> {
                 Self::from_opt_inner(self.inner.checked_abs())
             }
@@ -108,6 +110,7 @@ macro_rules! define_fixdec {
             /// let res = Decimal::from_str("1.68").unwrap();
             /// assert_eq!(left.checked_add(right), Some(res));
             /// ```
+            #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 Self::from_opt_inner(self.inner.checked_add(rhs.inner))
             }
@@ -133,6 +136,7 @@ macro_rules! define_fixdec {
             /// let res = Decimal::from_str("0.45").unwrap();
             /// assert_eq!(left.checked_sub(right), Some(res));
             /// ```
+            #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 Self::from_opt_inner(self.inner.checked_sub(rhs.inner))
             }
@@ -272,6 +276,24 @@ macro_rules! define_fixdec {
                 }
             }
 
+            /// Return if negative.
+            #[inline]
+            pub const fn is_neg(&self) -> bool {
+                self.inner < 0
+            }
+
+            /// Return if positive.
+            #[inline]
+            pub const fn is_pos(&self) -> bool {
+                self.inner > 0
+            }
+
+            /// Return if zero.
+            #[inline]
+            pub const fn is_zero(&self) -> bool {
+                self.inner == 0
+            }
+
             /// Shrink to a lower precision. Equivalent to
             #[doc = concat!("[`FixDec", $bits, "::shrink_to_with_rounding`] with `rounding=Rounding::Round`.")]
             pub const fn shrink_to(self, precision: i32) -> Self {
@@ -328,6 +350,7 @@ macro_rules! define_fixdec {
                 }
             }
 
+            #[inline]
             const fn from_opt_inner(opt: Option<$inner_type>) -> Option<Self> {
                 // because `const fn` does not support `Option::map()` or `?` by now
                 if let Some(inner) = opt { Some(Self { inner }) } else { None }
@@ -348,6 +371,7 @@ macro_rules! define_fixdec {
             #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
             /// assert_eq!(Decimal::from_inner(12345), Decimal::from_str("1.2345").unwrap());
             /// ```
+            #[inline]
             pub const fn from_inner(inner: $inner_type) -> Self {
                 debug_assert!(P <= DIGITS, "too big precision!");
                 Self { inner }
