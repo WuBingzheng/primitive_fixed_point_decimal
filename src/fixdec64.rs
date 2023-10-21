@@ -1,4 +1,5 @@
 use crate::define_macro::*;
+use crate::utils::*;
 
 // define and implement FixDec64.
 define_fixdec!(FixDec64, i64, 18, 64, 63);
@@ -20,17 +21,17 @@ const ALL_EXPS: [i64; 19] = [1,
 const fn calc_mul_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64> {
     // try i64 first because I guess it's faster than i128
     if let Some(r) = a.checked_mul(b) {
-        rounding_div_i64(r, c, rounding)
+        rounding_div!(r, c, rounding)
     } else {
-        convert_opt_i128_to_i64(rounding_div_i128(a as i128 * b as i128, c as i128, rounding))
+        convert_lower!(rounding_div!(a as i128 * b as i128, c as i128, rounding), i64)
     }
 }
 
 const fn calc_div_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64> {
     // try i64 first because I guess it's faster than i128
     if let Some(r) = b.checked_mul(c) {
-        rounding_div_i64(a, r, rounding)
+        rounding_div!(a, r, rounding)
     } else {
-        convert_opt_i128_to_i64(rounding_div_i128(a as i128, b as i128 * c as i128, rounding))
+        convert_lower!(rounding_div!(a as i128, b as i128 * c as i128, rounding), i64)
     }
 }

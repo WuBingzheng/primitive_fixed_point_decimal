@@ -1,4 +1,5 @@
 use crate::define_macro::*;
+use crate::utils::*;
 
 // define and implement FixDec32.
 define_fixdec!(FixDec32, i32, 9, 32, 31);
@@ -16,9 +17,9 @@ const ALL_EXPS: [i32; 10] = [1,
 ];
 
 const fn calc_mul_div(a: i32, b: i32, c: i32, rounding: Rounding) -> Option<i32> {
-    convert_opt_i64_to_i32(rounding_div_i64(a as i64 * b as i64, c as i64, rounding))
+    convert_lower!(rounding_div!(a as i64 * b as i64, c as i64, rounding), i32)
 }
 
 const fn calc_div_div(a: i32, b: i32, c: i32, rounding: Rounding) -> Option<i32> {
-    convert_opt_i64_to_i32(rounding_div_i64(a as i64, b as i64 * c as i64, rounding))
+    convert_lower!(rounding_div!(a as i64, b as i64 * c as i64, rounding), i32)
 }

@@ -112,6 +112,8 @@ mod fixdec128;
 
 #[macro_use]
 mod define_macro;
+#[macro_use]
+mod utils;
 
 pub use crate::fixdec16::DIGITS as FIXDEC16_DIGITS;
 pub use crate::fixdec32::DIGITS as FIXDEC32_DIGITS;

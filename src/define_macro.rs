@@ -68,7 +68,6 @@ macro_rules! define_fixdec {
             /// assert_eq!((-Decimal::MAX).abs(), Decimal::MAX);
             /// assert_eq!(Decimal::ZERO.abs(), Decimal::ZERO);
             /// ```
-            #[inline]
             pub const fn abs(self) -> Self {
                 Self { inner: self.inner.abs() }
             }
@@ -84,7 +83,6 @@ macro_rules! define_fixdec {
             /// assert_eq!((-Decimal::ONE).checked_abs(), Some(Decimal::ONE));
             /// assert_eq!(Decimal::MIN.checked_abs(), None);
             /// ```
-            #[inline]
             pub const fn checked_abs(self) -> Option<Self> {
                 Self::from_opt_inner(self.inner.checked_abs())
             }
@@ -110,7 +108,6 @@ macro_rules! define_fixdec {
             /// let res = Decimal::from_str("1.68").unwrap();
             /// assert_eq!(left.checked_add(right), Some(res));
             /// ```
-            #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 Self::from_opt_inner(self.inner.checked_add(rhs.inner))
             }
@@ -136,9 +133,70 @@ macro_rules! define_fixdec {
             /// let res = Decimal::from_str("0.45").unwrap();
             /// assert_eq!(left.checked_sub(right), Some(res));
             /// ```
-            #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 Self::from_opt_inner(self.inner.checked_sub(rhs.inner))
+            }
+
+            /// Checked multiplication with integer. Computes `self * n`, returning
+            /// `None` if overflow occurred.
+            ///
+            /// # Examples
+            /// 
+            /// ```
+            /// use std::str::FromStr;
+            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
+            ///
+            /// let dec = Decimal::from_str("0.123").unwrap();
+            /// let res = Decimal::from_str("1.23").unwrap();
+            /// assert_eq!(dec.checked_mul_int(10), Some(res));
+            /// ```
+            pub const fn checked_mul_int(self, n: $inner_type) -> Option<Self> {
+                Self::from_opt_inner(self.inner.checked_mul(n))
+            }
+
+            /// Checked division with integer. Equivalent to
+            #[doc = concat!("[`FixDec", $bits, "::checked_div_int_with_rounding`] with `rounding=Rounding::Round`.")]
+            ///
+            /// # Examples
+            /// 
+            /// ```
+            /// use std::str::FromStr;
+            #[doc = concat!("use primitive_fixed_point_decimal::FixDec", $bits, ";")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
+            ///
+            /// let dec = Decimal::from_str("1.23").unwrap();
+            /// let res = Decimal::from_str("0.123").unwrap();
+            /// assert_eq!(dec.checked_div_int(10), Some(res));
+            /// assert_eq!(dec.checked_div_int(0), None);
+            /// ```
+            pub const fn checked_div_int(self, n: $inner_type) -> Option<Self> {
+                self.checked_div_int_with_rounding(n, Rounding::Round)
+            }
+
+            /// Checked division with integer. Computes `self / n`, returning
+            /// `None` if `n == 0` or precison loss with Rounding::Unexpected specified.
+            ///
+            /// # Examples
+            /// 
+            /// ```
+            /// use std::str::FromStr;
+            #[doc = concat!("use primitive_fixed_point_decimal::{FixDec", $bits, ", Rounding};")]
+            #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
+            ///
+            /// let dec = Decimal::from_str("0.2").unwrap();
+            /// let res1 = Decimal::from_str("0.0666").unwrap();
+            /// let res2 = Decimal::from_str("0.0667").unwrap();
+            /// assert_eq!(dec.checked_div_int_with_rounding(3, Rounding::Floor), Some(res1));
+            /// assert_eq!(dec.checked_div_int_with_rounding(3, Rounding::Ceil), Some(res2));
+            /// assert_eq!(dec.checked_div_int_with_rounding(3, Rounding::Unexpected), None);
+            /// ```
+            pub const fn checked_div_int_with_rounding(
+                self,
+                n: $inner_type,
+                rounding: Rounding
+            ) -> Option<Self> {
+                Self::from_opt_inner(rounding_div!(self.inner, n, rounding))
             }
 
             /// Checked multiplication. Equivalent to
@@ -277,19 +335,16 @@ macro_rules! define_fixdec {
             }
 
             /// Return if negative.
-            #[inline]
             pub const fn is_neg(&self) -> bool {
                 self.inner < 0
             }
 
             /// Return if positive.
-            #[inline]
             pub const fn is_pos(&self) -> bool {
                 self.inner > 0
             }
 
             /// Return if zero.
-            #[inline]
             pub const fn is_zero(&self) -> bool {
                 self.inner == 0
             }
@@ -350,7 +405,6 @@ macro_rules! define_fixdec {
                 }
             }
 
-            #[inline]
             const fn from_opt_inner(opt: Option<$inner_type>) -> Option<Self> {
                 // because `const fn` does not support `Option::map()` or `?` by now
                 if let Some(inner) = opt { Some(Self { inner }) } else { None }
@@ -371,7 +425,6 @@ macro_rules! define_fixdec {
             #[doc = concat!("type Decimal = FixDec", $bits, "::<4>;")]
             /// assert_eq!(Decimal::from_inner(12345), Decimal::from_str("1.2345").unwrap());
             /// ```
-            #[inline]
             pub const fn from_inner(inner: $inner_type) -> Self {
                 debug_assert!(P <= DIGITS, "too big precision!");
                 Self { inner }
@@ -773,53 +826,6 @@ macro_rules! convert_try_into {
         }
     }
 }
-
-// define rounding_div_X functions used outside by fixdecX.rs
-macro_rules! make_rounding_div {
-    ($fn_name:ident, $inner_type:ty) => {
-        pub const fn $fn_name(lhs: $inner_type, rhs: $inner_type, kind: Rounding) -> Option<$inner_type> {
-            if rhs == 0 {
-                return None;
-            }
-            let d = lhs / rhs;
-            let r = lhs % rhs;
-            let is_carry = match kind {
-                Rounding::Floor => false,
-                Rounding::Ceil => r != 0,
-                Rounding::Round => r * 2 >= rhs,
-                Rounding::Unexpected => if r == 0 { false } else { return None; }
-            };
-            Some(d + is_carry as $inner_type)
-        }
-    }
-}
-make_rounding_div!(rounding_div_i32, i32);
-make_rounding_div!(rounding_div_i64, i64);
-make_rounding_div!(rounding_div_i128, i128);
-make_rounding_div!(rounding_div_u128, u128);
-
-// define convert_opt_X_to_Y functions used outside by fixdecX.rs
-macro_rules! make_convert_to_lower {
-    ($fn_name:ident, $inner_type:ty, $lower_type:ty) => {
-        pub const fn $fn_name(a: Option<$inner_type>) -> Option<$lower_type> {
-            match a {
-                None => None,
-                Some(r) => {
-                    let lower = r as $lower_type;
-                    if r > 0 {
-                        if lower <= <$lower_type>::MAX { Some(lower) } else { None }
-                    } else {
-                        if lower >= <$lower_type>::MIN { Some(lower) } else { None }
-                    }
-                }
-            }
-        }
-    }
-}
-make_convert_to_lower!(convert_opt_i128_to_i64, i128, i64);
-make_convert_to_lower!(convert_opt_i64_to_i32, i64, i32);
-make_convert_to_lower!(convert_opt_i32_to_i16, i32, i16);
-
 
 // export macros
 pub(crate) use define_fixdec;

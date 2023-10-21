@@ -1,4 +1,5 @@
 use crate::define_macro::*;
+use crate::utils::*;
 
 // define and implement FixDec128.
 define_fixdec!(FixDec128, i128, 38, 128, 127);
@@ -24,7 +25,7 @@ const ALL_EXPS: [i128; 38 + 1] = [1,
 
 const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
     if let Some(r) = a.checked_mul(b) {
-        rounding_div_i128(r, c, rounding)
+        rounding_div!(r, c, rounding)
     } else {
         let is_neg = (a < 0) ^ (b < 0) ^ (c < 0);
         let a = a.unsigned_abs();
@@ -58,7 +59,7 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
             } else {
                 let shft = 128 - total_shft;
                 dividend = dividend << shft | mlow << total_shft >> (128 - shft);
-                let Some(quotient) = rounding_div_u128(dividend, c, rounding) else {
+                let Some(quotient) = rounding_div!(dividend, c, rounding) else {
                     return None;
                 };
                 r = (r << shft) + quotient; // use '+' but not '|' because of rounding up
@@ -73,7 +74,7 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
 
 const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
     if let Some(r) = b.checked_mul(c) {
-        rounding_div_i128(a, r, rounding)
+        rounding_div!(a, r, rounding)
     } else {
         let is_carry = match rounding {
             Rounding::Floor => false,
