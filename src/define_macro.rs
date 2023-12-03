@@ -710,9 +710,9 @@ macro_rules! define_fixdec {
             {
                 // XXX how to selete dump type?
                 if serializer.is_human_readable() {
-                    self.to_string().serialize(serializer)
+                    serializer.collect_str(self)
                 } else {
-                    Into::<f64>::into((*self)).serialize(serializer)
+                    Into::<f64>::into(*self).serialize(serializer)
                 }
             }
         }
