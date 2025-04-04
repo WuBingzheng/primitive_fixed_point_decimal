@@ -124,6 +124,9 @@ mod fixdec64;
 mod fixdec128;
 
 mod fpdec_16;
+mod fpdec_32;
+mod fpdec_64;
+mod fpdec_128;
 
 // fpdec_16/32/64/128
 //   -> define_both_fpdecs
@@ -149,6 +152,9 @@ pub use crate::fixdec64::FixDec64;
 pub use crate::fixdec128::FixDec128;
 
 pub use crate::fpdec_16::{StaticPrecFpdec16, OobPrecFpdec16};
+pub use crate::fpdec_32::{StaticPrecFpdec32, OobPrecFpdec32};
+pub use crate::fpdec_64::{StaticPrecFpdec64, OobPrecFpdec64};
+pub use crate::fpdec_128::{StaticPrecFpdec128, OobPrecFpdec128};
 
 pub use crate::utils::OobFmt;
 
