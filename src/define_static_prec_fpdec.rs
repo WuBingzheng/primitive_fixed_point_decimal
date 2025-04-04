@@ -9,7 +9,7 @@ macro_rules! define_static_prec_fpdec {
         $bits:literal,
         $bits_minus_one:literal
     ) => {
-        #[doc = concat!("A ", $bits, "-bits primitive fixed-point decimal type, ")]
+        #[doc = concat!("A ", $bits, "-bits static-precision fixed-point decimal type, ")]
         #[doc = concat!("with about ", $digits, " significant digits.")]
         ///
         /// See [the module-level documentation](super) for more information.
@@ -390,42 +390,4 @@ macro_rules! define_static_prec_fpdec {
     };
 }
 
-/*
-// convert StaticPrecFpdecX to another StaticPrecFpdecY type, where Y > X
-macro_rules! convert_into {
-    ($from_type:ident, $into_mod:ident, $into_type:ident) => {
-        use crate::$into_mod::$into_type;
-        impl<const P: i32> Into<$into_type<P>> for $from_type<P> {
-            #[doc = concat!("Convert ", stringify!($from_type), " into ", stringify!($into_type))]
-            /// with same precision.
-            fn into(self) -> $into_type<P> {
-                $into_type::<P>::from_inner(self.inner.into())
-            }
-        }
-    }
-}
-
-// try to convert StaticPrecFpdecX to another StaticPrecFpdecY type, where Y < X
-macro_rules! convert_try_into {
-    ($from_type:ident, $into_mod:ident, $into_type:ident) => {
-        use crate::$into_mod::$into_type;
-        impl<const P: i32> TryInto<$into_type<P>> for $from_type<P> {
-            type Error = ();
-            #[doc = concat!("Try to convert ", stringify!($from_type), " into ", stringify!($into_type))]
-            /// with same precision. Fail if overflow occurred.
-            fn try_into(self) -> Result<$into_type<P>, Self::Error> {
-                if let Ok(inner) = self.inner.try_into() {
-                    Ok($into_type::<P>::from_inner(inner))
-                } else {
-                    Err(())
-                }
-            }
-        }
-    }
-}
-*/
-
-// export macros
 pub(crate) use define_static_prec_fpdec;
-//pub(crate) use convert_into;
-//pub(crate) use convert_try_into;

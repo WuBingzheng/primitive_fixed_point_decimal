@@ -9,7 +9,7 @@ macro_rules! define_oob_prec_fpdec {
         $bits:literal,
         $bits_minus_one:literal
     ) => {
-        #[doc = concat!("A ", $bits, "-bits primitive fixed-point decimal type, ")]
+        #[doc = concat!("A ", $bits, "-bits out-of-band-precision fixed-point decimal type, ")]
         #[doc = concat!("with about ", $digits, " significant digits.")]
         ///
         /// See [the module-level documentation](super) for more information.
@@ -170,7 +170,7 @@ macro_rules! define_oob_prec_fpdec {
             }
         }
 
-        impl super::utils::OobPrecDisplay for $fpdec_type {
+        impl crate::oob_fmt::OobPrecDisplay for $fpdec_type {
             fn display_fmt(&self, precision: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 display_fmt(self.inner, precision, f)
             }
@@ -302,42 +302,4 @@ macro_rules! define_oob_prec_fpdec {
     };
 }
 
-/*
-// convert OobPrecFpdecX to another OobPrecFpdecY type, where Y > X
-macro_rules! convert_into {
-    ($from_type:ident, $into_mod:ident, $into_type:ident) => {
-        use crate::$into_mod::$into_type;
-        impl Into<$into_type> for $from_type {
-            #[doc = concat!("Convert ", stringify!($from_type), " into ", stringify!($into_type))]
-            /// with same precision.
-            fn into(self) -> $into_type {
-                $into_type::::from_inner(self.inner.into())
-            }
-        }
-    }
-}
-
-// try to convert OobPrecFpdecX to another OobPrecFpdecY type, where Y < X
-macro_rules! convert_try_into {
-    ($from_type:ident, $into_mod:ident, $into_type:ident) => {
-        use crate::$into_mod::$into_type;
-        impl TryInto<$into_type> for $from_type {
-            type Error = ();
-            #[doc = concat!("Try to convert ", stringify!($from_type), " into ", stringify!($into_type))]
-            /// with same precision. Fail if overflow occurred.
-            fn try_into(self) -> Result<$into_type, Self::Error> {
-                if let Ok(inner) = self.inner.try_into() {
-                    Ok($into_type::::from_inner(inner))
-                } else {
-                    Err(())
-                }
-            }
-        }
-    }
-}
-*/
-
-// export macros
 pub(crate) use define_oob_prec_fpdec;
-//pub(crate) use convert_into;
-//pub(crate) use convert_try_into;

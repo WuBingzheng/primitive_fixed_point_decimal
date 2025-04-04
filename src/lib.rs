@@ -23,7 +23,7 @@
 //! There are 2 ways to specify the precision: *static* and *out-of-band*:
 //!
 //! - For the *static* type, we use Rust's *const generics* to specify the
-//!   precision. For example, `FixDec6416<2>` represents `2` decimal
+//!   precision. For example, `StaticPrecFpdec16<2>` represents `2` decimal
 //!   precision and its range represented is `-327.68` ~ `327.67`.
 //!
 //! - For the *out-of-band* type, we do NOT save the precision with our decimal
@@ -33,8 +33,8 @@
 //!
 //! Generally, the *static* type is more convenient and suitable for most
 //! scenarios. For example, in traditional currency exchange, you can use
-//! `FixDec6464<2>` to represent balance, e.g. `1234.56` USD and `8888800.00` JPY.
-//! And use `FixDec6432<6>` to represent all market prices since 6-digit-precision
+//! `StaticPrecFpdec64<2>` to represent balance, e.g. `1234.56` USD and `8888800.00` JPY.
+//! And use `StaticPrecFpdec32<6>` to represent all market prices since 6-digit-precision
 //! is big enough for all currency pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 //!
 //! ```rust
@@ -81,20 +81,20 @@
 //!
 //! The `+`, `-` and comparison operations only perform between same types in
 //! same precision. There is no implicitly type or precision conversion.
-//! This makes sence. For example, if you use `FixDec64<2>` to represent
-//! balance and `FixDec64<6>` to represent exchange rates, there should be
-//! no above operations between balance `FixDec64<2>` and exchange rates
-//! `FixDec64<6>`.
+//! This makes sence. For example, if you use `StaticPrecFpdec64<2>` to represent
+//! balance and `StaticPrecFpdec64<6>` to represent exchange rates, there should be
+//! no above operations between balance `StaticPrecFpdec64<2>` and exchange rates
+//! `StaticPrecFpdec64<6>`.
 //!
 //! However, the `*` and `/` operations accept operand with different
-//! precisions. Certainly we need to multiply between balance `FixDec64<2>`
-//! and exchange rates `FixDec64<6>` to get another balance.
+//! precisions. Certainly we need to multiply between balance `StaticPrecFpdec64<2>`
+//! and exchange rates `StaticPrecFpdec64<6>` to get another balance.
 //!
 //! Besides, the `*` and `/` operations can specify the precision of the
 //! results. For example, the product of balance and exchange rate is still
-//! balance, which of another asset, so the result should be `FixDec64<2>`
-//! too, but not `FixDec64<2+6>`. Another example, you want to get the
-//! exchange rate `FixDec64<6>` by dividing two balance `FixDec64<2>`.
+//! balance, which of another asset, so the result should be `StaticPrecFpdec64<2>`
+//! too, but not `StaticPrecFpdec64<2+6>`. Another example, you want to get the
+//! exchange rate `StaticPrecFpdec64<6>` by dividing two balance `StaticPrecFpdec64<2>`.
 //!
 //! # Conversion
 //!
@@ -118,46 +118,33 @@
 //!
 //! More tests are need before ready for production.
 
-mod fixdec16;
-mod fixdec32;
-mod fixdec64;
-mod fixdec128;
-
 mod fpdec_16;
 mod fpdec_32;
 mod fpdec_64;
 mod fpdec_128;
 
 // fpdec_16/32/64/128
-//   -> define_both_fpdecs
-//        -+-> define_calculations
-//         |-> define_static_prec_fpdec -> define_common
-//         |-> define_oob_prec_fpdec    -> define_common
+//   -+-> define_convert
+//    \-> define_both_fpdecs
+//          -+-> define_calculations
+//           |-> define_static_prec_fpdec -> define_common
+//           \-> define_oob_prec_fpdec    -> define_common
+mod define_convert;
+mod define_both_fpdecs;
 mod define_calculations;
-mod define_common;
 mod define_static_prec_fpdec;
 mod define_oob_prec_fpdec;
-mod define_both_fpdecs;
-mod define_macro;
-mod define_convert;
+mod define_common;
+
+mod oob_fmt;
 mod utils;
-
-pub use crate::fixdec16::DIGITS as FIXDEC16_DIGITS;
-pub use crate::fixdec32::DIGITS as FIXDEC32_DIGITS;
-pub use crate::fixdec64::DIGITS as FixDec64_DIGITS;
-pub use crate::fixdec128::DIGITS as FIXDEC128_DIGITS;
-
-pub use crate::fixdec16::FixDec16;
-pub use crate::fixdec32::FixDec32;
-pub use crate::fixdec64::FixDec64;
-pub use crate::fixdec128::FixDec128;
 
 pub use crate::fpdec_16::{StaticPrecFpdec16, OobPrecFpdec16};
 pub use crate::fpdec_32::{StaticPrecFpdec32, OobPrecFpdec32};
 pub use crate::fpdec_64::{StaticPrecFpdec64, OobPrecFpdec64};
 pub use crate::fpdec_128::{StaticPrecFpdec128, OobPrecFpdec128};
 
-pub use crate::utils::OobFmt;
+pub use crate::oob_fmt::OobFmt;
 
 /// Error in converting from string.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -204,10 +191,10 @@ mod tests {
     fn mul_amount_types() {
         use std::str::FromStr;
 
-        let amount = FixDec64::<8>::from_str("80000").unwrap();
-        let rate = FixDec16::<4>::from_str("0.015").unwrap();
+        let amount = StaticPrecFpdec64::<8>::from_str("80000").unwrap();
+        let rate = StaticPrecFpdec16::<4>::from_str("0.015").unwrap();
 
-        let fee = FixDec64::<8>::from_str("1200").unwrap();
+        let fee = StaticPrecFpdec64::<8>::from_str("1200").unwrap();
         assert_eq!(amount.checked_mul(rate.into()).unwrap(), fee);
     }
 }
