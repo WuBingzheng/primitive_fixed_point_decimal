@@ -74,6 +74,20 @@
 //!
 //! Obviously it's verbose to use, but offers greater flexibility.
 //!
+//! You can even use the 2 types at same time. For example, use *out-of-band*
+//! type for balance which have different precisions for different assets; and
+//! use *static* type for fee-rate which has a fixed precision:
+//!
+//! ```rust
+//! type Balance = OobPrecFpdec64; // out-of-band type
+//! type FeeRate = StaticPrecFpdec16<6>; // static type
+//!
+//! let btc = Balance::try_from_f64(0.34, btc_precision).unwrap();
+//! let fee_rate = FeeRate::try_from(0.0002).unwrap();
+//!
+//! let fee = btc.checked_mul_static(fee_rate).unwrap();
+//! ```
+//!
 //! # Characteristics
 //!
 //! It is a common idea to use integers to represent decimals. But we have
@@ -81,32 +95,16 @@
 //!
 //! The `+`, `-` and comparison operations only perform between same types in
 //! same precision. There is no implicitly type or precision conversion.
-//! This makes sence. For example, if you use `StaticPrecFpdec64<2>` to represent
-//! balance and `StaticPrecFpdec64<6>` to represent exchange rates, there should be
-//! no above operations between balance `StaticPrecFpdec64<2>` and exchange rates
-//! `StaticPrecFpdec64<6>`.
+//! This makes sence. For example, you do not want to add balance type by
+//! exchange rate type. This also makes the operations very fast.
 //!
 //! However, the `*` and `/` operations accept operand with different
-//! precisions. Certainly we need to multiply between balance `StaticPrecFpdec64<2>`
-//! and exchange rates `StaticPrecFpdec64<6>` to get another balance.
+//! precisions. Certainly we need to multiply between balance type
+//! and exchange rates type.
 //!
-//! Besides, the `*` and `/` operations can specify the precision of the
-//! results. For example, the product of balance and exchange rate is still
-//! balance, which of another asset, so the result should be `StaticPrecFpdec64<2>`
-//! too, but not `StaticPrecFpdec64<2+6>`. Another example, you want to get the
-//! exchange rate `StaticPrecFpdec64<6>` by dividing two balance `StaticPrecFpdec64<2>`.
-//!
-//! # Conversion
-//!
-//! Meanwhile the conversion can be made explicitly.
-//!
-//! Different types are converted into each other by `Into` and `TryInto`
-//! trait. Use `Into` to convert from less-bit-type to more-bit-type, and
-//! use `TryInto` for the opposite direction because it may overflow.
-//! The conversion keeps the precision.
-//!
-//! Different precisions of same type are converted into each other by
-//! `rescale()` function.
+//! Meanwhile the conversion can be made explicitly. Different types can be
+//! converted by the `From` and `TryFrom` trait. And different precisions
+//! of same type are converted into each other by `rescale()` function.
 //!
 //! # Features
 //!

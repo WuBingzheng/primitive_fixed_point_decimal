@@ -4,12 +4,12 @@ pub trait OobPrecDisplay {
     fn display_fmt(&self, precision: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error>;
 }
 
+/// TODO
 pub struct OobFmt<D>(pub D, pub i32);
 
 /// Format the decimal.
 ///
-/// The tailing zeros of fraction are truncated by default, while the
-/// precision can be specified by `{:.N}`.
+/// The tailing zeros of fraction are truncated.
 ///
 /// # Examples:
 ///
