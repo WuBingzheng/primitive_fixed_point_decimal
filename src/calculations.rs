@@ -3,6 +3,7 @@ macro_rules! define_calculations {
         $inner_type:ty,
         $digits:expr
     ) => {
+        use std::str::FromStr;
 
         pub const fn checked_mul_with_rounding(
             a: $inner_type,
@@ -131,7 +132,7 @@ macro_rules! define_calculations {
             }
         }
 
-        pub fn try_from_str(s: &str, mut precision: i32) -> Result<$inner_type, ParseError> {
+        pub fn try_from_str(s: &str, precision: i32) -> Result<$inner_type, ParseError> {
             // sign
             let (s, is_neg) = match s.as_bytes().first() {
                 None => return Err(ParseError::Empty),
@@ -139,110 +140,113 @@ macro_rules! define_calculations {
                 Some(b'+') => (&s[1..], false),
                 _ => (s, false),
             };
-        
+
+            if s == "0" || s == "0." {
+                return Ok(0);
+            }
             if s.is_empty() {
                 return Err(ParseError::Empty);
             }
 
-            // negative precision, trim the tailing digits
-            let s = if precision < 0 {
+            // fraction part
+            let (int_str, frac_num) = if let Some((int_str, frac_str)) = s.split_once('.') {
+                let frac_len = frac_str.len();
+                if frac_len as i32 > precision {
+                    return Err(ParseError::Precision);
+                }
+
+                // here precision > 0
+                if precision as usize - frac_len > $digits {
+                    return Err(ParseError::Overflow);
+                }
+
+                let mut frac_num = <$inner_type>::from_str(frac_str)?;
+
+                if frac_len < precision as usize {
+                    frac_num = frac_num.checked_mul(ALL_EXPS[precision as usize - frac_len])
+                        .ok_or(ParseError::Overflow)?;
+                }
+
+                (int_str, frac_num)
+            } else {
+                (s, 0)
+            };
+
+            // integer part
+            let inner = if precision > $digits {
+                if int_str != "0" {
+                    return Err(ParseError::Overflow);
+                }
+                frac_num
+            } else if precision >= 0 {
+                <$inner_type>::from_str(int_str)?
+                    .checked_mul(ALL_EXPS[precision as usize])
+                    .ok_or(ParseError::Overflow)?
+                    .checked_add(frac_num)
+                    .ok_or(ParseError::Overflow)?
+
+            } else {
                 if s.len() <= -precision as usize {
                     return Err(ParseError::Precision);
                 }
                 let end = s.len() - (-precision) as usize;
-                if *&s[end..].chars().all(|ch| ch == '0') {
+                if *&int_str[end..].chars().all(|ch| ch == '0') {
                     return Err(ParseError::Precision);
                 }
-                precision = 0;
-                &s[..end]
-            } else {
-                s
+
+                <$inner_type>::from_str(&int_str[..end])?
             };
 
-            // parse
-            let mut point = None;
-            let mut int_num: $inner_type = 0;
-            for (i, ch) in s.chars().enumerate() {
-                if ch == '.' {
-                    if point.is_some() {
-                        return Err(ParseError::Invalid);
-                    }
-                    point = Some(i);
-                    continue;
-                }
-
-                if ch < '0' || ch > '9' {
-                    return Err(ParseError::Invalid);
-                }
-
-                if let Some(p) = point {
-                    if i - p > precision as usize {
-                        return Err(ParseError::Precision);
-                    }
-                }
-
-                int_num = int_num.checked_mul(10)
-                    .ok_or(ParseError::Overflow)?;
-                int_num = int_num.checked_add((ch as u32 - '0' as u32) as $inner_type)
-                    .ok_or(ParseError::Overflow)?;
-            }
-
-            // rescale
-            let fracs = match point {
-                Some(point) => s.len() - point - 1,
-                None => 0,
-            };
-
-            if precision as usize > fracs {
-                int_num = int_num.checked_mul(ALL_EXPS[precision as usize - fracs])
-                    .ok_or(ParseError::Overflow)?;
-            }
-
-            if is_neg {
-                int_num = -int_num;
-            }
-
-            Ok(int_num)
+            if is_neg { Ok(-inner) } else { Ok(inner) }
         }
 
         fn display_fmt(a: $inner_type, precision: i32, f: &mut fmt::Formatter)
             -> Result<(), fmt::Error> 
         {
-            let exp = ALL_EXPS[precision as usize];
-            let intg = a / exp;
-            let mut frac = a % exp;
-            if frac == 0 {
-                return write!(f, "{}", intg);
+            if a == 0 {
+                return write!(f, "0");
+            }
+            if precision == 0 {
+                return write!(f, "{}", a);
+            }
+            if precision < 0 {
+                return write!(f, "{}{:0>width$}", a, 0, width=(-precision) as usize);
             }
 
-            if intg == 0 && a < 0 {
-                write!(f, "-0.")?;
-                frac = -frac;
-            } else {
-                write!(f, "{}.", intg)?;
-                frac = frac.abs();
-            }
+            // precision > 0
+            let precision = precision as usize;
 
-            if let Some(fmt_prec) = f.precision() {
-                if fmt_prec < precision as usize {
-                    let exp = ALL_EXPS[precision as usize - fmt_prec];
-                    let rem = frac % exp;
-                    frac = frac / exp + if rem * 2 >= exp { 1 } else { 0 };
-                    write!(f, "{:0width$}", frac, width=fmt_prec)
+            if precision <= $digits {
+                let exp = ALL_EXPS[precision];
+                let i = a / exp;
+                let mut frac = a % exp;
+                if frac == 0 {
+                    write!(f, "{}", i)
                 } else {
-                    write!(f, "{:0width$}", frac, width=precision as usize)
+                    if frac < 0 {
+                        frac = -frac;
+                    }
+                    while frac % 10 == 0 {
+                        frac /= 10;
+                    }
+                    write!(f, "{}.{}", i, frac)
                 }
-            } else if precision > 0 {
-                let mut ie = precision as usize - 1;
-                while frac != 0 {
-                    let exp = ALL_EXPS[ie];
-                    write!(f, "{}", frac / exp)?;
-                    frac %= exp;
-                    ie -= 1;
-                }
-                Ok(())
+            } else if a >= 0 {
+                write!(f, "0.{:0>width$}", a, width=precision)
             } else {
-                Ok(())
+                write!(f, "-0.{:0>width$}", a.unsigned_abs(), width=precision)
+            }
+        }
+
+        fn check_from_int(i2: $inner_type, precision: i32) -> Option<$inner_type> {
+            if precision > $digits {
+                None
+            } else if precision > 0 {
+                i2.checked_mul(ALL_EXPS[precision as usize])
+            } else if -precision > $digits {
+                Some(0)
+            } else {
+                i2.checked_div(ALL_EXPS[-precision as usize])
             }
         }
     }

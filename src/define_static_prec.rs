@@ -3,10 +3,12 @@ macro_rules! define_static_prec_fpdec {
     (
         $fpdec_type:ident,
         $inner_type:ty,
+        $digits:expr,
 
         // These are used only in doc comments.
         $bits:literal,
-        $digits:expr
+        $bits_minus_one:literal,
+        $type_in_doc:ty
     ) => {
         use std::fmt;
         use std::ops::{Neg, Add, Sub, AddAssign, SubAssign};
@@ -24,6 +26,9 @@ macro_rules! define_static_prec_fpdec {
         }
 
         impl<const P: i32> $fpdec_type<P> {
+
+            define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one, type_in_doc);
+
             /// Checked multiplication. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
             pub const fn checked_mul<const Q: i32, const R: i32>(self, rhs: $fpdec_type<Q>) -> Option<$fpdec_type<R>> {
@@ -154,9 +159,6 @@ macro_rules! define_static_prec_fpdec {
 
         /// Format the decimal.
         ///
-        /// The tailing zeros of fraction are truncated by default, while the
-        /// precision can be specified by `{:.N}`.
-        ///
         /// # Examples:
         ///
         /// ```
@@ -165,7 +167,6 @@ macro_rules! define_static_prec_fpdec {
         #[doc = concat!("type Decimal = ", stringify!($fpdec_type), "::<4>;")]
         /// let fd = Decimal::from_str("1.5670").unwrap();
         /// assert_eq!(&format!("{}", fd), "1.567"); // omit tailing zeros
-        /// assert_eq!(&format!("{:.2}", fd), "1.57"); // rounding
         /// ```
         impl<const P: i32> fmt::Display for $fpdec_type<P> {
             fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -203,7 +204,7 @@ macro_rules! define_static_prec_fpdec {
             }
         }
 
-        macro_rules! convert_from_int {
+        macro_rules! convert_static_from_int {
             ($from_int_type:ty) => {
                 impl<const P: i32> TryFrom<$from_int_type> for $fpdec_type<P> {
                     type Error = ParseError;
@@ -224,25 +225,24 @@ macro_rules! define_static_prec_fpdec {
                         if i2 as $from_int_type != i || (i2 > 0) != (i > 0){
                             return Err(ParseError::Overflow);
                         }
-                        i2.checked_mul(ALL_EXPS[P as usize])
-                            .ok_or(ParseError::Overflow)
-                            .map(|inner| Self::from_inner(inner))
+                        let inner = check_from_int(i2, P).ok_or(ParseError::Overflow)?;
+                        Ok(Self::from_inner(inner))
                     }
                 }
             }
         }
-        convert_from_int!(i8);
-        convert_from_int!(u8);
-        convert_from_int!(i16);
-        convert_from_int!(u16);
-        convert_from_int!(i32);
-        convert_from_int!(u32);
-        convert_from_int!(i64);
-        convert_from_int!(u64);
-        convert_from_int!(i128);
-        convert_from_int!(u128);
+        convert_static_from_int!(i8);
+        convert_static_from_int!(u8);
+        convert_static_from_int!(i16);
+        convert_static_from_int!(u16);
+        convert_static_from_int!(i32);
+        convert_static_from_int!(u32);
+        convert_static_from_int!(i64);
+        convert_static_from_int!(u64);
+        convert_static_from_int!(i128);
+        convert_static_from_int!(u128);
 
-        macro_rules! convert_from_float {
+        macro_rules! convert_static_from_float {
             ($float_type:ty) => {
                 impl<const P: i32> TryFrom<$float_type> for $fpdec_type<P> {
                     type Error = ParseError;
@@ -292,8 +292,8 @@ macro_rules! define_static_prec_fpdec {
             }
         }
 
-        convert_from_float!(f32);
-        convert_from_float!(f64);
+        convert_static_from_float!(f32);
+        convert_static_from_float!(f64);
 
         impl<const P: i32> Neg for $fpdec_type<P> {
             type Output = Self;
@@ -327,6 +327,7 @@ macro_rules! define_static_prec_fpdec {
                 self.inner -= rhs.inner;
             }
         }
+
 
         #[cfg(feature="serde")]
         use serde::{Serialize, Deserialize, Serializer, Deserializer};

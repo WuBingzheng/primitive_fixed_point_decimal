@@ -59,103 +59,38 @@ macro_rules! define_common {
 
         /// Checked addition. Computes `self + rhs`, returning `None` if overflow occurred.
         ///
-        /// The right operand must have the same precision with self. So you can not add
-        #[doc = concat!("`", stringify!($type_in_doc), "` by `", stringify!($fpdec_type), "::<5>`.")]
+        /// The right operand must have the same precision with self.
         ///
         /// If you really want to add a value with different precision, convert it by
         #[doc = concat!("[`", stringify!($fpdec_type), "::rescale`] first.")]
-        ///
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// let left = Decimal::try_from(1.23).unwrap();
-        /// let right = Decimal::try_from(0.45).unwrap();
-        ///
-        /// let res = Decimal::try_from(1.68).unwrap();
-        /// assert_eq!(left.checked_add(right), Some(res));
-        /// ```
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
             Self::from_opt_inner(self.inner.checked_add(rhs.inner))
         }
 
         /// Checked subtraction. Computes `self - rhs`, returning `None` if overflow occurred.
         ///
-        /// The right operand must have the same precision with self. So you can not subtract
-        #[doc = concat!("`", stringify!($type_in_doc), "` by `", stringify!($fpdec_type), "::<5>`.")]
+        /// The right operand must have the same precision with self.
         ///
         /// If you really want to subtract a value with different precision, convert it by
         #[doc = concat!("[`", stringify!($fpdec_type), "::rescale`] first.")]
-        ///
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// let left = Decimal::try_from(1.68).unwrap();
-        /// let right = Decimal::try_from(1.23).unwrap();
-        ///
-        /// let res = Decimal::try_from(0.45).unwrap();
-        /// assert_eq!(left.checked_sub(right), Some(res));
-        /// ```
         pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
             Self::from_opt_inner(self.inner.checked_sub(rhs.inner))
         }
 
         /// Checked multiplication with integer. Computes `self * n`, returning
         /// `None` if overflow occurred.
-        ///
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// let dec = Decimal::try_from(0.123).unwrap();
-        /// let res = Decimal::try_from(1.23).unwrap();
-        /// assert_eq!(dec.checked_mul_int(10), Some(res));
-        /// ```
         pub const fn checked_mul_int(self, n: $inner_type) -> Option<Self> {
             Self::from_opt_inner(self.inner.checked_mul(n))
         }
 
         /// Checked division with integer. Equivalent to
         #[doc = concat!("[`", stringify!($fpdec_type), "::checked_div_int_with_rounding`] with `rounding=Rounding::Round`.")]
-        ///
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// let dec = Decimal::try_from(1.23).unwrap();
-        /// let res = Decimal::try_from(0.123).unwrap();
-        /// assert_eq!(dec.checked_div_int(10), Some(res));
-        /// assert_eq!(dec.checked_div_int(0), None);
-        /// ```
         pub const fn checked_div_int(self, n: $inner_type) -> Option<Self> {
             self.checked_div_int_with_rounding(n, Rounding::Round)
         }
 
         /// Checked division with integer. Computes `self / n`, returning
         /// `None` if `n == 0` or precison loss with Rounding::Unexpected specified.
-        ///
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::{", stringify!($fpdec_type), ", Rounding};")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// let dec = Decimal::try_from(0.2).unwrap();
-        /// let res1 = Decimal::try_from(0.0666).unwrap();
-        /// let res2 = Decimal::try_from(0.0667).unwrap();
-        /// assert_eq!(dec.checked_div_int_with_rounding(3, Rounding::Floor), Some(res1));
-        /// assert_eq!(dec.checked_div_int_with_rounding(3, Rounding::Ceil), Some(res2));
-        /// assert_eq!(dec.checked_div_int_with_rounding(3, Rounding::Unexpected), None);
-        /// ```
         pub const fn checked_div_int_with_rounding(
             self,
             n: $inner_type,
@@ -196,17 +131,6 @@ macro_rules! define_common {
         /// Construct from inner directly. This API is low-level. Use it carefully.
         ///
         #[doc = concat!("Making a ", stringify!($fpdec_type), "&lt;P&gt; from `inner` gets value: inner<sup>-P</sup>.")]
-        ///
-        /// If you want to convert an integer to Fixdec *keeping* its value, use
-        #[doc = concat!("[`", stringify!($fpdec_type), "::try_from`].")]
-        ///
-        /// # Examples:
-        ///
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        /// assert_eq!(Decimal::from_inner(12345), Decimal::try_from(1.2345).unwrap());
-        /// ```
         pub const fn from_inner(inner: $inner_type) -> Self {
             Self { inner }
         }

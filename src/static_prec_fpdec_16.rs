@@ -3,11 +3,7 @@ use crate::define_static_prec;
 use crate::utils::*;
 
 // define and implement StaticPrecFpdec16.
-define_static_prec::define_static_prec_fpdec!(StaticPrecFpdec16, i16, 16, 4);
-
-impl<const P: i32> StaticPrecFpdec16<P> {
-    define_common::define_common!(StaticPrecFpdec16, i16, 15, StaticPrecFpdec16::<4>);
-}
+define_static_prec::define_static_prec_fpdec!(StaticPrecFpdec16, i16, 4, 16, 15, StaticPrecFpdec16::<4>);
 
 // convert StaticPrecFpdec16 into other StaticPrecFpdec types.
 //convert_into!(StaticPrecFpdec16, static_prec_fpdec32, StaticPrecFpdec32);

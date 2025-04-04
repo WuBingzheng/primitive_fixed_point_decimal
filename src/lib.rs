@@ -3,26 +3,81 @@
 //! It's necessary to represent decimals accurately in some scenarios,
 //! such as financial field. Primitive floating-point types (`f32`
 //! and `f64`) can not accurately represent decimal fractions because
-//! they use binary to represent values. Here we use integer types to
+//! they represent values in binary. Here we use integer types to
 //! represent values, and handle fractions in base 10.
 //!
 //! Primitive integers `i16`, `i32`, `i64` and `i128` are used to represent
-//! values, corresponding to `FixDec16<P>`, `FixDec32<P>`, `FixDec64<P>`,
-//! and `FixDec128<P>` types, respectively, which can represent about 4,
-//! 9, 18 and 38 decimal significant digits.
+//! values, which can represent about 4, 9, 18 and 38 decimal significant
+//! digits respectively. So the number `12.345` is stored as `123450`
+//! for decimal with precision `4`. See below to find how to specify
+//! the precision.
 //!
 //! In addition, these scenarios generally require *fraction precision*,
 //! rather than the *significant digits* like in scientific calculations,
 //! so fixed-point is more suitable than floating-point.
 //!
-//! We use Rust's *const generics* to specify the precision. For example,
-//! `FixDec16<2>` represents `2` decimal precision and its range represented
-//! is `-327.68` ~ `327.67`.
+//! So here are the *primitive fixed-point* decimal types.
+//!
+//! # Specify Precision
+//!
+//! There are 2 ways to specify the precision: *static* and *out-of-band*:
+//!
+//! - For the *static* type, we use Rust's *const generics* to specify the
+//!   precision. For example, `FixDec6416<2>` represents `2` decimal
+//!   precision and its range represented is `-327.68` ~ `327.67`.
+//!
+//! - For the *out-of-band* type, we do NOT save the precision with our decimal
+//!   types, so it's your job to save it somewhere and apply it in the
+//!   following operations later. For example, `OobPrecFpdec16` represents
+//!   significant digits only but no precision information.
+//!
+//! Generally, the *static* type is more convenient and suitable for most
+//! scenarios. For example, in traditional currency exchange, you can use
+//! `FixDec6464<2>` to represent balance, e.g. `1234.56` USD and `8888800.00` JPY.
+//! And use `FixDec6432<6>` to represent all market prices since 6-digit-precision
+//! is big enough for all currency pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
+//!
+//! ```rust
+//! type Balance = StaticPrecFpdec64<2>;
+//! type Price = StaticPrecFpdec32<6>; // 6 is big enough for all markets
+//!
+//! let usd = Balance::try_from(1234.56).unwrap();
+//! let price = Price::try_from(146.4730).unwrap();
+//!
+//! let jpy: Balance = usd.checked_mul(price).unwrap();
+//! ```
+//!
+//! However in some scenarios, such as in cryptocurrency exchange, the
+//! price differences across various markets are very significant. For
+//! example `81234.0` in BTC/USDT and `0.000004658` in PEPE/USDT. Here
+//! we need to select different precisions for each market. So it's
+//! the *Out-of-band* type:
+//!
+//! ```rust
+//! type Balance = OobPrecFpdec64;
+//! type Price = OobPrecFpdec32; // no precision set
+//!
+//! let btc_usdt = Market {
+//!     base_asset_precision: 8,
+//!     quote_asset_precision: 6,
+//!     price_precision: 1,
+//! };
+//!
+//! // we need tell the precisions to `try_from_f64()` method
+//! let btc = Balance::try_from_f64(0.34, btc_usdt.base_asset_precision).unwrap();
+//! let price = Price::try_from_f64(81234.0, btc_usdt.price_precision).unwrap();
+//!
+//! // we need tell the precision difference to `checked_mul()` method
+//! let diff = btc_usdt.base_asset_precision + btc_usdt.price_precision - btc_usdt.quote_asset_precision;
+//! let usdt = btc.checked_mul(price, diff).unwrap();
+//! ```
+//!
+//! Obviously it's verbose to use, but offers greater flexibility.
 //!
 //! # Characteristics
 //!
-//! It is a common idea to use integers and const generics to represent
-//! decimals. We have some specialties.
+//! It is a common idea to use integers to represent decimals. But we have
+//! some specialties.
 //!
 //! The `+`, `-` and comparison operations only perform between same types in
 //! same precision. There is no implicitly type or precision conversion.
@@ -56,50 +111,8 @@
 //! # Features
 //!
 //! - `serde` enables serde traits integration (`Serialize`/`Deserialize`)
-//!
-//! # Example
-//!
-//! Let's see an example of foreign exchange trading.
-//!
-//! ```
-//! use std::str::FromStr;
-//! use primitive_fixed_point_decimal::{FixDec64, FixDec16};
-//!
-//! type Balance = FixDec64<2>;
-//! type Price = FixDec64<6>;
-//! type FeeRate = FixDec16<4>;
-//!
-//! // I have 30000 USD and none CNY in my account at first.
-//! let mut account_usd = Balance::from_str("30000").unwrap();
-//! let mut account_cny = Balance::ZERO;
-//!
-//! // I want to exchange 10000 USD to CNY at price 7.17, with 0.0015 fee-rate.
-//! let pay_usd = Balance::from_str("10000").unwrap();
-//! let price = Price::from_str("7.17").unwrap();
-//! let fee_rate = FeeRate::from_str("0.0015").unwrap();
-//!
-//! // Calculate the get_cny = pay_usd * price.
-//! // Because `checked_mul()` accepts operand with different precision,
-//! // it's not need to convert the `Price` from `FixDec64<8>` to `FixDec64<2>`.
-//! // Besides we want get `Balance` as result, so it's need to declare the
-//! // `get_cny` as `Balance` explicitly.
-//! let get_cny: Balance = pay_usd.checked_mul(price).unwrap();
-//!
-//! // Calculate the fee_cny = get_cny * fee_rate.
-//! // Because `checked_mul()` accepts same type operand only, so the
-//! // `FeeRate` is converted from `FixDec16<4>` into `FixDec64<4>`.
-//! let fee_cny: Balance = get_cny.checked_mul(fee_rate.into()).unwrap();
-//!
-//! // Update the trading result.
-//! account_usd -= pay_usd;
-//! account_cny += get_cny - fee_cny;
-//!
-//! // Check the result:
-//! //   USD = 20000 = 30000 - 10000
-//! //   CNY = 71592.45 = 10000 * 7.17 - 10000 * 7.17 * 0.0015
-//! assert_eq!(account_usd, Balance::from_str("20000").unwrap());
-//! assert_eq!(account_cny, Balance::from_str("71592.45").unwrap());
-//! ```
+//!   for *static* precision type. While the *out-of-band* type does not
+//!   support serde at all.
 //!
 //! # Status
 //!
@@ -111,10 +124,14 @@ mod fixdec64;
 mod fixdec128;
 
 mod calculations;
-mod static_prec_fpdec_16;
+//mod static_prec_fpdec_16;
+//mod oob_prec_fpdec_16;
+mod fpdec_16;
 
 #[macro_use]
 mod define_static_prec;
+#[macro_use]
+mod define_oob_prec;
 #[macro_use]
 mod define_common;
 #[macro_use]
@@ -124,7 +141,7 @@ mod utils;
 
 pub use crate::fixdec16::DIGITS as FIXDEC16_DIGITS;
 pub use crate::fixdec32::DIGITS as FIXDEC32_DIGITS;
-pub use crate::fixdec64::DIGITS as FIXDEC64_DIGITS;
+pub use crate::fixdec64::DIGITS as FixDec64_DIGITS;
 pub use crate::fixdec128::DIGITS as FIXDEC128_DIGITS;
 
 pub use crate::fixdec16::FixDec16;
@@ -132,7 +149,11 @@ pub use crate::fixdec32::FixDec32;
 pub use crate::fixdec64::FixDec64;
 pub use crate::fixdec128::FixDec128;
 
-pub use crate::static_prec_fpdec_16::StaticPrecFpdec16;
+//pub use crate::static_prec_fpdec_16::StaticPrecFpdec16;
+//pub use crate::oob_prec_fpdec_16::OobPrecFpdec16;
+pub use crate::fpdec_16::{StaticPrecFpdec16, OobPrecFpdec16};
+
+pub use crate::utils::OobFmt;
 
 /// Error in converting from string.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,6 +166,17 @@ pub enum ParseError {
     Overflow,
     /// Too many precisions with Rounding::Error specified.
     Precision,
+}
+
+use std::num::{ParseIntError, IntErrorKind};
+impl From<ParseIntError> for ParseError {
+    fn from(pie: ParseIntError) -> Self {
+        match pie.kind() {
+            IntErrorKind::Empty => ParseError::Empty,
+            IntErrorKind::InvalidDigit => ParseError::Invalid,
+            _ => ParseError::Overflow,
+        }
+    }
 }
 
 /// Rounding kind.
