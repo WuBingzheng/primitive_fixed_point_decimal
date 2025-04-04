@@ -18,10 +18,11 @@ macro_rules! define_calculations {
                     calc_mul_div(a, b, ALL_EXPS[diff_precision as usize], rounding)
 
                 } else if diff_precision <= $digits * 2 {
-                    let Some(tmp) = calc_mul_div(a, b, ALL_EXPS[$digits], rounding) else {
+                    let diff_diff = diff_precision as usize - $digits;
+                    let Some(tmp) = calc_mul_div(a, b, ALL_EXPS[diff_diff], rounding) else {
                         return None;
                     };
-                    rounding_div!(tmp, ALL_EXPS[diff_precision as usize - $digits], rounding)
+                    rounding_div!(tmp, ALL_EXPS[$digits], rounding)
                 } else {
                     Some(0)
                 }
@@ -60,13 +61,14 @@ macro_rules! define_calculations {
         
             } else if diff_precision < 0 {
                 // a * diff_exp / b
-                if -diff_precision <= $digits {
-                    calc_mul_div(a, ALL_EXPS[-diff_precision as usize], b, rounding)
+                let abs_diff = -diff_precision as usize;
+                if abs_diff <= $digits {
+                    calc_mul_div(a, ALL_EXPS[abs_diff], b, rounding)
                 } else if -diff_precision <= $digits * 2 {
-                    let Some(tmp) = calc_mul_div(a, ALL_EXPS[$digits], b, rounding) else {
+                    let Some(tmp) = a.checked_mul(ALL_EXPS[$digits - abs_diff]) else {
                         return None;
                     };
-                    tmp.checked_mul(ALL_EXPS[diff_precision as usize - $digits])
+                    calc_mul_div(tmp, ALL_EXPS[$digits], b, rounding)
                 } else {
                     None
                 }
