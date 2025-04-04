@@ -21,7 +21,7 @@ macro_rules! define_calculations {
                     let Some(tmp) = calc_mul_div(a, b, ALL_EXPS[$digits], rounding) else {
                         return None;
                     };
-                    tmp.checked_div(ALL_EXPS[diff_precision as usize - $digits])
+                    rounding_div!(tmp, ALL_EXPS[diff_precision as usize - $digits], rounding)
                 } else {
                     Some(0)
                 }
@@ -49,11 +49,11 @@ macro_rules! define_calculations {
             rounding: Rounding,
         ) -> Option<$inner_type> {
             if diff_precision > 0 {
-                // a / (diff_exp * b)
-                if diff_precision <= $digits {
-                    calc_div_div(a, ALL_EXPS[diff_precision as usize], b, rounding)
-                } else if b == 0 {
+                // a / b / diff_exp
+                if b == 0 {
                     None
+                } else if diff_precision <= $digits {
+                    rounding_div!(a / b, ALL_EXPS[diff_precision as usize], rounding)
                 } else {
                     Some(0)
                 }
@@ -156,14 +156,14 @@ macro_rules! define_calculations {
                 }
 
                 // here precision > 0
-                if precision as usize - frac_len > $digits {
-                    return Err(ParseError::Overflow);
-                }
+                let precision = precision as usize;
 
                 let mut frac_num = <$inner_type>::from_str(frac_str)?;
 
-                if frac_len < precision as usize {
-                    frac_num = frac_num.checked_mul(ALL_EXPS[precision as usize - frac_len])
+                if frac_len < precision {
+                    let diff_exp = *ALL_EXPS.get(precision - frac_len)
+                        .ok_or(ParseError::Overflow)?;
+                    frac_num = frac_num.checked_mul(diff_exp)
                         .ok_or(ParseError::Overflow)?;
                 }
 

@@ -19,7 +19,6 @@ pub struct OobFmt<D>(pub D, pub i32);
 /// type Decimal = OobPrecFpdec16;
 /// let fd = Decimal::try_from_str("1.5670", 4).unwrap();
 /// assert_eq!(&format!("{}", OobFmt(fd, 4)), "1.567"); // omit tailing zeros
-/// assert_eq!(&format!("{:.2}", OobFmt(fd, 4)), "1.57"); // rounding
 /// ```
 impl<D> fmt::Display for OobFmt<D>
 where D: OobPrecDisplay

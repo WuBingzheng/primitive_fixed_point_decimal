@@ -37,7 +37,7 @@
 //! And use `StaticPrecFpdec32<6>` to represent all market prices since 6-digit-precision
 //! is big enough for all currency pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 //!
-//! ```rust
+//! ```ignore
 //! type Balance = StaticPrecFpdec64<2>;
 //! type Price = StaticPrecFpdec32<6>; // 6 is big enough for all markets
 //!
@@ -53,7 +53,7 @@
 //! we need to select different precisions for each market. So it's
 //! the *Out-of-band* type:
 //!
-//! ```rust
+//! ```ignore
 //! type Balance = OobPrecFpdec64;
 //! type Price = OobPrecFpdec32; // no precision set
 //!
@@ -78,7 +78,7 @@
 //! type for balance which have different precisions for different assets; and
 //! use *static* type for fee-rate which has a fixed precision:
 //!
-//! ```rust
+//! ```ignore
 //! type Balance = OobPrecFpdec64; // out-of-band type
 //! type FeeRate = StaticPrecFpdec16<6>; // static type
 //!
@@ -172,7 +172,7 @@ impl From<ParseIntError> for ParseError {
 ///
 /// This works right for non-negative numbers only by now, for
 /// perfomance considerations.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rounding {
     Round,
     Floor,

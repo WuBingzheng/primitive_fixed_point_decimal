@@ -187,7 +187,7 @@ macro_rules! define_static_prec_fpdec {
         /// assert_eq!(Decimal::from_str("123.45"), Decimal::try_from(123.45_f32));
         /// assert_eq!(Decimal::from_str("1e2"), Err(ParseError::Invalid));
         /// assert_eq!(Decimal::from_str("100.000"), Err(ParseError::Precision));
-        /// assert_eq!(Decimal::from_str("99999999999999999999999999999999999999999999.000"), Err(ParseError::Overflow));
+        /// assert_eq!(Decimal::from_str("99999999999999999999999999999999999999999999.00"), Err(ParseError::Overflow));
         /// ```
         impl<const P: i32> std::str::FromStr for $fpdec_type<P> {
             type Err = ParseError;

@@ -72,32 +72,6 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
     }
 }
 
-const fn calc_div_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
-    if let Some(r) = b.checked_mul(c) {
-        rounding_div!(a, r, rounding)
-    } else {
-        let is_carry = match rounding {
-            Rounding::Floor => false,
-            Rounding::Ceil => a != 0,
-            Rounding::Round => {
-                if let Some(r) = b.checked_mul(c/2) {
-                    a >= r
-                } else {
-                    false
-                }
-            }
-            Rounding::Unexpected => {
-                if a == 0 {
-                    false
-                } else {
-                    return None;
-                }
-            }
-        };
-        Some(is_carry as i128) // 1 or 0
-    }
-}
-
 
 #[cfg(test)]
 mod tests {

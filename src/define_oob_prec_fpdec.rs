@@ -162,7 +162,7 @@ macro_rules! define_oob_prec_fpdec {
             /// assert_eq!(Decimal::try_from_str("123.45", 2), Decimal::try_from_f32(123.45_f32, 2));
             /// assert_eq!(Decimal::try_from_str("1e2", 2), Err(ParseError::Invalid));
             /// assert_eq!(Decimal::try_from_str("100.000", 2), Err(ParseError::Precision));
-            /// assert_eq!(Decimal::try_from_str("99999999999999999999999999999999999999999999.000", 2), Err(ParseError::Overflow));
+            /// assert_eq!(Decimal::try_from_str("99999999999999999999999999999999999999999999.00", 2), Err(ParseError::Overflow));
             /// ```
             pub fn try_from_str(s: &str, precision: i32) -> Result<Self, ParseError> {
                 try_from_str(s, precision)

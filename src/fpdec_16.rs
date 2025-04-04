@@ -17,7 +17,3 @@ const ALL_EXPS: [i16; 1 + 4] = [1,
 const fn calc_mul_div(a: i16, b: i16, c: i16, rounding: Rounding) -> Option<i16> {
     convert_lower!(rounding_div!(a as i32 * b as i32, c as i32, rounding), i16)
 }
-
-const fn calc_div_div(a: i16, b: i16, c: i16, rounding: Rounding) -> Option<i16> {
-    convert_lower!(rounding_div!(a as i32, b as i32 * c as i32, rounding), i16)
-}

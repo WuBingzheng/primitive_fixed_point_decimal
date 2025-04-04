@@ -32,12 +32,3 @@ const fn calc_mul_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64>
         convert_lower!(rounding_div!(a as i128 * b as i128, c as i128, rounding), i64)
     }
 }
-
-const fn calc_div_div(a: i64, b: i64, c: i64, rounding: Rounding) -> Option<i64> {
-    // try i64 first because I guess it's faster than i128
-    if let Some(r) = b.checked_mul(c) {
-        rounding_div!(a, r, rounding)
-    } else {
-        convert_lower!(rounding_div!(a as i128, b as i128 * c as i128, rounding), i64)
-    }
-}
