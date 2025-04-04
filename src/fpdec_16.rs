@@ -1,11 +1,15 @@
 crate::define_both_fpdecs::define_both_fpdecs!(StaticPrecFpdec16, OobPrecFpdec16, i16, 4, 16, 15);
 
-// convert OobPrecFpdec16 into other OobPrecFpdec types.
-//convert_into!(OobPrecFpdec16, oob_prec_fpdec32, OobPrecFpdec32);
-//convert_into!(OobPrecFpdec16, oob_prec_fpdec64, OobPrecFpdec64);
-//convert_into!(OobPrecFpdec16, oob_prec_fpdec128, OobPrecFpdec128);
+crate::define_convert::define_convert_into_longer!(
+    StaticPrecFpdec16,
+    OobPrecFpdec16,
 
-// internal stuff needed by define_macro
+    (fpdec_32, StaticPrecFpdec32, OobPrecFpdec32),
+    (fpdec_64, StaticPrecFpdec64, OobPrecFpdec64),
+    (fpdec_128, StaticPrecFpdec128, OobPrecFpdec128),
+);
+
+// internal stuff needed by define macros
 const ALL_EXPS: [i16; 1 + 4] = [1,
     10_i16.pow(1), 10_i16.pow(2), 10_i16.pow(3), 10_i16.pow(4),
 ];

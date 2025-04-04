@@ -139,6 +139,7 @@ mod define_static_prec_fpdec;
 mod define_oob_prec_fpdec;
 mod define_both_fpdecs;
 mod define_macro;
+mod define_convert;
 mod utils;
 
 pub use crate::fixdec16::DIGITS as FIXDEC16_DIGITS;
