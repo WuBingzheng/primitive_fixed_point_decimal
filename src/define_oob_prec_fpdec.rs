@@ -24,7 +24,7 @@ macro_rules! define_oob_prec_fpdec {
 
             /// Checked multiplication. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
-            pub const fn checked_mul(self, rhs: $fpdec_type, diff_precision: i32) -> Option<$fpdec_type> {
+            pub const fn checked_mul(self, rhs: Self, diff_precision: i32) -> Option<Self> {
                 self.checked_mul_with_rounding(rhs, diff_precision, Rounding::Round)
             }
 
@@ -50,17 +50,17 @@ macro_rules! define_oob_prec_fpdec {
             /// ```
             pub const fn checked_mul_with_rounding(
                 self,
-                rhs: $fpdec_type,
+                rhs: Self,
                 diff_precision: i32, // P(self) + P(rhs) - P(result)
                 rounding: Rounding
-            ) -> Option<$fpdec_type> {
+            ) -> Option<Self> {
                 let opt_inner = checked_mul_with_rounding(self.inner, rhs.inner, diff_precision, rounding);
-                $fpdec_type::from_opt_inner(opt_inner)
+                Self::from_opt_inner(opt_inner)
             }
 
             /// Checked division. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_div_with_rounding`] with `rounding=Rounding::Round`.")]
-            pub const fn checked_div(self, rhs: $fpdec_type, diff_precision: i32) -> Option<$fpdec_type> {
+            pub const fn checked_div(self, rhs: Self, diff_precision: i32) -> Option<Self> {
                 self.checked_div_with_rounding(rhs, diff_precision, Rounding::Round)
             }
 
@@ -87,12 +87,12 @@ macro_rules! define_oob_prec_fpdec {
             /// ```
             pub const fn checked_div_with_rounding(
                 self,
-                rhs: $fpdec_type,
+                rhs: Self,
                 diff_precision: i32, // P(self) - P(rhs) - P(result)
                 rounding: Rounding
-            ) -> Option<$fpdec_type> {
+            ) -> Option<Self> {
                 let opt_inner = checked_div_with_rounding(self.inner, rhs.inner, diff_precision, rounding);
-                $fpdec_type::from_opt_inner(opt_inner)
+                Self::from_opt_inner(opt_inner)
             }
 
             /// Rescale to another precision representation.
@@ -112,9 +112,9 @@ macro_rules! define_oob_prec_fpdec {
             /// let d4 = Dec4::try_from_f32(1.23, 4).unwrap();
             /// assert_eq!(d4.rescale(2).unwrap(), d2);
             /// assert_eq!(d2.rescale(-2).unwrap(), d4);
-            pub const fn rescale(self, diff_precision: i32) -> Option<$fpdec_type> {
+            pub const fn rescale(self, diff_precision: i32) -> Option<Self> {
                 let opt_inner = rescale(self.inner, diff_precision);
-                $fpdec_type::from_opt_inner(opt_inner)
+                Self::from_opt_inner(opt_inner)
             }
 
             /// Shrink to a lower precision. Fail if lossing significant precision
@@ -302,4 +302,30 @@ macro_rules! define_oob_prec_fpdec {
     };
 }
 
+macro_rules! define_oob_mul_static {
+    ($oob_type:ident, $static_type:ident) => {
+        impl $oob_type {
+            /// Checked multiplication with . Equivalent to
+            #[doc = concat!("Checked multiplication with `", stringify!($static_type), "`. Equivalent to")]
+            #[doc = concat!("[`", stringify!($oob_type), "::checked_mul_static_with_rounding`] with `rounding=Rounding::Round`.")]
+            pub const fn checked_mul_static<const Q: i32>(self, rhs: $static_type<Q>) -> Option<Self> {
+                self.checked_mul_static_with_rounding(rhs, Rounding::Round)
+            }
+
+            #[doc = concat!("Checked multiplication with `", stringify!($static_type), "`.")]
+            ///
+            /// The result value inherits the same precision from self.
+            pub const fn checked_mul_static_with_rounding<const Q: i32>(
+                self,
+                rhs: $static_type<Q>,
+                rounding: Rounding,
+            ) -> Option<Self> {
+                self.checked_mul_with_rounding(Self::from_inner(rhs.inner), Q, rounding)
+            }
+        }
+    }
+}
+
+
 pub(crate) use define_oob_prec_fpdec;
+pub(crate) use define_oob_mul_static;

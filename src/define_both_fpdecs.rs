@@ -18,6 +18,8 @@ macro_rules! define_both_fpdecs {
         crate::define_static_prec_fpdec::define_static_prec_fpdec!($static_type, $inner_type, $digits, $bits, $bits_minus_one);
 
         crate::define_oob_prec_fpdec::define_oob_prec_fpdec!($oob_type, $inner_type, $digits, $bits, $bits_minus_one);
+
+        crate::define_oob_prec_fpdec::define_oob_mul_static!($oob_type, $static_type);
     }
 }
 
