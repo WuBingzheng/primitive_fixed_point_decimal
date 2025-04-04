@@ -123,20 +123,19 @@ mod fixdec32;
 mod fixdec64;
 mod fixdec128;
 
-mod calculations;
-//mod static_prec_fpdec_16;
-//mod oob_prec_fpdec_16;
 mod fpdec_16;
 
-#[macro_use]
-mod define_static_prec;
-#[macro_use]
-mod define_oob_prec;
-#[macro_use]
+// fpdec_16/32/64/128
+//   -> define_both_fpdecs
+//        -+-> define_calculations
+//         |-> define_static_prec_fpdec -> define_common
+//         |-> define_oob_prec_fpdec    -> define_common
+mod define_calculations;
 mod define_common;
-#[macro_use]
+mod define_static_prec_fpdec;
+mod define_oob_prec_fpdec;
+mod define_both_fpdecs;
 mod define_macro;
-#[macro_use]
 mod utils;
 
 pub use crate::fixdec16::DIGITS as FIXDEC16_DIGITS;
@@ -149,8 +148,6 @@ pub use crate::fixdec32::FixDec32;
 pub use crate::fixdec64::FixDec64;
 pub use crate::fixdec128::FixDec128;
 
-//pub use crate::static_prec_fpdec_16::StaticPrecFpdec16;
-//pub use crate::oob_prec_fpdec_16::OobPrecFpdec16;
 pub use crate::fpdec_16::{StaticPrecFpdec16, OobPrecFpdec16};
 
 pub use crate::utils::OobFmt;

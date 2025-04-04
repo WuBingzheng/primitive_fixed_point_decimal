@@ -9,12 +9,6 @@ macro_rules! define_oob_prec_fpdec {
         $bits:literal,
         $bits_minus_one:literal
     ) => {
-        //use std::fmt;
-        //use std::ops::{Neg, Add, Sub, AddAssign, SubAssign};
-        //use super::{ParseError, Rounding};
-
-        //super::calculations::define_calculations!($inner_type, $digits);
-
         #[doc = concat!("A ", $bits, "-bits primitive fixed-point decimal type, ")]
         #[doc = concat!("with about ", $digits, " significant digits.")]
         ///
@@ -26,7 +20,7 @@ macro_rules! define_oob_prec_fpdec {
 
         impl $fpdec_type {
 
-            define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one, stringify!($fpdec_type));
+            crate::define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one);
 
             /// Checked multiplication. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
@@ -273,34 +267,34 @@ macro_rules! define_oob_prec_fpdec {
             }
         }
 
-        impl Neg for $fpdec_type {
+        impl std::ops::Neg for $fpdec_type {
             type Output = Self;
             fn neg(self) -> Self::Output {
                 Self { inner: -self.inner }
             }
         }
 
-        impl Add for $fpdec_type {
+        impl std::ops::Add for $fpdec_type {
             type Output = Self;
             fn add(self, rhs: Self) -> Self::Output {
                 Self { inner: self.inner + rhs.inner }
             }
         }
 
-        impl Sub for $fpdec_type {
+        impl std::ops::Sub for $fpdec_type {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self::Output {
                 Self { inner: self.inner - rhs.inner }
             }
         }
 
-        impl AddAssign for $fpdec_type {
+        impl std::ops::AddAssign for $fpdec_type {
             fn add_assign(&mut self, rhs: Self) {
                 self.inner += rhs.inner;
             }
         }
 
-        impl SubAssign for $fpdec_type {
+        impl std::ops::SubAssign for $fpdec_type {
             fn sub_assign(&mut self, rhs: Self) {
                 self.inner -= rhs.inner;
             }

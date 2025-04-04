@@ -7,15 +7,8 @@ macro_rules! define_static_prec_fpdec {
 
         // These are used only in doc comments.
         $bits:literal,
-        $bits_minus_one:literal,
-        $type_in_doc:ty
+        $bits_minus_one:literal
     ) => {
-        use std::fmt;
-        use std::ops::{Neg, Add, Sub, AddAssign, SubAssign};
-        use super::{ParseError, Rounding};
-
-        super::calculations::define_calculations!($inner_type, $digits);
-
         #[doc = concat!("A ", $bits, "-bits primitive fixed-point decimal type, ")]
         #[doc = concat!("with about ", $digits, " significant digits.")]
         ///
@@ -27,7 +20,7 @@ macro_rules! define_static_prec_fpdec {
 
         impl<const P: i32> $fpdec_type<P> {
 
-            define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one, type_in_doc);
+            crate::define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one);
 
             /// Checked multiplication. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
@@ -295,34 +288,34 @@ macro_rules! define_static_prec_fpdec {
         convert_static_from_float!(f32);
         convert_static_from_float!(f64);
 
-        impl<const P: i32> Neg for $fpdec_type<P> {
+        impl<const P: i32> std::ops::Neg for $fpdec_type<P> {
             type Output = Self;
             fn neg(self) -> Self::Output {
                 Self { inner: -self.inner }
             }
         }
 
-        impl<const P: i32> Add for $fpdec_type<P> {
+        impl<const P: i32> std::ops::Add for $fpdec_type<P> {
             type Output = Self;
             fn add(self, rhs: Self) -> Self::Output {
                 Self { inner: self.inner + rhs.inner }
             }
         }
 
-        impl<const P: i32> Sub for $fpdec_type<P> {
+        impl<const P: i32> std::ops::Sub for $fpdec_type<P> {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self::Output {
                 Self { inner: self.inner - rhs.inner }
             }
         }
 
-        impl<const P: i32> AddAssign for $fpdec_type<P> {
+        impl<const P: i32> std::ops::AddAssign for $fpdec_type<P> {
             fn add_assign(&mut self, rhs: Self) {
                 self.inner += rhs.inner;
             }
         }
 
-        impl<const P: i32> SubAssign for $fpdec_type<P> {
+        impl<const P: i32> std::ops::SubAssign for $fpdec_type<P> {
             fn sub_assign(&mut self, rhs: Self) {
                 self.inner -= rhs.inner;
             }

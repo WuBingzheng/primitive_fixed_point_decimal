@@ -5,8 +5,7 @@ macro_rules! define_common {
         $inner_type:ty,
 
         // These are used only in doc comments.
-        $bits_minus_one:literal,
-        $type_in_doc:ty
+        $bits_minus_one:literal
     ) => {
         /// The zero value, 0.
         pub const ZERO: Self = Self { inner: 0 };
@@ -28,31 +27,11 @@ macro_rules! define_common {
         /// and attempting to calculate it will cause an overflow. This means that
         /// code in debug mode will trigger a panic on this case and optimized code
         /// will return `MIN` without a panic.
-        /// 
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// assert_eq!(Decimal::MAX.abs(), Decimal::MAX);
-        /// assert_eq!((-Decimal::MAX).abs(), Decimal::MAX);
-        /// assert_eq!(Decimal::ZERO.abs(), Decimal::ZERO);
-        /// ```
         pub const fn abs(self) -> Self {
             Self { inner: self.inner.abs() }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if `self == MIN`.
-        /// 
-        /// # Examples
-        /// 
-        /// ```
-        #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-        #[doc = concat!("type Decimal = ", stringify!($type_in_doc), ";")]
-        ///
-        /// assert_eq!(Decimal::MIN.checked_abs(), None);
-        /// ```
         pub const fn checked_abs(self) -> Option<Self> {
             Self::from_opt_inner(self.inner.checked_abs())
         }

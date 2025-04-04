@@ -1,12 +1,4 @@
-use crate::define_common;
-use crate::define_static_prec;
-use crate::define_oob_prec;
-use crate::utils::*;
-
-define_static_prec::define_static_prec_fpdec!(StaticPrecFpdec16, i16, 4, 16, 15, StaticPrecFpdec16::<4>);
-
-// define and implement OobPrecFpdec16.
-define_oob_prec::define_oob_prec_fpdec!(OobPrecFpdec16, i16, 4, 16, 15);
+crate::define_both_fpdecs::define_both_fpdecs!(StaticPrecFpdec16, OobPrecFpdec16, i16, 4, 16, 15);
 
 // convert OobPrecFpdec16 into other OobPrecFpdec types.
 //convert_into!(OobPrecFpdec16, oob_prec_fpdec32, OobPrecFpdec32);
