@@ -110,6 +110,13 @@ mod fixdec32;
 mod fixdec64;
 mod fixdec128;
 
+mod calculations;
+mod static_prec_fpdec_16;
+
+#[macro_use]
+mod define_static_prec;
+#[macro_use]
+mod define_common;
 #[macro_use]
 mod define_macro;
 #[macro_use]
@@ -124,6 +131,8 @@ pub use crate::fixdec16::FixDec16;
 pub use crate::fixdec32::FixDec32;
 pub use crate::fixdec64::FixDec64;
 pub use crate::fixdec128::FixDec128;
+
+pub use crate::static_prec_fpdec_16::StaticPrecFpdec16;
 
 /// Error in converting from string.
 #[derive(Debug, Clone, PartialEq, Eq)]

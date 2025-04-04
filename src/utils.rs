@@ -1,3 +1,30 @@
+use super::{ParseError, Rounding};
+pub fn parse_rounding(s: &str, kind: Rounding) -> Result<bool, ParseError> {
+    if s.chars().any(|ch| ch.to_digit(10).is_none()) {
+        return Err(ParseError::Invalid);
+    }
+
+    let is_carry = match kind {
+        Rounding::Floor => false,
+        Rounding::Ceil => !s.trim_matches('0').is_empty(),
+        Rounding::Round => {
+            if let Some(first) = s.chars().next() {
+                first >= '5'
+            } else {
+                false
+            }
+        }
+        Rounding::Unexpected => {
+            if s.trim_matches('0').is_empty() {
+                false
+            } else {
+                return Err(ParseError::Precision);
+            }
+        }
+    };
+    Ok(is_carry)
+}
+
 macro_rules! rounding_div {
     ($lhs:expr, $rhs:expr, $rounding:ident) => {
         'a: {

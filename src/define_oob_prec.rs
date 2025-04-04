@@ -1,7 +1,7 @@
 // define and implement FixDecX type.
 //
 // ALL_EXPS, calc_mul_div and calc_div_div are needed to use this macro.
-macro_rules! define_fixdec {
+macro_rules! define_oob_prec_fpdec {
     (
         $fixdec_type:ident,
         $inner_type:ty,
@@ -767,7 +767,6 @@ macro_rules! define_fixdec {
     };
 }
 
-/*
 use super::{ParseError, Rounding};
 pub fn parse_rounding(s: &str, kind: Rounding) -> Result<bool, ParseError> {
     if s.chars().any(|ch| ch.to_digit(10).is_none()) {
@@ -794,7 +793,6 @@ pub fn parse_rounding(s: &str, kind: Rounding) -> Result<bool, ParseError> {
     };
     Ok(is_carry)
 }
-*/
 
 // convert FixDecX to another FixDecY type, where Y > X
 macro_rules! convert_into {
@@ -830,6 +828,6 @@ macro_rules! convert_try_into {
 }
 
 // export macros
-pub(crate) use define_fixdec;
+pub(crate) use define_oob_prec_fpdec;
 pub(crate) use convert_into;
 pub(crate) use convert_try_into;
