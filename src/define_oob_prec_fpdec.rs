@@ -54,7 +54,18 @@ macro_rules! define_oob_prec_fpdec {
                 diff_precision: i32, // P(self) + P(rhs) - P(result)
                 rounding: Rounding
             ) -> Option<Self> {
-                let opt_inner = checked_mul_with_rounding(self.inner, rhs.inner, diff_precision, rounding);
+                let mut cum_error = 0;
+                self.checked_mul_with_rounding_and_cum_error(rhs, diff_precision, rounding, &mut cum_error)
+            }
+
+            pub const fn checked_mul_with_rounding_and_cum_error(
+                self,
+                rhs: Self,
+                diff_precision: i32, // P(self) + P(rhs) - P(result)
+                rounding: Rounding,
+                cum_error: &mut $inner_type,
+            ) -> Option<Self> {
+                let opt_inner = checked_mul_with_rounding_and_cum_error(self.inner, rhs.inner, diff_precision, rounding, cum_error);
                 Self::from_opt_inner(opt_inner)
             }
 
@@ -91,7 +102,19 @@ macro_rules! define_oob_prec_fpdec {
                 diff_precision: i32, // P(self) - P(rhs) - P(result)
                 rounding: Rounding
             ) -> Option<Self> {
-                let opt_inner = checked_div_with_rounding(self.inner, rhs.inner, diff_precision, rounding);
+                let mut cum_error = 0;
+                self.checked_div_with_rounding_with_cum_error(rhs, diff_precision, rounding, &mut cum_error)
+            }
+
+            /// 
+            pub const fn checked_div_with_rounding_with_cum_error(
+                self,
+                rhs: Self,
+                diff_precision: i32, // P(self) - P(rhs) - P(result)
+                rounding: Rounding,
+                cum_error: &mut $inner_type,
+            ) -> Option<Self> {
+                let opt_inner = checked_div_with_rounding_with_cum_error(self.inner, rhs.inner, diff_precision, rounding, cum_error);
                 Self::from_opt_inner(opt_inner)
             }
 

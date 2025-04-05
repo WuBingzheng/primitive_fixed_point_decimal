@@ -5,24 +5,26 @@ macro_rules! define_calculations {
     ) => {
         use std::str::FromStr;
 
-        pub const fn checked_mul_with_rounding(
+        pub const fn checked_mul_with_rounding_and_cum_error(
             a: $inner_type,
             b: $inner_type,
             diff_precision: i32, // = P + Q - R
             rounding: Rounding,
+            cum_error: &mut $inner_type,
         ) -> Option<$inner_type> {
         
             if diff_precision > 0 {
                 // a * b / diff_exp
                 if diff_precision <= $digits {
-                    calc_mul_div(a, b, ALL_EXPS[diff_precision as usize], rounding)
+                    calc_mul_div(a, b, ALL_EXPS[diff_precision as usize], rounding, cum_error)
 
                 } else if diff_precision <= $digits * 2 {
                     let diff_diff = diff_precision as usize - $digits;
-                    let Some(tmp) = calc_mul_div(a, b, ALL_EXPS[diff_diff], rounding) else {
+                    let mut ignore = 0;
+                    let Some(tmp) = calc_mul_div(a, b, ALL_EXPS[diff_diff], rounding, &mut ignore) else {
                         return None;
                     };
-                    rounding_div!(tmp, ALL_EXPS[$digits], rounding)
+                    rounding_div!(tmp, ALL_EXPS[$digits], rounding, cum_error)
                 } else {
                     Some(0)
                 }
@@ -43,18 +45,19 @@ macro_rules! define_calculations {
             }
         }
         
-        pub const fn checked_div_with_rounding(
+        pub const fn checked_div_with_rounding_with_cum_error(
             a: $inner_type,
             b: $inner_type,
             diff_precision: i32, // = P - Q - R
             rounding: Rounding,
+            cum_error: &mut $inner_type,
         ) -> Option<$inner_type> {
             if diff_precision > 0 {
                 // a / b / diff_exp
                 if b == 0 {
                     None
                 } else if diff_precision <= $digits {
-                    rounding_div!(a / b, ALL_EXPS[diff_precision as usize], rounding)
+                    rounding_div!(a / b, ALL_EXPS[diff_precision as usize], rounding, cum_error)
                 } else {
                     Some(0)
                 }
@@ -63,18 +66,18 @@ macro_rules! define_calculations {
                 // a * diff_exp / b
                 let abs_diff = -diff_precision as usize;
                 if abs_diff <= $digits {
-                    calc_mul_div(a, ALL_EXPS[abs_diff], b, rounding)
+                    calc_mul_div(a, ALL_EXPS[abs_diff], b, rounding, cum_error)
                 } else if -diff_precision <= $digits * 2 {
                     let Some(tmp) = a.checked_mul(ALL_EXPS[$digits - abs_diff]) else {
                         return None;
                     };
-                    calc_mul_div(tmp, ALL_EXPS[$digits], b, rounding)
+                    calc_mul_div(tmp, ALL_EXPS[$digits], b, rounding, cum_error)
                 } else {
                     None
                 }
         
             } else {
-                rounding_div!(a, b, rounding)
+                rounding_div!(a, b, rounding, cum_error)
             }
         }
         
@@ -228,10 +231,12 @@ macro_rules! define_calculations {
                     if frac < 0 {
                         frac = -frac;
                     }
-                    while frac % 10 == 0 {
+                    let mut zeros = 0;
+                    while frac % 10 == 0 { // TODO optimize
                         frac /= 10;
+                        zeros += 1;
                     }
-                    write!(f, "{}.{}", i, frac)
+                    write!(f, "{}.{:0>width$}", i, frac, width=precision-zeros)
                 }
             } else if a >= 0 {
                 write!(f, "0.{:0>width$}", a, width=precision)

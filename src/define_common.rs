@@ -75,7 +75,17 @@ macro_rules! define_common {
             n: $inner_type,
             rounding: Rounding
         ) -> Option<Self> {
-            Self::from_opt_inner(rounding_div!(self.inner, n, rounding))
+            let mut cum_error = 0;
+            self.checked_div_int_with_rounding_and_cum_error(n, rounding, &mut cum_error)
+        }
+
+        pub const fn checked_div_int_with_rounding_and_cum_error(
+            self,
+            n: $inner_type,
+            rounding: Rounding,
+            cum_error: &mut $inner_type,
+        ) -> Option<Self> {
+            Self::from_opt_inner(rounding_div!(self.inner, n, rounding, cum_error))
         }
 
         /// Return if negative.

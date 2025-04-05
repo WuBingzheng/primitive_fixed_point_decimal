@@ -23,9 +23,9 @@ const ALL_EXPS: [i128; 38 + 1] = [1,
     10_i128.pow(37), 10_i128.pow(38),
 ];
 
-const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i128> {
+const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding, cum_error: &mut i128) -> Option<i128> {
     if let Some(r) = a.checked_mul(b) {
-        rounding_div!(r, c, rounding)
+        rounding_div!(r, c, rounding, cum_error)
     } else {
         let is_neg = (a < 0) ^ (b < 0) ^ (c < 0);
         let a = a.unsigned_abs();
@@ -59,9 +59,12 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding) -> Option<i
             } else {
                 let shft = 128 - total_shft;
                 dividend = dividend << shft | mlow << total_shft >> (128 - shft);
-                let Some(quotient) = rounding_div!(dividend, c, rounding) else {
+                /* XXX
+                let Some(quotient) = rounding_div!(dividend, c, rounding, cum_error) else {
                     return None;
                 };
+                */
+                let quotient = dividend; // XXX
                 r = (r << shft) + quotient; // use '+' but not '|' because of rounding up
 
                 debug_assert!(r <= i128::MAX as u128);

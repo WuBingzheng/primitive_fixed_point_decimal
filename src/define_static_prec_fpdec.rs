@@ -54,7 +54,18 @@ macro_rules! define_static_prec_fpdec {
                 rhs: $fpdec_type<Q>,
                 rounding: Rounding
             ) -> Option<$fpdec_type<R>> {
-                let opt_inner = checked_mul_with_rounding(self.inner, rhs.inner, P + Q - R, rounding);
+                let mut cum_error = 0;
+                self.checked_mul_with_rounding_and_cum_error(rhs, rounding, &mut cum_error)
+            }
+
+            ///
+            pub const fn checked_mul_with_rounding_and_cum_error<const Q: i32, const R: i32>(
+                self,
+                rhs: $fpdec_type<Q>,
+                rounding: Rounding,
+                cum_error: &mut $inner_type,
+            ) -> Option<$fpdec_type<R>> {
+                let opt_inner = checked_mul_with_rounding_and_cum_error(self.inner, rhs.inner, P + Q - R, rounding, cum_error);
                 $fpdec_type::<R>::from_opt_inner(opt_inner)
             }
 
@@ -91,7 +102,17 @@ macro_rules! define_static_prec_fpdec {
                 rhs: $fpdec_type<Q>,
                 rounding: Rounding
             ) -> Option<$fpdec_type<R>> {
-                let opt_inner = checked_div_with_rounding(self.inner, rhs.inner, P - Q - R, rounding);
+                let mut cum_error = 0;
+                self.checked_div_with_rounding_with_cum_error(rhs, rounding, &mut cum_error)
+            }
+
+            pub const fn checked_div_with_rounding_with_cum_error<const Q: i32, const R: i32>(
+                self,
+                rhs: $fpdec_type<Q>,
+                rounding: Rounding,
+                cum_error: &mut $inner_type,
+            ) -> Option<$fpdec_type<R>> {
+                let opt_inner = checked_div_with_rounding_with_cum_error(self.inner, rhs.inner, P - Q - R, rounding, cum_error);
                 $fpdec_type::<R>::from_opt_inner(opt_inner)
             }
 
