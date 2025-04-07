@@ -73,13 +73,13 @@ macro_rules! define_calculations {
             a: $inner_type,
             diff_precision: i32, // = src - dst
             rounding: Rounding,
-        ) -> Option<$inner_type> {
+        ) -> $inner_type {
 
             if diff_precision <= 0 {
-                Some(a)
+                a
 
             } else if diff_precision >= $digits {
-                None
+                0
 
             } else {
                 // a / exp * exp
@@ -90,9 +90,8 @@ macro_rules! define_calculations {
                     Rounding::Floor => 0,
                     Rounding::Ceil => if remain == 0 { 0 } else { exp },
                     Rounding::Round => if remain * 2 < exp { 0 } else { exp },
-                    Rounding::Unexpected => if remain == 0 { 0 } else { return None },
                 };
-                Some(ret + carry)
+                ret + carry
             }
         }
 

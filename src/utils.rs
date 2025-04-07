@@ -21,7 +21,6 @@ macro_rules! rounding_div {
                 Rounding::Floor => false,
                 Rounding::Ceil => tmp_cum_error > 0,
                 Rounding::Round => tmp_cum_error * 2 > $rhs,
-                Rounding::Unexpected => if tmp_cum_error == 0 { false } else { break 'a None; }
             };
 
             if is_carry {

@@ -120,10 +120,7 @@ macro_rules! define_static_prec_fpdec {
             /// Shrink to a lower precision. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::shrink_to_with_rounding`] with `rounding=Rounding::Round`.")]
             pub const fn shrink_to(self, precision: i32) -> Self {
-                match self.shrink_to_with_rounding(precision, Rounding::Round) {
-                    Some(d) => d,
-                    None => unreachable!(),
-                }
+                self.shrink_to_with_rounding(precision, Rounding::Round)
             }
 
             /// Shrink to a lower precision. Fail if lossing significant precision
@@ -147,11 +144,9 @@ macro_rules! define_static_prec_fpdec {
             /// let d = Decimal1::try_from(1234.5).unwrap();
             /// assert_eq!(d.shrink_to_with_rounding(-2, Rounding::Round).unwrap(), Decimal1::try_from(1200).unwrap());
             /// ```
-            pub const fn shrink_to_with_rounding(self, precision: i32, rounding: Rounding)
-                -> Option<Self>
-            {
-                let opt_inner = shrink_with_rounding(self.inner, P - precision, rounding);
-                Self::from_opt_inner(opt_inner)
+            pub const fn shrink_to_with_rounding(self, precision: i32, rounding: Rounding) -> Self {
+                let inner = shrink_with_rounding(self.inner, P - precision, rounding);
+                Self::from_inner(inner)
             }
         }
 

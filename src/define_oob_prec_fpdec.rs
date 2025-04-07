@@ -132,10 +132,7 @@ macro_rules! define_oob_prec_fpdec {
             /// Shrink some precision. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::shrink_with_rounding`] with `rounding=Rounding::Round`.")]
             pub const fn shrink(self, diff_precision: i32) -> Self {
-                match self.shrink_with_rounding(diff_precision, Rounding::Round) {
-                    Some(d) => d,
-                    None => unreachable!(),
-                }
+                self.shrink_with_rounding(diff_precision, Rounding::Round)
             }
 
             /// Shrink some precision. Fail if lossing significant precision
@@ -157,11 +154,9 @@ macro_rules! define_oob_prec_fpdec {
             /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Round).unwrap(), Decimal::try_from_f32(1.24, 4).unwrap());
             /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Unexpected), None);
             /// ```
-            pub const fn shrink_with_rounding(self, diff_precision: i32, rounding: Rounding)
-                -> Option<Self>
-            {
-                let opt_inner = shrink_with_rounding(self.inner, diff_precision, rounding);
-                Self::from_opt_inner(opt_inner)
+            pub const fn shrink_with_rounding(self, diff_precision: i32, rounding: Rounding) -> Self {
+                let inner = shrink_with_rounding(self.inner, diff_precision, rounding);
+                Self::from_inner(inner)
             }
 
             /// Read decimal from string.

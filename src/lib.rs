@@ -173,8 +173,6 @@ pub enum Rounding {
     Round,
     Floor,
     Ceil,
-    /// Return Option::None or Result::Err if need rounding.
-    Unexpected,
 }
 
 #[cfg(test)]
