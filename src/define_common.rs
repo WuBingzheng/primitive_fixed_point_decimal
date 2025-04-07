@@ -39,9 +39,6 @@ macro_rules! define_common {
         /// Checked addition. Computes `self + rhs`, returning `None` if overflow occurred.
         ///
         /// The right operand must have the same precision with self.
-        ///
-        /// If you really want to add a value with different precision, convert it by
-        #[doc = concat!("[`", stringify!($fpdec_type), "::rescale`] first.")]
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
             Self::from_opt_inner(self.inner.checked_add(rhs.inner))
         }
@@ -49,9 +46,6 @@ macro_rules! define_common {
         /// Checked subtraction. Computes `self - rhs`, returning `None` if overflow occurred.
         ///
         /// The right operand must have the same precision with self.
-        ///
-        /// If you really want to subtract a value with different precision, convert it by
-        #[doc = concat!("[`", stringify!($fpdec_type), "::rescale`] first.")]
         pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
             Self::from_opt_inner(self.inner.checked_sub(rhs.inner))
         }
@@ -108,15 +102,6 @@ macro_rules! define_common {
         /// Return if zero.
         pub const fn is_zero(&self) -> bool {
             self.inner == 0
-        }
-
-        /// Shrink to a lower precision. Equivalent to
-        #[doc = concat!("[`", stringify!($fpdec_type), "::shrink_to_with_rounding`] with `rounding=Rounding::Round`.")]
-        pub const fn shrink_to(self, precision: i32) -> Self {
-            match self.shrink_to_with_rounding(precision, Rounding::Round) {
-                Some(d) => d,
-                None => unreachable!(),
-            }
         }
 
         const fn from_opt_inner(opt: Option<$inner_type>) -> Option<Self> {

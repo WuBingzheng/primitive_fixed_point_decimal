@@ -69,41 +69,7 @@ macro_rules! define_calculations {
             }
         }
 
-        pub const fn rescale_with_rounding(
-            a: $inner_type,
-            diff_precision: i32, // = src - dst
-            rounding: Rounding,
-        ) -> Option<$inner_type> {
-
-            if diff_precision > 0 {
-                // a / exp
-                if diff_precision <= $digits {
-                    let exp = ALL_EXPS[diff_precision as usize];
-                    let ret = a / exp;
-                    let remain = a % exp;
-                    let carry = match rounding {
-                        Rounding::Floor => 0,
-                        Rounding::Ceil => if remain == 0 { 0 } else { 1 },
-                        Rounding::Round => if remain * 2 < exp { 0 } else { 1 },
-                        Rounding::Unexpected => if remain == 0 { 0 } else { return None },
-                    };
-                    Some(ret + carry)
-                } else {
-                    None
-                }
-            } else if diff_precision < 0 {
-                // a * exp
-                if -diff_precision <= $digits {
-                    a.checked_mul(ALL_EXPS[-diff_precision as usize])
-                } else {
-                    None
-                }
-            } else {
-                Some(a)
-            }
-        }
-
-        pub const fn shrink_to_with_rounding(
+        pub const fn shrink_with_rounding(
             a: $inner_type,
             diff_precision: i32, // = src - dst
             rounding: Rounding,

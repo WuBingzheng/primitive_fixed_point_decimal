@@ -59,12 +59,12 @@ const fn calc_mul_div(a: i128, b: i128, c: i128, rounding: Rounding, cum_error: 
             } else {
                 let shft = 128 - total_shft;
                 dividend = dividend << shft | mlow << total_shft >> (128 - shft);
-                /* XXX
+                /*
                 let Some(quotient) = rounding_div!(dividend, c, rounding, cum_error) else {
                     return None;
                 };
                 */
-                let quotient = dividend; // XXX
+                let quotient = dividend / c;
                 r = (r << shft) + quotient; // use '+' but not '|' because of rounding up
 
                 debug_assert!(r <= i128::MAX as u128);

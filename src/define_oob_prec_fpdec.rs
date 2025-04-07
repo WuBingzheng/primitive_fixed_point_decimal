@@ -129,33 +129,16 @@ macro_rules! define_oob_prec_fpdec {
                 Self::from_opt_inner(opt_inner)
             }
 
-            /// Rescale to another precision representation.
-            ///
-            /// Fail if overflow occurred when to bigger precision, or losing significant
-            /// digits when to smaller precision.
-            /// And the `diff_precision` argument specifies the difference:
-            ///     `diff_precision = precision(self) - precision(result)`
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-            #[doc = concat!("type Dec2 = ", stringify!($fpdec_type), ";")]
-            #[doc = concat!("type Dec4 = ", stringify!($fpdec_type), ";")] // same type actually
-            /// let d2 = Dec2::try_from_f32(1.23, 2).unwrap();
-            /// let d4 = Dec4::try_from_f32(1.23, 4).unwrap();
-            /// assert_eq!(d4.rescale(2).unwrap(), d2);
-            /// assert_eq!(d2.rescale(-2).unwrap(), d4);
-            pub const fn rescale(self, diff_precision: i32) -> Option<Self> {
-                self.rescale_with_rounding(diff_precision, Rounding::Round)
+            /// Shrink some precision. Equivalent to
+            #[doc = concat!("[`", stringify!($fpdec_type), "::shrink_with_rounding`] with `rounding=Rounding::Round`.")]
+            pub const fn shrink(self, diff_precision: i32) -> Self {
+                match self.shrink_with_rounding(diff_precision, Rounding::Round) {
+                    Some(d) => d,
+                    None => unreachable!(),
+                }
             }
 
-            pub const fn rescale_with_rounding(self, diff_precision: i32, rounding: Rounding) -> Option<Self> {
-                let opt_inner = rescale_with_rounding(self.inner, diff_precision, rounding);
-                Self::from_opt_inner(opt_inner)
-            }
-
-            /// Shrink to a lower precision. Fail if lossing significant precision
+            /// Shrink some precision. Fail if lossing significant precision
             /// with `rounding=Rounding::Unexpected`.
             ///
             /// And the `diff_precision` argument specifies the difference:
@@ -169,15 +152,15 @@ macro_rules! define_oob_prec_fpdec {
             #[doc = concat!("use primitive_fixed_point_decimal::{", stringify!($fpdec_type), ", Rounding};")]
             #[doc = concat!("type Decimal = ", stringify!($fpdec_type), ";")]
             /// let d = Decimal::try_from_f32(1.2378, 4).unwrap();
-            /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Floor).unwrap(), Decimal::try_from_f32(1.23, 4).unwrap());
+            /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Floor).unwrap(), Decimal::try_from_f32(1.23, 4).unwrap()); // XXX
             /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Ceil).unwrap(), Decimal::try_from_f32(1.24, 4).unwrap());
             /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Round).unwrap(), Decimal::try_from_f32(1.24, 4).unwrap());
             /// assert_eq!(d.shrink_to_with_rounding(2, Rounding::Unexpected), None);
             /// ```
-            pub const fn shrink_to_with_rounding(self, diff_precision: i32, rounding: Rounding)
+            pub const fn shrink_with_rounding(self, diff_precision: i32, rounding: Rounding)
                 -> Option<Self>
             {
-                let opt_inner = shrink_to_with_rounding(self.inner, diff_precision, rounding);
+                let opt_inner = shrink_with_rounding(self.inner, diff_precision, rounding);
                 Self::from_opt_inner(opt_inner)
             }
 

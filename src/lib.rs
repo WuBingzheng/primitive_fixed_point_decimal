@@ -102,10 +102,6 @@
 //! precisions. Certainly we need to multiply between balance type
 //! and exchange rates type.
 //!
-//! Meanwhile the conversion can be made explicitly. Different types can be
-//! converted by the `From` and `TryFrom` trait. And different precisions
-//! of same type are converted into each other by `rescale()` function.
-//!
 //! # Features
 //!
 //! - `serde` enables serde traits integration (`Serialize`/`Deserialize`)

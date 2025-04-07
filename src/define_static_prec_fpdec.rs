@@ -117,28 +117,13 @@ macro_rules! define_static_prec_fpdec {
                 $fpdec_type::<R>::from_opt_inner(opt_inner)
             }
 
-            /// Rescale to another precision representation.
-            ///
-            /// Fail if overflow occurred when to bigger precision, or losing significant
-            /// digits when to smaller precision.
-            ///
-            /// # Examples:
-            ///
-            /// ```
-            #[doc = concat!("use primitive_fixed_point_decimal::", stringify!($fpdec_type), ";")]
-            #[doc = concat!("type Dec2 = ", stringify!($fpdec_type), "::<2>;")]
-            #[doc = concat!("type Dec4 = ", stringify!($fpdec_type), "::<4>;")]
-            /// let d2 = Dec2::try_from(1.23).unwrap();
-            /// let d4 = Dec4::try_from(1.23).unwrap();
-            /// assert_eq!(d4.rescale::<2>().unwrap(), d2);
-            /// assert_eq!(d2.rescale::<4>().unwrap(), d4);
-            pub const fn rescale<const Q: i32>(self) -> Option<$fpdec_type<Q>> {
-                self.rescale_with_rounding(Rounding::Round)
-            }
-
-            pub const fn rescale_with_rounding<const Q: i32>(self, rounding: Rounding) -> Option<$fpdec_type<Q>> {
-                let opt_inner = rescale_with_rounding(self.inner, P - Q, rounding);
-                $fpdec_type::<Q>::from_opt_inner(opt_inner)
+            /// Shrink to a lower precision. Equivalent to
+            #[doc = concat!("[`", stringify!($fpdec_type), "::shrink_to_with_rounding`] with `rounding=Rounding::Round`.")]
+            pub const fn shrink_to(self, precision: i32) -> Self {
+                match self.shrink_to_with_rounding(precision, Rounding::Round) {
+                    Some(d) => d,
+                    None => unreachable!(),
+                }
             }
 
             /// Shrink to a lower precision. Fail if lossing significant precision
@@ -165,7 +150,7 @@ macro_rules! define_static_prec_fpdec {
             pub const fn shrink_to_with_rounding(self, precision: i32, rounding: Rounding)
                 -> Option<Self>
             {
-                let opt_inner = shrink_to_with_rounding(self.inner, P - precision, rounding);
+                let opt_inner = shrink_with_rounding(self.inner, P - precision, rounding);
                 Self::from_opt_inner(opt_inner)
             }
         }
