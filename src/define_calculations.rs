@@ -5,47 +5,39 @@ macro_rules! define_calculations {
     ) => {
         use std::str::FromStr;
 
-        pub const fn checked_mul_with_rounding_and_cum_error(
+        pub const fn checked_mul_ext2(
             a: $inner_type,
             b: $inner_type,
             diff_precision: i32, // = P + Q - R
             rounding: Rounding,
             cum_error: &mut $inner_type,
         ) -> Option<$inner_type> {
-        
+
             if diff_precision > 0 {
                 // a * b / diff_exp
                 if diff_precision <= $digits {
                     calc_mul_div(a, b, ALL_EXPS[diff_precision as usize], rounding, cum_error)
-
-                } else if diff_precision <= $digits * 2 {
-                    let diff_diff = diff_precision as usize - $digits;
-                    let mut ignore = 0;
-                    let Some(tmp) = calc_mul_div(a, b, ALL_EXPS[diff_diff], rounding, &mut ignore) else {
-                        return None;
-                    };
-                    rounding_div!(tmp, ALL_EXPS[$digits], rounding, cum_error)
-                } else {
-                    Some(0)
-                }
-        
-            } else if diff_precision < 0 {
-                // a * b * diff_exp
-                let Some(r) = a.checked_mul(b) else {
-                    return None;
-                };
-                if -diff_precision <= $digits {
-                    r.checked_mul(ALL_EXPS[-diff_precision as usize])
                 } else {
                     None
                 }
-        
+            } else if diff_precision < 0 {
+                let diff_precision = -diff_precision as usize;
+
+                // a * b * diff_exp
+                if diff_precision <= $digits {
+                    let Some(r) = a.checked_mul(b) else {
+                        return None;
+                    };
+                    r.checked_mul(ALL_EXPS[diff_precision])
+                } else {
+                    None
+                }
             } else {
                 a.checked_mul(b)
             }
         }
-        
-        pub const fn checked_div_with_rounding_with_cum_error(
+
+        pub const fn checked_div_ext2(
             a: $inner_type,
             b: $inner_type,
             diff_precision: i32, // = P - Q - R
@@ -54,49 +46,53 @@ macro_rules! define_calculations {
         ) -> Option<$inner_type> {
             if diff_precision > 0 {
                 // a / b / diff_exp
-                if b == 0 {
-                    None
-                } else if diff_precision <= $digits {
-                    rounding_div!(a / b, ALL_EXPS[diff_precision as usize], rounding, cum_error)
-                } else {
-                    Some(0)
-                }
-        
-            } else if diff_precision < 0 {
-                // a * diff_exp / b
-                let abs_diff = -diff_precision as usize;
-                if abs_diff <= $digits {
-                    calc_mul_div(a, ALL_EXPS[abs_diff], b, rounding, cum_error)
-                } else if -diff_precision <= $digits * 2 {
-                    let Some(tmp) = a.checked_mul(ALL_EXPS[$digits - abs_diff]) else {
+                if diff_precision <= $digits {
+                    let mut tmp: $inner_type = 0;
+                    let Some(r) = rounding_div!(a, ALL_EXPS[diff_precision as usize], rounding, &mut tmp) else {
                         return None;
                     };
-                    calc_mul_div(tmp, ALL_EXPS[$digits], b, rounding, cum_error)
+                    rounding_div!(r, b, rounding, cum_error)
                 } else {
                     None
                 }
-        
+            } else if diff_precision < 0 {
+                let diff_precision = -diff_precision as usize;
+
+                // a * diff_exp / b
+                if diff_precision <= $digits {
+                    calc_mul_div(a, ALL_EXPS[diff_precision], b, rounding, cum_error)
+                } else {
+                    None
+                }
             } else {
                 rounding_div!(a, b, rounding, cum_error)
             }
         }
-        
-        // diff_precision = src - dst
-        pub const fn rescale(a: $inner_type, diff_precision: i32) -> Option<$inner_type> {
+
+        pub const fn rescale_with_rounding(
+            a: $inner_type,
+            diff_precision: i32, // = src - dst
+            rounding: Rounding,
+        ) -> Option<$inner_type> {
+
             if diff_precision > 0 {
-                // to bigger precision
+                // a / exp
                 if diff_precision <= $digits {
                     let exp = ALL_EXPS[diff_precision as usize];
-                    if a % exp == 0 {
-                        Some(a / exp)
-                    } else {
-                        None
-                    }
+                    let ret = a / exp;
+                    let remain = a % exp;
+                    let carry = match rounding {
+                        Rounding::Floor => 0,
+                        Rounding::Ceil => if remain == 0 { 0 } else { 1 },
+                        Rounding::Round => if remain * 2 < exp { 0 } else { 1 },
+                        Rounding::Unexpected => if remain == 0 { 0 } else { return None },
+                    };
+                    Some(ret + carry)
                 } else {
                     None
                 }
             } else if diff_precision < 0 {
-                // to smaller precision
+                // a * exp
                 if -diff_precision <= $digits {
                     a.checked_mul(ALL_EXPS[-diff_precision as usize])
                 } else {
@@ -107,10 +103,9 @@ macro_rules! define_calculations {
             }
         }
 
-        // diff_precision = src - dst
         pub const fn shrink_to_with_rounding(
             a: $inner_type,
-            diff_precision: i32,
+            diff_precision: i32, // = src - dst
             rounding: Rounding,
         ) -> Option<$inner_type> {
 
@@ -118,12 +113,10 @@ macro_rules! define_calculations {
                 Some(a)
 
             } else if diff_precision >= $digits {
-                if matches!(rounding, Rounding::Unexpected) && a != 0 {
-                    return None;
-                }
-                Some(0)
+                None
 
             } else {
+                // a / exp * exp
                 let exp = ALL_EXPS[diff_precision as usize];
                 let ret = a / exp * exp;
                 let remain = a - ret;

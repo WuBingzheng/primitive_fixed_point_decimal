@@ -62,24 +62,31 @@ macro_rules! define_common {
             Self::from_opt_inner(self.inner.checked_mul(n))
         }
 
-        /// Checked division with integer. Equivalent to
+        /// Checked division by integer. Equivalent to
         #[doc = concat!("[`", stringify!($fpdec_type), "::checked_div_int_with_rounding`] with `rounding=Rounding::Round`.")]
         pub const fn checked_div_int(self, n: $inner_type) -> Option<Self> {
             self.checked_div_int_with_rounding(n, Rounding::Round)
         }
 
-        /// Checked division with integer. Computes `self / n`, returning
-        /// `None` if `n == 0` or precison loss with Rounding::Unexpected specified.
+        /// Checked division by integer with rounding type. Computes `self / n`, returning
+        /// `None` if `n == 0` or precison loss with `Rounding::Unexpected` specified.
         pub const fn checked_div_int_with_rounding(
             self,
             n: $inner_type,
             rounding: Rounding
         ) -> Option<Self> {
             let mut cum_error = 0;
-            self.checked_div_int_with_rounding_and_cum_error(n, rounding, &mut cum_error)
+            self.checked_div_int_ext2(n, rounding, &mut cum_error)
         }
 
-        pub const fn checked_div_int_with_rounding_and_cum_error(
+        /// Checked division by integer with rounding and cumulative-error.
+        ///
+        /// Computes `self / n`, returning `None` if `n == 0` or precison loss with
+        /// `Rounding::Unexpected` specified.
+        ///
+        /// See the *cumulative error* section in the [module-level documentation](super)
+        /// for more information abount cumulative error.
+        pub const fn checked_div_int_ext2(
             self,
             n: $inner_type,
             rounding: Rounding,
@@ -120,7 +127,7 @@ macro_rules! define_common {
         /// Construct from inner directly. This API is low-level. Use it carefully.
         ///
         #[doc = concat!("Making a ", stringify!($fpdec_type), "&lt;P&gt; from `inner` gets value: inner<sup>-P</sup>.")]
-        pub const fn from_inner(inner: $inner_type) -> Self {
+        pub(crate) const fn from_inner(inner: $inner_type) -> Self { // XXX non-pub?
             Self { inner }
         }
     };
