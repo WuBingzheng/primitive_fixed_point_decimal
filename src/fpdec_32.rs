@@ -1,4 +1,4 @@
-crate::define_both_fpdecs::define_both_fpdecs!(StaticPrecFpdec32, OobPrecFpdec32, i32, 9, 32, 31);
+crate::define_both_fpdecs::define_both_fpdecs!(StaticPrecFpdec32, OobPrecFpdec32, i32, CumErr32, 9, 32, 31);
 
 crate::define_convert::define_convert_into_longer!(
     StaticPrecFpdec32,

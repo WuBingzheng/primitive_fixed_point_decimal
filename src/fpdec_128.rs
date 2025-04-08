@@ -1,4 +1,4 @@
-crate::define_both_fpdecs::define_both_fpdecs!(StaticPrecFpdec128, OobPrecFpdec128, i128, 38, 128, 127);
+crate::define_both_fpdecs::define_both_fpdecs!(StaticPrecFpdec128, OobPrecFpdec128, i128, CumErr128, 38, 128, 127);
 
 crate::define_convert::define_convert_try_into_shorter!(
     StaticPrecFpdec128,

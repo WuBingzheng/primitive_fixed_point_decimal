@@ -3,6 +3,7 @@ macro_rules! define_oob_prec_fpdec {
     (
         $fpdec_type:ident,
         $inner_type:ty,
+        $cum_err_type:ty,
         $digits:expr,
 
         // These are used only in doc comments.
@@ -20,7 +21,7 @@ macro_rules! define_oob_prec_fpdec {
 
         impl $fpdec_type {
 
-            crate::define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one);
+            crate::define_common::define_common!($fpdec_type, $inner_type, $cum_err_type, $bits_minus_one);
 
             /// Checked multiplication. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
@@ -74,7 +75,7 @@ macro_rules! define_oob_prec_fpdec {
                 rhs: Self,
                 diff_precision: i32, // P(self) + P(rhs) - P(result)
                 rounding: Rounding,
-                cum_error: &mut $inner_type,
+                cum_error: &mut $cum_err_type,
             ) -> Option<Self> {
                 let opt_inner = checked_mul_ext2(self.inner, rhs.inner, diff_precision, rounding, cum_error);
                 Self::from_opt_inner(opt_inner)
@@ -123,7 +124,7 @@ macro_rules! define_oob_prec_fpdec {
                 rhs: Self,
                 diff_precision: i32, // P(self) - P(rhs) - P(result)
                 rounding: Rounding,
-                cum_error: &mut $inner_type,
+                cum_error: &mut $cum_err_type,
             ) -> Option<Self> {
                 let opt_inner = checked_div_ext2(self.inner, rhs.inner, diff_precision, rounding, cum_error);
                 Self::from_opt_inner(opt_inner)
@@ -319,7 +320,7 @@ macro_rules! define_oob_prec_fpdec {
 }
 
 macro_rules! define_oob_mul_static {
-    ($oob_type:ident, $static_type:ident, $inner_type:ty) => {
+    ($oob_type:ident, $static_type:ident, $inner_type:ty, $cum_err_type:ty) => {
         impl $oob_type {
             /// Checked multiplication with . Equivalent to
             #[doc = concat!("Checked multiplication with `", stringify!($static_type), "`. Equivalent to")]
@@ -346,7 +347,7 @@ macro_rules! define_oob_mul_static {
                 self,
                 rhs: $static_type<Q>,
                 rounding: Rounding,
-                cum_error: &mut $inner_type,
+                cum_error: &mut $cum_err_type,
             ) -> Option<Self> {
                 self.checked_mul_ext2(Self::from_inner(rhs.inner), Q, rounding, cum_error)
             }
@@ -369,7 +370,7 @@ macro_rules! define_oob_mul_static {
                 self,
                 rhs: $static_type<Q>,
                 rounding: Rounding,
-                cum_error: &mut $inner_type,
+                cum_error: &mut $cum_err_type,
             ) -> Option<Self> {
                 self.checked_div_ext2(Self::from_inner(rhs.inner), -Q, rounding, cum_error)
             }

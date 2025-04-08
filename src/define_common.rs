@@ -3,6 +3,7 @@ macro_rules! define_common {
     (
         $fpdec_type:ident,
         $inner_type:ty,
+        $cum_err_type:ty,
 
         // These are used only in doc comments.
         $bits_minus_one:literal
@@ -84,7 +85,7 @@ macro_rules! define_common {
             self,
             n: $inner_type,
             rounding: Rounding,
-            cum_error: &mut $inner_type,
+            cum_error: &mut $cum_err_type,
         ) -> Option<Self> {
             Self::from_opt_inner(rounding_div!(self.inner, n, rounding, cum_error))
         }

@@ -3,6 +3,7 @@ macro_rules! define_static_prec_fpdec {
     (
         $fpdec_type:ident,
         $inner_type:ty,
+        $cum_err_type:ty,
         $digits:expr,
 
         // These are used only in doc comments.
@@ -20,7 +21,7 @@ macro_rules! define_static_prec_fpdec {
 
         impl<const P: i32> $fpdec_type<P> {
 
-            crate::define_common::define_common!($fpdec_type, $inner_type, $bits_minus_one);
+            crate::define_common::define_common!($fpdec_type, $inner_type, $cum_err_type, $bits_minus_one);
 
             /// Checked multiplication. Equivalent to
             #[doc = concat!("[`", stringify!($fpdec_type), "::checked_mul_with_rounding`] with `rounding=Rounding::Round`.")]
@@ -64,7 +65,7 @@ macro_rules! define_static_prec_fpdec {
                 self,
                 rhs: $fpdec_type<Q>,
                 rounding: Rounding,
-                cum_error: &mut $inner_type,
+                cum_error: &mut $cum_err_type,
             ) -> Option<$fpdec_type<R>> {
                 let opt_inner = checked_mul_ext2(self.inner, rhs.inner, P + Q - R, rounding, cum_error);
                 $fpdec_type::<R>::from_opt_inner(opt_inner)
@@ -111,7 +112,7 @@ macro_rules! define_static_prec_fpdec {
                 self,
                 rhs: $fpdec_type<Q>,
                 rounding: Rounding,
-                cum_error: &mut $inner_type,
+                cum_error: &mut $cum_err_type,
             ) -> Option<$fpdec_type<R>> {
                 let opt_inner = checked_div_ext2(self.inner, rhs.inner, P - Q - R, rounding, cum_error);
                 $fpdec_type::<R>::from_opt_inner(opt_inner)

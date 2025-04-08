@@ -175,6 +175,11 @@ pub enum Rounding {
     Ceil,
 }
 
+pub type CumErr16 = i16;
+pub type CumErr32 = i32;
+pub type CumErr64 = i64;
+pub type CumErr128 = i128;
+
 #[cfg(test)]
 mod tests {
     use super::*;

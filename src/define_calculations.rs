@@ -1,6 +1,7 @@
 macro_rules! define_calculations {
     (
         $inner_type:ty,
+        $cum_err_type:ty,
         $digits:expr
     ) => {
         use std::str::FromStr;
@@ -10,7 +11,7 @@ macro_rules! define_calculations {
             b: $inner_type,
             diff_precision: i32, // = P + Q - R
             rounding: Rounding,
-            cum_error: &mut $inner_type,
+            cum_error: &mut $cum_err_type,
         ) -> Option<$inner_type> {
 
             if diff_precision > 0 {
@@ -42,7 +43,7 @@ macro_rules! define_calculations {
             b: $inner_type,
             diff_precision: i32, // = P - Q - R
             rounding: Rounding,
-            cum_error: &mut $inner_type,
+            cum_error: &mut $cum_err_type,
         ) -> Option<$inner_type> {
             if diff_precision > 0 {
                 // a / b / diff_exp
