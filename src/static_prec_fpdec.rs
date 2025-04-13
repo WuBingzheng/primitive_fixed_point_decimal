@@ -39,8 +39,8 @@ where I: FpdecInner
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
     /// overflow occurred.
     ///
-    /// The type of `rhs` can have different base integer `J` and precision `Q`
-    /// with `self`. The type of result must have the same base integer `I`
+    /// The type of `rhs` can have different inner integer `J` and precision `Q`
+    /// with `self`. The type of result must have the same inner integer `I`
     /// while have different precision `R`.
     ///
     /// If the precision of the result's type `R` is less than the sum of
@@ -192,6 +192,18 @@ where I: FpdecInner + fmt::Display
 ///
 /// If you want to skip these limitations, you can parse the string
 /// to float number first and then convert the number to this decimal.
+///
+/// Examples:
+///
+/// ```
+/// use std::str::FromStr;
+/// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
+/// type Decimal = StaticPrecFpdec<i16, 4>;
+///
+/// assert_eq!(Decimal::from_str("1.23"), Decimal::try_from(1.23));
+/// assert_eq!(Decimal::from_str("9999"), Err(ParseError::Overflow));
+/// assert_eq!(Decimal::from_str("1.23456"), Err(ParseError::Precision));
+/// ```
 impl<I, const P: i32> std::str::FromStr for StaticPrecFpdec<I, P>
 where I: FpdecInner
 {
@@ -207,6 +219,9 @@ macro_rules! convert_static_from_int {
             where I: FromPrimitive + FpdecInner
         {
             type Error = ParseError;
+
+            /// Convert from integer. Returning error if overflow occurred
+            /// or lossing precision under `precision < 0`.
             fn try_from(i: $from_int_type) -> Result<Self, Self::Error> {
                 let i2 = I::$from_int_fn(i).ok_or(ParseError::Overflow)?;
                 I::checked_from_int(i2, P).map(Self)
@@ -232,9 +247,11 @@ macro_rules! convert_static_from_float {
         {
             type Error = ParseError;
 
-            #[doc = concat!("Try to convert ", stringify!($float_type), " into StaticPrecFpdec.")]
-            /// Fail if overflow occurred.
+            /// Convert from float type. Returning error if overflow occurred.
             ///
+            /// Since it's hard for the float types to represent decimal fraction
+            /// exactly, so this method always rounds the float number into
+            /// StaticPrecFpdec.
             fn try_from(f: $float_type) -> Result<Self, Self::Error> {
                 let base: $float_type = 10.0;
                 let inner_f = f * base.powi(P) as $float_type;
@@ -247,8 +264,7 @@ macro_rules! convert_static_from_float {
         impl<I, const P: i32> From<StaticPrecFpdec<I, P>> for $float_type
             where I: ToPrimitive + FpdecInner
         {
-            #[doc = concat!("Convert StaticPrecFpdec into ", stringify!($float_type), ".")]
-            ///
+            /// Convert into float type.
             fn from(dec: StaticPrecFpdec<I, P>) -> Self {
                 let base: $float_type = 10.0;
                 dec.0.$to_fn().unwrap() / base.powi(P)

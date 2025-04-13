@@ -119,7 +119,7 @@ mod oob_prec_fpdec;
 
 pub use int_div_cum_error::Rounding;
 pub use crate::static_prec_fpdec::StaticPrecFpdec;
-pub use crate::oob_prec_fpdec::OobPrecFpdec;
+pub use crate::oob_prec_fpdec::{OobPrecFpdec, OobFmt};
 
 /// Error in converting from string.
 #[derive(Debug, Clone, PartialEq, Eq)]
