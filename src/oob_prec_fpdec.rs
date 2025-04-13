@@ -196,7 +196,7 @@ where I: FpdecInner
         I::try_from_str(s, precision).map(Self)
     }
 
-    /// Convert from all kinds of integers. Returning error if overflow occurred
+    /// Convert from all kinds of signed integers. Returning error if overflow occurred
     /// or lossing precision under `precision < 0`.
     ///
     /// Examples:
@@ -210,10 +210,10 @@ where I: FpdecInner
     /// assert_eq!(Decimal::try_from_int(1234, -2), Err(ParseError::Precision));
     /// ```
     pub fn try_from_int<J>(i: J, precision: i32) -> Result<Self, ParseError>
-    where J: ToPrimitive
+    where J: FpdecInner
     {
-        let inner = I::from(i).ok_or(ParseError::Overflow)?;
-        I::checked_from_int(inner, precision).map(Self)
+        let i2 = J::checked_from_int(i, precision)?;
+        I::from(i2).ok_or(ParseError::Overflow).map(Self)
     }
 
     /// Convert from float types, `f32` or `f64`. Returning error if overflow occurred.

@@ -195,7 +195,7 @@ where I: fmt::Display
 ///
 /// assert_eq!(format!("{}", NegPrec::try_from(12300).unwrap()), String::from("12300"));
 /// assert_eq!(format!("{}", NegPrec::try_from(-12300).unwrap()), String::from("-12300"));
-/// assert_eq!(format!("{}", NegPrec::try_from(-3276800.0_f64).unwrap()), String::from("-3276800"));
+/// assert_eq!(format!("{}", NegPrec::try_from(-3276800).unwrap()), String::from("-3276800"));
 /// ```
 impl<I, const P: i32> fmt::Display for StaticPrecFpdec<I, P>
 where I: FpdecInner + fmt::Display
@@ -245,22 +245,17 @@ macro_rules! convert_static_from_int {
             /// Convert from integer. Returning error if overflow occurred
             /// or lossing precision under `precision < 0`.
             fn try_from(i: $from_int_type) -> Result<Self, Self::Error> {
-                let i2 = I::$from_int_fn(i).ok_or(ParseError::Overflow)?;
-                I::checked_from_int(i2, P).map(Self)
+                let i2 = <$from_int_type>::checked_from_int(i, P)?;
+                I::$from_int_fn(i2).ok_or(ParseError::Overflow).map(Self)
             }
         }
     }
 }
 convert_static_from_int!(i8, from_i8);
-convert_static_from_int!(u8, from_u8);
 convert_static_from_int!(i16, from_i16);
-convert_static_from_int!(u16, from_u16);
 convert_static_from_int!(i32, from_i32);
-convert_static_from_int!(u32, from_u32);
 convert_static_from_int!(i64, from_i64);
-convert_static_from_int!(u64, from_u64);
 convert_static_from_int!(i128, from_i128);
-convert_static_from_int!(u128, from_u128);
 
 macro_rules! convert_static_from_float {
     ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
