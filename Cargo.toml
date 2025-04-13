@@ -14,6 +14,8 @@ categories = ["data-structures", "finance", "mathematics"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+int-div-cum-error = {version="0.1", path="../int-div-cum-error"}
+num-traits = "0.2"
 
 [dependencies.serde]
 version = "1.0"
