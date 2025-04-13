@@ -1,10 +1,6 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
-use int_div_cum_error::{
-    PrimSignedInt,
-    Rounding,
-    checked_divide,
-};
+use int_div_cum_error::{Rounding, checked_divide};
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use std::fmt;
 
@@ -20,7 +16,7 @@ use std::fmt;
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
-pub struct StaticPrecFpdec<I, const P: i32>(I);
+pub struct StaticPrecFpdec<I, const P: i32>(pub(crate) I);
 
 impl<I, const P: i32> StaticPrecFpdec<I, P>
 where I: FpdecInner
@@ -139,13 +135,13 @@ where I: FpdecInner
     /// Shrink to a lower precision.
     ///
     /// Equivalent to [`Self::shrink_to_with_rounding`] with `Rounding::Round`.
-    pub fn shrink_to(self, precision: i32) -> Self {
-        self.shrink_to_with_rounding(precision, Rounding::Round)
+    pub fn shrink_to(self, retain_precision: i32) -> Self {
+        self.shrink_to_with_rounding(retain_precision, Rounding::Round)
     }
 
     /// Shrink to a lower precision.
     ///
-    /// The `precision` argument specifies the number of precision to be
+    /// The `retain_precision` argument specifies the number of precision to be
     /// retained, rather than the number to be reduced.
     ///
     /// Examples:
@@ -164,10 +160,10 @@ where I: FpdecInner
     /// ```
     pub fn shrink_to_with_rounding(
         self,
-        precision: i32,
+        retain_precision: i32,
         rounding: Rounding,
     ) -> Self {
-        Self(self.0.shrink_with_rounding(P - precision, rounding))
+        Self(self.0.shrink_with_rounding(P - retain_precision, rounding))
     }
 }
 
@@ -265,7 +261,7 @@ convert_static_from_float!(f32, from_f32, to_f32);
 convert_static_from_float!(f64, from_f64, to_f64);
 
 impl<I, const P: i32> std::ops::Neg for StaticPrecFpdec<I, P>
-where I: PrimSignedInt
+where I: FpdecInner
 {
     type Output = Self;
     fn neg(self) -> Self::Output {
@@ -274,7 +270,7 @@ where I: PrimSignedInt
 }
 
 impl<I, const P: i32> std::ops::Add for StaticPrecFpdec<I, P>
-where I: PrimSignedInt
+where I: FpdecInner
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
@@ -283,7 +279,7 @@ where I: PrimSignedInt
 }
 
 impl<I, const P: i32> std::ops::Sub for StaticPrecFpdec<I, P>
-where I: PrimSignedInt
+where I: FpdecInner
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -292,7 +288,7 @@ where I: PrimSignedInt
 }
 
 impl<I, const P: i32> std::ops::AddAssign for StaticPrecFpdec<I, P>
-where I: PrimSignedInt
+where I: FpdecInner
 {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
@@ -300,7 +296,7 @@ where I: PrimSignedInt
 }
 
 impl<I, const P: i32> std::ops::SubAssign for StaticPrecFpdec<I, P>
-where I: PrimSignedInt
+where I: FpdecInner
 {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
