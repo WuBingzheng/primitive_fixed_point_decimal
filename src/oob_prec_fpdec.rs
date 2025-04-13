@@ -2,7 +2,7 @@ use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
 use crate::static_prec_fpdec::StaticPrecFpdec;
 use int_div_cum_error::{Rounding, checked_divide};
-use num_traits::{cast::ToPrimitive, float::Float};
+use num_traits::{Num, cast::ToPrimitive, float::Float};
 use std::fmt;
 
 
@@ -190,7 +190,9 @@ where I: FpdecInner
     /// assert_eq!(Decimal::try_from_str("9999", 4), Err(ParseError::Overflow));
     /// assert_eq!(Decimal::try_from_str("1.23456", 4), Err(ParseError::Precision));
     /// ```
-    pub fn try_from_str(s: &str, precision: i32) -> Result<Self, ParseError> {
+    pub fn try_from_str(s: &str, precision: i32) -> Result<Self, ParseError>
+        where ParseError: From<<I as Num>::FromStrRadixErr>
+    {
         I::try_from_str(s, precision).map(Self)
     }
 

@@ -6,8 +6,8 @@
 //! they represent values in binary. Here we use integer types to
 //! represent values, and handle fractions in base 10.
 //!
-//! Primitive integers `i16`, `i32`, `i64` and `i128` are used to represent
-//! values, which can represent about 4, 9, 18 and 38 decimal significant
+//! Primitive integers `i8`, `i16`, `i32`, `i64` and `i128` are used to represent
+//! values, which can represent about 2, 4, 9, 18 and 38 decimal significant
 //! digits respectively. So the number `12.345` is stored as `123450`
 //! for decimal with precision `4`. See below to find how to specify
 //! the precision.
@@ -22,14 +22,14 @@
 //!
 //! There are 2 ways to specify the precision: *static* and *out-of-band*:
 //!
-//! - For the *static* type, we use Rust's *const generics* to specify the
-//!   precision. For example, `StaticPrecFpdec<i16, 2>` represents `2` decimal
-//!   precision and its range represented is `-327.68` ~ `327.67`.
+//! - For the *static* type, [`StaticPrecFpdec`], we use Rust's *const generics*
+//!   to specify the precision. For example, `StaticPrecFpdec<i64, 4>` means
+//!   4 precision.
 //!
-//! - For the *out-of-band* type, we do NOT save the precision with our decimal
-//!   types, so it's your job to save it somewhere and apply it in the
-//!   following operations later. For example, `OobPrecFpdec<i16>` represents
-//!   significant digits only but no precision information.
+//! - For the *out-of-band* type, [`OobPrecFpdec`], we do NOT save the
+//!   precision with our decimal types, so it's your job to save it somewhere
+//!   and apply it in the following operations later. For example,
+//!   `OobPrecFpdec<i64>` takes no precision information.
 //!
 //! Generally, the *static* type is more convenient and suitable for most
 //! scenarios. For example, in traditional currency exchange, you can use
@@ -38,7 +38,8 @@
 //! market prices since 6-digit-precision is big enough for all currency
 //! pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 //!
-//! ```ignore
+//! ```
+//! use primitive_fixed_point_decimal::StaticPrecFpdec;
 //! type Balance = StaticPrecFpdec<i64, 2>;
 //! type Price = StaticPrecFpdec<i32, 6>; // 6 is big enough for all markets
 //!
@@ -46,6 +47,7 @@
 //! let price = Price::try_from(146.4730).unwrap();
 //!
 //! let jpy: Balance = usd.checked_mul(price).unwrap();
+//! assert_eq!(jpy, Balance::try_from(180829.70688).unwrap());
 //! ```
 //!
 //! However in some scenarios, such as in cryptocurrency exchange, the
@@ -54,9 +56,16 @@
 //! we need to select different precisions for each market. So it's
 //! the *Out-of-band* type:
 //!
-//! ```ignore
+//! ```
+//! use primitive_fixed_point_decimal::OobPrecFpdec;
 //! type Balance = OobPrecFpdec<i64>;
 //! type Price = OobPrecFpdec<i32>; // no precision set
+//!
+//! struct Market {
+//!     base_asset_precision: i32,
+//!     quote_asset_precision: i32,
+//!     price_precision: i32,
+//! }
 //!
 //! let btc_usdt = Market {
 //!     base_asset_precision: 8,
@@ -64,13 +73,14 @@
 //!     price_precision: 1,
 //! };
 //!
-//! // we need tell the precisions to `try_from_f64()` method
-//! let btc = Balance::try_from_f64(0.34, btc_usdt.base_asset_precision).unwrap();
-//! let price = Price::try_from_f64(81234.0, btc_usdt.price_precision).unwrap();
+//! // we need tell the precisions to `try_from_float()` method
+//! let btc = Balance::try_from_float(0.34, btc_usdt.base_asset_precision).unwrap();
+//! let price = Price::try_from_float(81234.0, btc_usdt.price_precision).unwrap();
 //!
 //! // we need tell the precision difference to `checked_mul()` method
 //! let diff = btc_usdt.base_asset_precision + btc_usdt.price_precision - btc_usdt.quote_asset_precision;
 //! let usdt = btc.checked_mul(price, diff).unwrap();
+//! assert_eq!(usdt, Balance::try_from_float(27619.56, btc_usdt.quote_asset_precision).unwrap());
 //! ```
 //!
 //! Obviously it's verbose to use, but offers greater flexibility.
@@ -79,14 +89,18 @@
 //! type for balance which have different precisions for different assets; and
 //! use *static* type for fee-rate which has a fixed precision:
 //!
-//! ```ignore
+//! ```
+//! use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec};
 //! type Balance = OobPrecFpdec<i64>; // out-of-band type
 //! type FeeRate = StaticPrecFpdec<i16, 6>; // static type
 //!
-//! let btc = Balance::try_from_f64(0.34, btc_precision).unwrap();
+//! let btc_precision = 8;
+//!
+//! let btc = Balance::try_from_float(0.34, btc_precision).unwrap();
 //! let fee_rate = FeeRate::try_from(0.0002).unwrap();
 //!
 //! let fee = btc.checked_mul_static(fee_rate).unwrap();
+//! assert_eq!(fee, Balance::try_from_float(0.000068, btc_precision).unwrap());
 //! ```
 //!
 //! # Characteristics
@@ -130,7 +144,7 @@ pub enum ParseError {
     Invalid,
     /// Overflow.
     Overflow,
-    /// Too many precisions with Rounding::Error specified.
+    /// Too many precisions.
     Precision,
 }
 

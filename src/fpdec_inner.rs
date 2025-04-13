@@ -1,4 +1,4 @@
-//use std::str::FromStr;
+use crate::ParseError;
 use int_div_cum_error::{
     PrimSignedInt,
     Rounding,
@@ -7,8 +7,6 @@ use int_div_cum_error::{
     checked_divide_with_cum_error,
 };
 use num_traits::Num;
-
-use crate::ParseError;
 
 pub trait FpdecInner: Sized + PrimSignedInt {
     fn get_exp(i: usize) -> Option<Self>;
@@ -68,7 +66,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     fn shrink_with_rounding(
         self,
         diff_precision: i32, // = src - dst
-        _rounding: Rounding,
+        rounding: Rounding,
     ) -> Self {
         if diff_precision <= 0 {
             return self;
@@ -79,22 +77,16 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             Some(exp) => {
                 // self / exp * exp
                 let ret = self / exp * exp;
-                ret
-                /*
-                let _remain = self - ret;
-                let carry = match rounding {
-                    Rounding::Floor => 0,
-                    Rounding::Ceil => if remain == 0 { 0 } else { exp },
-                    Rounding::Round => if remain * 2 < exp { 0 } else { exp },
-                };
-                ret + carry
-                */
+                let remain = self - ret;
+                let carry = checked_divide_with_rounding(remain, exp, rounding).unwrap();
+                ret + carry * exp
             }
         }
     }
 
     fn try_from_str(s: &str, precision: i32) -> Result<Self, ParseError>
-        where Self: Num
+        where Self: Num,
+              ParseError: From<<Self as Num>::FromStrRadixErr>
     {
         // sign
         let (s, is_neg) = match s.as_bytes().first() {
@@ -121,8 +113,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             // here precision > 0
             let precision = precision as usize;
 
-            //let mut frac_num = Self::from_str_radix(frac_str, 10)?; // TODO use ?
-            let Ok(mut frac_num) = Self::from_str_radix(frac_str, 10) else {panic!()};
+            let mut frac_num = Self::from_str_radix(frac_str, 10)?;
 
             if frac_len < precision {
                 let diff_exp = Self::get_exp(precision - frac_len)
@@ -140,9 +131,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         let inner = if precision > 0 {
             match Self::get_exp(precision as usize) {
                 Some(exp) => {
-                    let Ok(x) = Self::from_str_radix(int_str, 10) else {panic!()};
-                    x
-                    //Self::from_str_radix(int_str, 10)?
+                    Self::from_str_radix(int_str, 10)?
                         .checked_mul(&exp)
                         .ok_or(ParseError::Overflow)?
                         .checked_add(&frac_num)
@@ -164,9 +153,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
                 return Err(ParseError::Precision);
             }
 
-            //Self::from_str_radix(&int_str[..end], 10)?
-            let Ok(x) = Self::from_str_radix(&int_str[..end], 10) else {panic!()};
-            x
+            Self::from_str_radix(&int_str[..end], 10)?
         };
 
         if is_neg { Ok(-inner) } else { Ok(inner) }
@@ -186,35 +173,50 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             return write!(f, "{}{:0>width$}", self, 0, width=(-precision) as usize);
         }
 
-        todo!();
-
-        /*
         // precision > 0
         let precision = precision as usize;
 
-        if precision <= $digits {
-            let exp = ALL_EXPS[precision];
-            let i = a / exp;
-            let mut frac = a % exp;
-            if frac == 0 {
-                write!(f, "{}", i)
-            } else {
-                if frac < 0 {
-                    frac = -frac;
-                }
-                let mut zeros = 0;
-                while frac % 10 == 0 { // TODO optimize
-                    frac /= 10;
-                    zeros += 1;
-                }
-                write!(f, "{}.{:0>width$}", i, frac, width=precision-zeros)
+        fn strip_zeros<I>(mut n: I) -> (I, usize)
+            where I: PrimSignedInt + Sized
+        {
+            let mut zeros = 0;
+            let ten = I::from(10).unwrap();
+            while (n % ten).is_zero() { // TODO optimize?
+                n = n / ten;
+                zeros += 1;
             }
-        } else if a >= 0 {
-            write!(f, "0.{:0>width$}", a, width=precision)
-        } else {
-            write!(f, "-0.{:0>width$}", a.unsigned_abs(), width=precision)
+            (n, zeros)
         }
-        */
+
+        match Self::get_exp(precision) {
+            Some(exp) => {
+                let i = self / exp;
+                let mut frac = self % exp;
+                if frac.is_zero() {
+                    write!(f, "{}", i)
+                } else {
+                    if frac.is_negative() {
+                        frac = -frac;
+                    }
+                    let (frac, zeros) = strip_zeros(frac);
+                    write!(f, "{}.{:0>width$}", i, frac, width=precision-zeros)
+                }
+            }
+            None => {
+                if !self.is_negative() {
+                    let (n, zeros) = strip_zeros(self);
+                    write!(f, "0.{:0>width$}", n, width=precision-zeros)
+                } else if self != Self::MIN {
+                    let (n, zeros) = strip_zeros(-self);
+                    write!(f, "-0.{:0>width$}", n, width=precision-zeros)
+                } else {
+                    let ten = Self::from(10).unwrap();
+                    let front = self / ten;
+                    let last = self % ten;
+                    write!(f, "-0.{:0>width$}{}", -front, -last, width=precision-1)
+                }
+            }
+        }
     }
 
     fn checked_from_int(self, precision: i32) -> Result<Self, ParseError> {
@@ -267,6 +269,22 @@ macro_rules! calc_mul_div_higher {
     }
 }
 
+impl FpdecInner for i8 {
+    fn get_exp(i: usize) -> Option<Self> {
+        const ALL_EXPS: [i8; 3] = [
+            1, 10_i8.pow(1), 10_i8.pow(2)
+        ];
+
+        ALL_EXPS.get(i).copied()
+    }
+
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding, cum_error: Option<&mut Self>)
+        -> Option<Self>
+    {
+        calc_mul_div_higher!(self, b, c, rounding, cum_error, i8, i16)
+    }
+}
+
 impl FpdecInner for i16 {
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i16; 5] = [
@@ -305,11 +323,13 @@ impl FpdecInner for i32 {
 
 impl FpdecInner for i64 {
     fn get_exp(i: usize) -> Option<Self> {
-        const ALL_EXPS: [i64; 10] = [
+        const ALL_EXPS: [i64; 19] = [
             1,
             10_i64.pow(1), 10_i64.pow(2), 10_i64.pow(3), 10_i64.pow(4),
             10_i64.pow(5), 10_i64.pow(6), 10_i64.pow(7), 10_i64.pow(8),
-            10_i64.pow(9)
+            10_i64.pow(9), 10_i64.pow(10), 10_i64.pow(11), 10_i64.pow(12),
+            10_i64.pow(13), 10_i64.pow(14), 10_i64.pow(15), 10_i64.pow(16),
+            10_i64.pow(17), 10_i64.pow(18),
         ];
 
         ALL_EXPS.get(i).copied()
@@ -322,156 +342,28 @@ impl FpdecInner for i64 {
     }
 }
 
-/*
-pub const fn checked_div_ext2(
-    a: I,
-    b: I,
-    diff_precision: i32, // = P - Q - R
-    rounding: Rounding,
-    cum_error: &mut $cum_err_type,
-) -> Option<I> {
-    if diff_precision > 0 {
-        // a / b / diff_exp
-        if diff_precision <= $digits {
-            let mut tmp: I = 0;
-            let Some(r) = rounding_div!(a, ALL_EXPS[diff_precision as usize], rounding, &mut tmp) else {
-                return None;
-            };
-            rounding_div!(r, b, rounding, cum_error)
-        } else {
-            None
-        }
-    } else if diff_precision < 0 {
-        let diff_precision = -diff_precision as usize;
+impl FpdecInner for i128 {
+    fn get_exp(i: usize) -> Option<Self> {
+        const ALL_EXPS: [i128; 39] = [
+            1,
+            10_i128.pow(1), 10_i128.pow(2), 10_i128.pow(3), 10_i128.pow(4),
+            10_i128.pow(5), 10_i128.pow(6), 10_i128.pow(7), 10_i128.pow(8),
+            10_i128.pow(9), 10_i128.pow(10), 10_i128.pow(11), 10_i128.pow(12),
+            10_i128.pow(13), 10_i128.pow(14), 10_i128.pow(15), 10_i128.pow(16),
+            10_i128.pow(17), 10_i128.pow(18), 10_i128.pow(19), 10_i128.pow(20),
+            10_i128.pow(21), 10_i128.pow(22), 10_i128.pow(23), 10_i128.pow(24),
+            10_i128.pow(25), 10_i128.pow(26), 10_i128.pow(27), 10_i128.pow(28),
+            10_i128.pow(29), 10_i128.pow(30), 10_i128.pow(31), 10_i128.pow(32),
+            10_i128.pow(33), 10_i128.pow(34), 10_i128.pow(35), 10_i128.pow(36),
+            10_i128.pow(37), 10_i128.pow(38),
+        ];
 
-        // a * diff_exp / b
-    if diff_precision <= $digits {
-        calc_mul_div(a, ALL_EXPS[diff_precision], b, rounding, cum_error)
-    } else {
-        None
+        ALL_EXPS.get(i).copied()
     }
-    } else {
-        rounding_div!(a, b, rounding, cum_error)
+
+    fn calc_mul_div(self, _b: Self, _c: Self, _rounding: Rounding, _cum_error: Option<&mut Self>)
+    -> Option<Self>
+    {
+        todo!();
     }
 }
-
-pub fn try_from_str(s: &str, precision: i32) -> Result<I, ParseError> {
-    // sign
-    let (s, is_neg) = match s.as_bytes().first() {
-        None => return Err(ParseError::Empty),
-        Some(b'-') => (&s[1..], true),
-        Some(b'+') => (&s[1..], false),
-        _ => (s, false),
-    };
-
-    if s == "0" || s == "0." {
-        return Ok(0);
-    }
-    if s.is_empty() {
-        return Err(ParseError::Empty);
-    }
-
-    // fraction part
-    let (int_str, frac_num) = if let Some((int_str, frac_str)) = s.split_once('.') {
-        let frac_len = frac_str.len();
-        if frac_len as i32 > precision {
-            return Err(ParseError::Precision);
-        }
-
-        // here precision > 0
-        let precision = precision as usize;
-
-        let mut frac_num = <I>::from_str(frac_str)?;
-
-        if frac_len < precision {
-            let diff_exp = *ALL_EXPS.get(precision - frac_len)
-                .ok_or(ParseError::Overflow)?;
-            frac_num = frac_num.checked_mul(diff_exp)
-                .ok_or(ParseError::Overflow)?;
-        }
-
-        (int_str, frac_num)
-    } else {
-        (s, 0)
-    };
-
-    // integer part
-    let inner = if precision > $digits {
-        if int_str != "0" {
-            return Err(ParseError::Overflow);
-        }
-        frac_num
-    } else if precision >= 0 {
-        <I>::from_str(int_str)?
-            .checked_mul(ALL_EXPS[precision as usize])
-            .ok_or(ParseError::Overflow)?
-            .checked_add(frac_num)
-            .ok_or(ParseError::Overflow)?
-
-    } else {
-        if s.len() <= -precision as usize {
-            return Err(ParseError::Precision);
-        }
-        let end = s.len() - (-precision) as usize;
-        if *&int_str[end..].chars().all(|ch| ch == '0') {
-            return Err(ParseError::Precision);
-        }
-
-        <I>::from_str(&int_str[..end])?
-    };
-
-    if is_neg { Ok(-inner) } else { Ok(inner) }
-}
-
-fn display_fmt(a: I, precision: i32, f: &mut fmt::Formatter)
-    -> Result<(), fmt::Error> 
-{
-    if a == 0 {
-        return write!(f, "0");
-    }
-    if precision == 0 {
-        return write!(f, "{}", a);
-    }
-    if precision < 0 {
-        return write!(f, "{}{:0>width$}", a, 0, width=(-precision) as usize);
-    }
-
-    // precision > 0
-    let precision = precision as usize;
-
-    if precision <= $digits {
-        let exp = ALL_EXPS[precision];
-        let i = a / exp;
-        let mut frac = a % exp;
-        if frac == 0 {
-            write!(f, "{}", i)
-        } else {
-            if frac < 0 {
-                frac = -frac;
-            }
-            let mut zeros = 0;
-            while frac % 10 == 0 { // TODO optimize
-                frac /= 10;
-                zeros += 1;
-            }
-            write!(f, "{}.{:0>width$}", i, frac, width=precision-zeros)
-        }
-    } else if a >= 0 {
-        write!(f, "0.{:0>width$}", a, width=precision)
-    } else {
-        write!(f, "-0.{:0>width$}", a.unsigned_abs(), width=precision)
-    }
-}
-
-fn check_from_int(i2: I, precision: i32) -> Option<I> {
-    if precision > $digits {
-        None
-    } else if precision > 0 {
-        i2.checked_mul(ALL_EXPS[precision as usize])
-    } else if -precision > $digits {
-        Some(0)
-    } else {
-        i2.checked_div(ALL_EXPS[-precision as usize])
-    }
-}
-*/

@@ -1,7 +1,7 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
 use int_div_cum_error::{Rounding, checked_divide};
-use num_traits::cast::{FromPrimitive, ToPrimitive};
+use num_traits::{Num, cast::{FromPrimitive, ToPrimitive}};
 use std::fmt;
 
 
@@ -176,6 +176,27 @@ where I: fmt::Display
 }
 
 /// Format the decimal.
+///
+/// Examples:
+///
+/// ```
+/// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
+/// type Decimal = StaticPrecFpdec<i16, 4>;
+/// type BigPrec = StaticPrecFpdec<i16, 8>;
+/// type NegPrec = StaticPrecFpdec<i16, -2>;
+///
+/// assert_eq!(format!("{}", Decimal::try_from(1.230).unwrap()), String::from("1.23"));
+/// assert_eq!(format!("{}", Decimal::try_from(-1.230).unwrap()), String::from("-1.23")); // negative
+/// assert_eq!(format!("{}", Decimal::try_from(-3.2768).unwrap()), String::from("-3.2768")); // i16::MIN
+///
+/// assert_eq!(format!("{}", BigPrec::try_from(0.00001230).unwrap()), String::from("0.0000123"));
+/// assert_eq!(format!("{}", BigPrec::try_from(-0.00001230).unwrap()), String::from("-0.0000123"));
+/// assert_eq!(format!("{}", BigPrec::try_from(-0.00032768).unwrap()), String::from("-0.00032768")); // i16::MIN
+///
+/// assert_eq!(format!("{}", NegPrec::try_from(12300).unwrap()), String::from("12300"));
+/// assert_eq!(format!("{}", NegPrec::try_from(-12300).unwrap()), String::from("-12300"));
+/// assert_eq!(format!("{}", NegPrec::try_from(-3276800.0_f64).unwrap()), String::from("-3276800"));
+/// ```
 impl<I, const P: i32> fmt::Display for StaticPrecFpdec<I, P>
 where I: FpdecInner + fmt::Display
 {
@@ -205,7 +226,8 @@ where I: FpdecInner + fmt::Display
 /// assert_eq!(Decimal::from_str("1.23456"), Err(ParseError::Precision));
 /// ```
 impl<I, const P: i32> std::str::FromStr for StaticPrecFpdec<I, P>
-where I: FpdecInner
+where I: FpdecInner,
+      ParseError: From<<I as Num>::FromStrRadixErr>
 {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, ParseError> {
