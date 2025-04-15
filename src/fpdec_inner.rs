@@ -8,6 +8,10 @@ use int_div_cum_error::{
 use num_traits::Num;
 
 pub trait FpdecInner: Sized + PrimSignedInt {
+    const MAX: Self;
+    const MIN: Self;
+    const MAX_POWERS: Self;
+
     fn get_exp(i: usize) -> Option<Self>;
 
     fn calc_mul_div(self,

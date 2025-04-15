@@ -5,6 +5,10 @@ use int_div_cum_error::{
 };
 
 impl FpdecInner for i128 {
+    const MAX: Self = i128::MAX;
+    const MIN: Self = i128::MIN;
+    const MAX_POWERS: Self = 10_i128.pow(38);
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i128; 39] = [
             1,

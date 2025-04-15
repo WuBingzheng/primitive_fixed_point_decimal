@@ -37,6 +37,10 @@ macro_rules! calc_mul_div_higher {
 }
 
 impl FpdecInner for i8 {
+    const MAX: Self = i8::MAX;
+    const MIN: Self = i8::MIN;
+    const MAX_POWERS: Self = 10_i8.pow(2);
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i8; 3] = [
             1, 10_i8.pow(1), 10_i8.pow(2)
@@ -53,6 +57,10 @@ impl FpdecInner for i8 {
 }
 
 impl FpdecInner for i16 {
+    const MAX: Self = i16::MAX;
+    const MIN: Self = i16::MIN;
+    const MAX_POWERS: Self = 10_i16.pow(4);
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i16; 5] = [
             1,
@@ -70,6 +78,10 @@ impl FpdecInner for i16 {
 }
 
 impl FpdecInner for i32 {
+    const MAX: Self = i32::MAX;
+    const MIN: Self = i32::MIN;
+    const MAX_POWERS: Self = 10_i32.pow(9);
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i32; 10] = [
             1,
@@ -89,6 +101,10 @@ impl FpdecInner for i32 {
 }
 
 impl FpdecInner for i64 {
+    const MAX: Self = i64::MAX;
+    const MIN: Self = i64::MIN;
+    const MAX_POWERS: Self = 10_i64.pow(18);
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i64; 19] = [
             1,

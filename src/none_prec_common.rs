@@ -15,6 +15,9 @@ macro_rules! define_none_prec_common {
         /// The smallest positive value, 10<sup>-P</sup> .
         pub const MIN_POSITIVE: Self = Self(I::ONE);
 
+        /// The largest powers of 10.
+        pub const MAX_POWERS: Self = Self(I::MAX_POWERS);
+
         /// Computes the absolute value of self.
         /// 
         /// # Overflow behavior
