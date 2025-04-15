@@ -105,6 +105,56 @@ let fee = btc.checked_mul_static(fee_rate).unwrap();
 assert_eq!(fee, Balance::try_from_float(0.000068, btc_precision).unwrap());
 ```
 
+## Cumulative Error
+
+As is well known, integer division can lead to precision loss; multiplication
+of decimals can also create higher precision and may potentially cause
+precision loss.
+
+What we are discussing here is another issue: multiple multiplication and
+division may cause cumulative error, thereby exacerbating the issue of
+precision loss. See [`int-div-cum-error`](https://docs.rs/int-div-cum-error)
+for more information.
+
+In this crate, functions with the `cum_error` parameter provide control
+over cumulative error based on `int-div-cum-error`.
+
+Take the transaction fees in an exchange as an example. An order may be
+executed in multiple deals, with each deal independently charged a fee.
+For instance, the funds precision is 2 decimal places, one order quantity
+is `10.00` USD, and the fee rate is `0.003`. If the order is executed all
+at once, the fee would be `10.00 × 0.003 = 0.03` USD. However, if the
+order is executed in five separate deals, each worth 2.00 USD, then the
+fee for each deal would be `2.00 × 0.003 = 0.006` USD, which rounds up
+to `0.01` USD. Then the total fee for the 5 deals would be `0.05` USD,
+which is significantly higher than the original `0.03` USD.
+
+However, this issue can be avoid if using the cum_error mechanism.
+
+```rust
+use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, Rounding};
+type Balance = StaticPrecFpdec<i64, 2>;
+type FeeRate = StaticPrecFpdec<i16, 6>;
+
+let deal = Balance::try_from(2.00).unwrap(); // 2.00 for each deal
+let fee_rate = FeeRate::try_from(0.003).unwrap();
+
+// normal case
+let mut total_fee = Balance::ZERO;
+for _ in 0..5 {
+    total_fee += deal.checked_mul(fee_rate).unwrap(); // 2.00*0.003=0.006 ~> 0.01
+}
+assert_eq!(total_fee, Balance::try_from(0.05).unwrap()); // 0.05 is too big
+
+// use `cum_error`
+let mut cum_error = 0;
+let mut total_fee = Balance::ZERO;
+for _ in 0..5 {
+    total_fee += deal.checked_mul_ext(fee_rate, Rounding::Round, Some(&mut cum_error)).unwrap();
+}
+assert_eq!(total_fee, Balance::try_from(0.03).unwrap()); // 0.03 is right
+```
+
 ## Characteristics
 
 It is a common idea to use integers to represent decimals. But we have
