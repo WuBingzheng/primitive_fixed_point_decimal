@@ -126,17 +126,36 @@
 //! # Status
 //!
 //! More tests are need before ready for production.
-mod fpdec_inner;
-mod none_prec_common;
+
+
+// modules:
+//
+//     StaticPrecFpdec                            OobPrecFpdec
+//            ^                                         ^
+//            +---------------\          /--------------+
+//            |               |          |              |
+// +----------+--------+  +---+----------+---+  +-------+----------+
+// | static_prec_fpdec |  | none_prec_common |  |  oob_prec_fpdec  |
+// +-------------------+  +------------------+  +------------------+
+// +---------------------------------------------------------------+
+// |                fpdec_inner: FpdecInner trait                  |
+// +---------------------------------------------------------------+
+// +------------------------------------+  +-----------------------+
+// |    inner_shorts: i8,i16,i32,i64    |  |   inner_i128: i128    |
+// +------------------------------------+  +-----------------------+
 mod static_prec_fpdec;
 mod oob_prec_fpdec;
+mod none_prec_common;
+mod fpdec_inner;
+mod inner_shorts;
+mod inner_i128;
 
 pub use int_div_cum_error::Rounding;
 pub use crate::static_prec_fpdec::StaticPrecFpdec;
 pub use crate::oob_prec_fpdec::{OobPrecFpdec, OobFmt};
 
 /// Error in converting from string.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseError {
     /// Empty string.
     Empty,

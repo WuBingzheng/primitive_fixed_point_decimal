@@ -1,7 +1,7 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
 use int_div_cum_error::{Rounding, checked_divide};
-use num_traits::{Num, cast::{FromPrimitive, ToPrimitive}};
+use num_traits::{Num, cast::FromPrimitive};
 use std::fmt;
 
 
@@ -31,7 +31,7 @@ where I: FpdecInner
         self,
         rhs: StaticPrecFpdec<J, Q>,
     ) -> Option<StaticPrecFpdec<I, R>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.checked_mul_ext(rhs, Rounding::Round, None)
     }
@@ -77,7 +77,7 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<StaticPrecFpdec<I, R>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.0.checked_mul_ext(I::from(rhs.0)?, P + Q - R, rounding, cum_error)
             .map(StaticPrecFpdec::<I, R>)
@@ -91,7 +91,7 @@ where I: FpdecInner
         self,
         rhs: StaticPrecFpdec<J, Q>,
     ) -> Option<StaticPrecFpdec<I, R>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.checked_div_ext(rhs, Rounding::Round, None)
     }
@@ -126,7 +126,7 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<StaticPrecFpdec<I, R>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.0.checked_div_ext(I::from(rhs.0)?, P - Q - R, rounding, cum_error)
             .map(StaticPrecFpdec::<I, R>)
@@ -236,9 +236,9 @@ where I: FpdecInner,
 }
 
 macro_rules! convert_static_from_int {
-    ($from_int_type:ty, $from_int_fn:ident) => {
+    ($from_int_type:ty) => {
         impl<I, const P: i32> TryFrom<$from_int_type> for StaticPrecFpdec<I, P>
-            where I: FromPrimitive + FpdecInner
+            where I: FpdecInner
         {
             type Error = ParseError;
 
@@ -246,16 +246,16 @@ macro_rules! convert_static_from_int {
             /// or lossing precision under `precision < 0`.
             fn try_from(i: $from_int_type) -> Result<Self, Self::Error> {
                 let i2 = <$from_int_type>::checked_from_int(i, P)?;
-                I::$from_int_fn(i2).ok_or(ParseError::Overflow).map(Self)
+                I::from(i2).ok_or(ParseError::Overflow).map(Self)
             }
         }
     }
 }
-convert_static_from_int!(i8, from_i8);
-convert_static_from_int!(i16, from_i16);
-convert_static_from_int!(i32, from_i32);
-convert_static_from_int!(i64, from_i64);
-convert_static_from_int!(i128, from_i128);
+convert_static_from_int!(i8);
+convert_static_from_int!(i16);
+convert_static_from_int!(i32);
+convert_static_from_int!(i64);
+convert_static_from_int!(i128);
 
 macro_rules! convert_static_from_float {
     ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
@@ -279,7 +279,7 @@ macro_rules! convert_static_from_float {
         }
 
         impl<I, const P: i32> From<StaticPrecFpdec<I, P>> for $float_type
-            where I: ToPrimitive + FpdecInner
+            where I: FpdecInner
         {
             /// Convert into float type.
             fn from(dec: StaticPrecFpdec<I, P>) -> Self {
@@ -342,7 +342,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
 #[cfg(feature="serde")]
 impl<I, const P: i32> Serialize for StaticPrecFpdec<I, P>
-where I: ToPrimitive + FpdecInner + fmt::Display
+where I: FpdecInner + fmt::Display
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer

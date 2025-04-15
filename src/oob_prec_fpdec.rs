@@ -2,7 +2,7 @@ use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
 use crate::static_prec_fpdec::StaticPrecFpdec;
 use int_div_cum_error::{Rounding, checked_divide};
-use num_traits::{Num, cast::ToPrimitive, float::Float};
+use num_traits::{Num, float::Float};
 use std::fmt;
 
 
@@ -32,7 +32,7 @@ where I: FpdecInner
         rhs: OobPrecFpdec<J>,
         diff_precision: i32, // P(self) + P(rhs) - P(result)
     ) -> Option<OobPrecFpdec<I>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.checked_mul_ext(rhs, diff_precision, Rounding::Round, None)
     }
@@ -79,7 +79,7 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<OobPrecFpdec<I>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.0.checked_mul_ext(I::from(rhs.0)?, diff_precision, rounding, cum_error)
             .map(Self)
@@ -94,7 +94,7 @@ where I: FpdecInner
         rhs: OobPrecFpdec<J>,
         diff_precision: i32, // P(self) - P(rhs) - P(result)
     ) -> Option<OobPrecFpdec<I>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.checked_div_ext(rhs, diff_precision, Rounding::Round, None)
     }
@@ -131,7 +131,7 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<OobPrecFpdec<I>>
-        where J: ToPrimitive
+        where J: FpdecInner
     {
         self.0.checked_div_ext(I::from(rhs.0)?, diff_precision, rounding, cum_error)
             .map(Self)
@@ -230,7 +230,7 @@ where I: FpdecInner
     /// assert_eq!(Decimal::try_from_float(1.234, 4), Decimal::try_from_str("1.234", 4));
     /// ```
     pub fn try_from_float<F>(f: F, precision: i32) -> Result<Self, ParseError>
-    where F: ToPrimitive + Float
+    where F: Float
     {
         let base = F::from(10.0).unwrap();
         let inner_f = f * base.powi(precision);
@@ -264,7 +264,7 @@ where I: FpdecInner
     /// Equivalent to [`Self::checked_mul_static_ext`] with `Rounding::Round`.
     pub fn checked_mul_static<J, const Q: i32>(self, rhs: StaticPrecFpdec<J, Q>)
         -> Option<Self>
-    where J: ToPrimitive
+    where J: FpdecInner
     {
         self.checked_mul_static_ext(rhs, Rounding::Round, None)
     }
@@ -293,7 +293,7 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<Self>
-    where J: ToPrimitive
+    where J: FpdecInner
     {
         self.0.checked_mul_ext(I::from(rhs.0)?, Q, rounding, cum_error)
             .map(Self)
@@ -304,7 +304,7 @@ where I: FpdecInner
     /// Equivalent to [`Self::checked_div_static_ext`] with `Rounding::Round`.
     pub fn checked_div_static<J, const Q: i32>(self, rhs: StaticPrecFpdec<J, Q>)
         -> Option<Self>
-    where J: ToPrimitive
+    where J: FpdecInner
     {
         self.checked_div_static_ext(rhs, Rounding::Round, None)
     }
@@ -333,7 +333,7 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<Self>
-    where J: ToPrimitive
+    where J: FpdecInner
     {
         self.0.checked_div_ext(I::from(rhs.0)?, -Q, rounding, cum_error)
             .map(Self)
