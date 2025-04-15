@@ -20,6 +20,20 @@ so fixed-point is more suitable than floating-point.
 
 So here are the *primitive fixed-point* decimal types.
 
+## Characteristics
+
+It is a common idea to use integers to represent decimals. But we have
+some specialties.
+
+The `+`, `-` and comparison operations only perform between same types in
+same precision. There is no implicitly type or precision conversion.
+This makes sence, for we do not want to add balance type by
+fee-rate type. This also makes the operations very fast.
+
+However, the `*` and `/` operations accept operand with different
+types and precisions. Certainly we need to multiply between balance type
+and fee-rate type.
+
 ## Specify Precision
 
 There are 2 ways to specify the precision: *static* and *out-of-band*:
@@ -154,20 +168,6 @@ for _ in 0..5 {
 }
 assert_eq!(total_fee, Balance::try_from(0.03).unwrap()); // 0.03 is right
 ```
-
-## Characteristics
-
-It is a common idea to use integers to represent decimals. But we have
-some specialties.
-
-The `+`, `-` and comparison operations only perform between same types in
-same precision. There is no implicitly type or precision conversion.
-This makes sence. For example, you do not want to add balance type by
-exchange rate type. This also makes the operations very fast.
-
-However, the `*` and `/` operations accept operand with different
-precisions. Certainly we need to multiply between balance type
-and exchange rates type.
 
 ## Features
 
