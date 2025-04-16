@@ -18,7 +18,8 @@
 //!
 //! So here are the *primitive fixed-point* decimal types.
 //!
-//! # Characteristics
+//!
+//! # Distinctive
 //!
 //! It is a common idea to use integers to represent decimals. But we have
 //! some specialties.
@@ -29,8 +30,12 @@
 //! fee-rate type. This also makes the operations very fast.
 //!
 //! However, the `*` and `/` operations accept operand with different
-//! types and precisions. Certainly we need to multiply between balance type
-//! and fee-rate type.
+//! types and precisions, and allow the result's precision specified. Certainly
+//! we need to multiply between balance type and fee-rate type and get
+//! fee type.
+//!
+//! See the examples below for more details.
+//!
 //!
 //! # Specify Precision
 //!
@@ -53,15 +58,15 @@
 //! pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 //!
 //! ```
-//! use primitive_fixed_point_decimal::StaticPrecFpdec;
+//! use primitive_fixed_point_decimal::{StaticPrecFpdec, fpdec};
 //! type Balance = StaticPrecFpdec<i64, 2>;
 //! type Price = StaticPrecFpdec<i32, 6>; // 6 is big enough for all markets
 //!
-//! let usd = Balance::try_from(1234.56).unwrap();
-//! let price = Price::try_from(146.4730).unwrap();
+//! let usd: Balance = fpdec!(1234.56);
+//! let price: Price = fpdec!(146.4730);
 //!
 //! let jpy: Balance = usd.checked_mul(price).unwrap();
-//! assert_eq!(jpy, Balance::try_from(180829.70688).unwrap());
+//! assert_eq!(jpy, fpdec!(180829.70688));
 //! ```
 //!
 //! However in some scenarios, such as in cryptocurrency exchange, the
@@ -71,7 +76,7 @@
 //! the *Out-of-band* type:
 //!
 //! ```
-//! use primitive_fixed_point_decimal::OobPrecFpdec;
+//! use primitive_fixed_point_decimal::{OobPrecFpdec, fpdec};
 //! type Balance = OobPrecFpdec<i64>;
 //! type Price = OobPrecFpdec<i32>; // no precision set
 //!
@@ -87,14 +92,14 @@
 //!     price_precision: 1,
 //! };
 //!
-//! // we need tell the precisions to `try_from_float()` method
-//! let btc = Balance::try_from_float(0.34, btc_usdt.base_asset_precision).unwrap();
-//! let price = Price::try_from_float(81234.0, btc_usdt.price_precision).unwrap();
+//! // we need tell the precision, for `try_from()` and `fpdec!` both.
+//! let btc = Balance::try_from((0.34, btc_usdt.base_asset_precision)).unwrap();
+//! let price: Price = fpdec!(81234.0, btc_usdt.price_precision);
 //!
 //! // we need tell the precision difference to `checked_mul()` method
 //! let diff = btc_usdt.base_asset_precision + btc_usdt.price_precision - btc_usdt.quote_asset_precision;
 //! let usdt = btc.checked_mul(price, diff).unwrap();
-//! assert_eq!(usdt, Balance::try_from_float(27619.56, btc_usdt.quote_asset_precision).unwrap());
+//! assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_precision));
 //! ```
 //!
 //! Obviously it's verbose to use, but offers greater flexibility.
@@ -104,18 +109,19 @@
 //! use *static* type for fee-rate which has a fixed precision:
 //!
 //! ```
-//! use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec};
+//! use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
 //! type Balance = OobPrecFpdec<i64>; // out-of-band type
 //! type FeeRate = StaticPrecFpdec<i16, 6>; // static type
 //!
 //! let btc_precision = 8;
 //!
-//! let btc = Balance::try_from_float(0.34, btc_precision).unwrap();
-//! let fee_rate = FeeRate::try_from(0.0002).unwrap();
+//! let btc: Balance = fpdec!(0.34, btc_precision);
+//! let fee_rate: FeeRate = fpdec!(0.0002);
 //!
 //! let fee = btc.checked_mul_static(fee_rate).unwrap();
-//! assert_eq!(fee, Balance::try_from_float(0.000068, btc_precision).unwrap());
+//! assert_eq!(fee, fpdec!(0.000068, btc_precision));
 //! ```
+//!
 //!
 //! # Cumulative Error
 //!
@@ -144,19 +150,19 @@
 //! However, this issue can be avoid if using the cum_error mechanism.
 //!
 //! ```
-//! use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, Rounding};
+//! use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, Rounding, fpdec};
 //! type Balance = StaticPrecFpdec<i64, 2>;
 //! type FeeRate = StaticPrecFpdec<i16, 6>;
 //!
-//! let deal = Balance::try_from(2.00).unwrap(); // 2.00 for each deal
-//! let fee_rate = FeeRate::try_from(0.003).unwrap();
+//! let deal: Balance = fpdec!(2.00); // 2.00 for each deal
+//! let fee_rate: FeeRate = fpdec!(0.003);
 //!
 //! // normal case
 //! let mut total_fee = Balance::ZERO;
 //! for _ in 0..5 {
 //!     total_fee += deal.checked_mul(fee_rate).unwrap(); // 2.00*0.003=0.006 ~> 0.01
 //! }
-//! assert_eq!(total_fee, Balance::try_from(0.05).unwrap()); // 0.05 is too big
+//! assert_eq!(total_fee, fpdec!(0.05)); // 0.05 is too big
 //!
 //! // use `cum_error`
 //! let mut cum_error = 0;
@@ -164,14 +170,16 @@
 //! for _ in 0..5 {
 //!     total_fee += deal.checked_mul_ext(fee_rate, Rounding::Round, Some(&mut cum_error)).unwrap();
 //! }
-//! assert_eq!(total_fee, Balance::try_from(0.03).unwrap()); // 0.03 is right
+//! assert_eq!(total_fee, fpdec!(0.03)); // 0.03 is right
 //! ```
+//!
 //!
 //! # Features
 //!
 //! - `serde` enables serde traits integration (`Serialize`/`Deserialize`)
 //!   for *static* precision type. While the *out-of-band* type does not
 //!   support serde at all.
+//!
 //!
 //! # Status
 //!
@@ -226,4 +234,31 @@ impl From<ParseIntError> for ParseError {
             _ => ParseError::Overflow,
         }
     }
+}
+
+/// Build decimal from integer or float number.
+///
+/// It depends on TryFrom trait and will panic if `try_from()` fails.
+///
+/// It accepts 1 argument for `StaticPrecFpdec`, and accepts 1 extra
+/// argument for `OobPrecFpdec`, the out-of-band precision of course.
+///
+/// Examples:
+///
+/// ```
+/// use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
+/// type DecStatic = StaticPrecFpdec<i64, 2>;
+/// type DecOob = OobPrecFpdec<i64>;
+///
+/// let d1: DecStatic = fpdec!(1.23); // 1 argument for StaticPrecFpdec
+/// let d2: DecOob = fpdec!(1.23, 2); // 2 arguments for OobPrecFpdec
+/// ```
+#[macro_export]
+macro_rules! fpdec {
+    ($inner:expr) => {
+        StaticPrecFpdec::try_from($inner).unwrap()
+    };
+    ($inner:expr, $precision:expr) => {
+        OobPrecFpdec::try_from(($inner, $precision)).unwrap()
+    };
 }

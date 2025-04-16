@@ -20,7 +20,8 @@ so fixed-point is more suitable than floating-point.
 
 So here are the *primitive fixed-point* decimal types.
 
-## Characteristics
+
+## Distinctive
 
 It is a common idea to use integers to represent decimals. But we have
 some specialties.
@@ -31,8 +32,12 @@ This makes sence, for we do not want to add balance type by
 fee-rate type. This also makes the operations very fast.
 
 However, the `*` and `/` operations accept operand with different
-types and precisions. Certainly we need to multiply between balance type
-and fee-rate type.
+types and precisions, and allow the result's precision specified. Certainly
+we need to multiply between balance type and fee-rate type and get
+fee type.
+
+See the examples below for more details.
+
 
 ## Specify Precision
 
@@ -55,15 +60,15 @@ market prices since 6-digit-precision is big enough for all currency
 pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 
 ```rust
-use primitive_fixed_point_decimal::StaticPrecFpdec;
+use primitive_fixed_point_decimal::{StaticPrecFpdec, fpdec};
 type Balance = StaticPrecFpdec<i64, 2>;
 type Price = StaticPrecFpdec<i32, 6>; // 6 is big enough for all markets
 
-let usd = Balance::try_from(1234.56).unwrap();
-let price = Price::try_from(146.4730).unwrap();
+let usd: Balance = fpdec!(1234.56);
+let price: Price = fpdec!(146.4730);
 
 let jpy: Balance = usd.checked_mul(price).unwrap();
-assert_eq!(jpy, Balance::try_from(180829.70688).unwrap());
+assert_eq!(jpy, fpdec!(180829.70688));
 ```
 
 However in some scenarios, such as in cryptocurrency exchange, the
@@ -73,7 +78,7 @@ we need to select different precisions for each market. So it's
 the *Out-of-band* type:
 
 ```rust
-use primitive_fixed_point_decimal::OobPrecFpdec;
+use primitive_fixed_point_decimal::{OobPrecFpdec, fpdec};
 type Balance = OobPrecFpdec<i64>;
 type Price = OobPrecFpdec<i32>; // no precision set
 
@@ -89,14 +94,14 @@ let btc_usdt = Market {
     price_precision: 1,
 };
 
-// we need tell the precisions to `try_from_float()` method
-let btc = Balance::try_from_float(0.34, btc_usdt.base_asset_precision).unwrap();
-let price = Price::try_from_float(81234.0, btc_usdt.price_precision).unwrap();
+// we need tell the precision, for `try_from()` and `fpdec!` both.
+let btc = Balance::try_from((0.34, btc_usdt.base_asset_precision)).unwrap();
+let price: Price = fpdec!(81234.0, btc_usdt.price_precision);
 
 // we need tell the precision difference to `checked_mul()` method
 let diff = btc_usdt.base_asset_precision + btc_usdt.price_precision - btc_usdt.quote_asset_precision;
 let usdt = btc.checked_mul(price, diff).unwrap();
-assert_eq!(usdt, Balance::try_from_float(27619.56, btc_usdt.quote_asset_precision).unwrap());
+assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_precision));
 ```
 
 Obviously it's verbose to use, but offers greater flexibility.
@@ -106,18 +111,19 @@ type for balance which have different precisions for different assets; and
 use *static* type for fee-rate which has a fixed precision:
 
 ```rust
-use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec};
+use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
 type Balance = OobPrecFpdec<i64>; // out-of-band type
 type FeeRate = StaticPrecFpdec<i16, 6>; // static type
 
 let btc_precision = 8;
 
-let btc = Balance::try_from_float(0.34, btc_precision).unwrap();
-let fee_rate = FeeRate::try_from(0.0002).unwrap();
+let btc: Balance = fpdec!(0.34, btc_precision);
+let fee_rate: FeeRate = fpdec!(0.0002);
 
 let fee = btc.checked_mul_static(fee_rate).unwrap();
-assert_eq!(fee, Balance::try_from_float(0.000068, btc_precision).unwrap());
+assert_eq!(fee, fpdec!(0.000068, btc_precision));
 ```
+
 
 ## Cumulative Error
 
@@ -146,19 +152,19 @@ which is significantly higher than the original `0.03` USD.
 However, this issue can be avoid if using the cum_error mechanism.
 
 ```rust
-use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, Rounding};
+use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, Rounding, fpdec};
 type Balance = StaticPrecFpdec<i64, 2>;
 type FeeRate = StaticPrecFpdec<i16, 6>;
 
-let deal = Balance::try_from(2.00).unwrap(); // 2.00 for each deal
-let fee_rate = FeeRate::try_from(0.003).unwrap();
+let deal: Balance = fpdec!(2.00); // 2.00 for each deal
+let fee_rate: FeeRate = fpdec!(0.003);
 
 // normal case
 let mut total_fee = Balance::ZERO;
 for _ in 0..5 {
     total_fee += deal.checked_mul(fee_rate).unwrap(); // 2.00*0.003=0.006 ~> 0.01
 }
-assert_eq!(total_fee, Balance::try_from(0.05).unwrap()); // 0.05 is too big
+assert_eq!(total_fee, fpdec!(0.05)); // 0.05 is too big
 
 // use `cum_error`
 let mut cum_error = 0;
@@ -166,14 +172,16 @@ let mut total_fee = Balance::ZERO;
 for _ in 0..5 {
     total_fee += deal.checked_mul_ext(fee_rate, Rounding::Round, Some(&mut cum_error)).unwrap();
 }
-assert_eq!(total_fee, Balance::try_from(0.03).unwrap()); // 0.03 is right
+assert_eq!(total_fee, fpdec!(0.03)); // 0.03 is right
 ```
+
 
 ## Features
 
 - `serde` enables serde traits integration (`Serialize`/`Deserialize`)
   for *static* precision type. While the *out-of-band* type does not
   support serde at all.
+
 
 ## Status
 

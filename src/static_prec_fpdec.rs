@@ -54,22 +54,25 @@ where I: FpdecInner
     /// # Examples
     /// 
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding};
+    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding, fpdec};
     /// type Balance = StaticPrecFpdec<i64, 2>;
     /// type FeeRate = StaticPrecFpdec<i16, 4>; // different types
     ///
-    /// let balance = Balance::try_from(12.60).unwrap();
-    /// let rate = FeeRate::try_from(0.01).unwrap();
+    /// let balance: Balance = fpdec!(12.60);
+    /// let rate: FeeRate = fpdec!(0.01);
     ///
     /// // calculate fee 3 times with same arguments, with `cum_error`.
     /// // but have different results: 0.13, 0.13 and 0.12
     /// let mut cum_error: i64 = 0;
-    /// assert_eq!(balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_error)),
-    ///     Balance::try_from(0.13).ok());
-    /// assert_eq!(balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_error)),
-    ///     Balance::try_from(0.13).ok());
-    /// assert_eq!(balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_error)),
-    ///     Balance::try_from(0.12).ok());
+    ///
+    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_error)).unwrap();
+    /// assert_eq!(fee, fpdec!(0.13));
+    ///
+    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_error)).unwrap();
+    /// assert_eq!(fee, fpdec!(0.13));
+    ///
+    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_error)).unwrap();
+    /// assert_eq!(fee, fpdec!(0.12)); // here, different
     /// ```
     pub fn checked_mul_ext<J, const Q: i32, const R: i32>(
         self,
@@ -110,15 +113,15 @@ where I: FpdecInner
     /// # Examples
     /// 
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding};
+    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding, fpdec};
     /// type Balance = StaticPrecFpdec<i64, 2>;
     /// type FeeRate = StaticPrecFpdec<i16, 4>; // different types
     ///
-    /// let rate = FeeRate::try_from(0.03).unwrap();
-    /// let fee = Balance::try_from(0.13).unwrap();
+    /// let rate: FeeRate = fpdec!(0.03);
+    /// let fee: Balance = fpdec!(0.13);
     ///
-    /// assert_eq!(fee.checked_div_ext(rate, Rounding::Ceiling, None),
-    ///     Balance::try_from(4.34).ok());
+    /// let balance: Balance = fee.checked_div_ext(rate, Rounding::Ceiling, None).unwrap();
+    /// assert_eq!(balance, fpdec!(4.34));
     /// ```
     pub fn checked_div_ext<J, const Q: i32, const R: i32>(
         self,
@@ -147,16 +150,14 @@ where I: FpdecInner
     /// Examples:
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding};
+    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding, fpdec};
     /// type Price = StaticPrecFpdec<i64, 8>;
     ///
-    /// let price = Price::try_from(12.12345678).unwrap();
+    /// let price: Price = fpdec!(12.12345678);
     ///
-    /// assert_eq!(price.shrink_to(6),
-    ///     Price::try_from(12.123457).unwrap()); // Rounding::Round as default
+    /// assert_eq!(price.shrink_to(6), fpdec!(12.123457)); // Rounding::Round as default
     ///
-    /// assert_eq!(price.shrink_to_with_rounding(6, Rounding::Floor),
-    ///     Price::try_from(12.123456).unwrap());
+    /// assert_eq!(price.shrink_to_with_rounding(6, Rounding::Floor), fpdec!(12.123456));
     /// ```
     pub fn shrink_to_with_rounding(
         self,
@@ -235,7 +236,7 @@ where I: FpdecInner,
     }
 }
 
-macro_rules! convert_static_from_int {
+macro_rules! convert_from_int {
     ($from_int_type:ty) => {
         impl<I, const P: i32> TryFrom<$from_int_type> for StaticPrecFpdec<I, P>
             where I: FpdecInner
@@ -244,6 +245,19 @@ macro_rules! convert_static_from_int {
 
             /// Convert from integer. Returning error if overflow occurred
             /// or lossing precision under `precision < 0`.
+            ///
+            /// Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
+            /// type Decimal = StaticPrecFpdec<i32, 4>;
+            /// type NegPrec = StaticPrecFpdec<i32, -4>;
+            ///
+            /// assert_eq!(Decimal::try_from(123).unwrap(), Decimal::from_str("123").unwrap());
+            /// assert_eq!(Decimal::try_from(9999999), Err(ParseError::Overflow));
+            /// assert_eq!(NegPrec::try_from(123), Err(ParseError::Precision));
+            /// ```
             fn try_from(i: $from_int_type) -> Result<Self, Self::Error> {
                 let i2 = <$from_int_type>::checked_from_int(i, P)?;
                 I::from(i2).ok_or(ParseError::Overflow).map(Self)
@@ -251,13 +265,13 @@ macro_rules! convert_static_from_int {
         }
     }
 }
-convert_static_from_int!(i8);
-convert_static_from_int!(i16);
-convert_static_from_int!(i32);
-convert_static_from_int!(i64);
-convert_static_from_int!(i128);
+convert_from_int!(i8);
+convert_from_int!(i16);
+convert_from_int!(i32);
+convert_from_int!(i64);
+convert_from_int!(i128);
 
-macro_rules! convert_static_from_float {
+macro_rules! convert_from_float {
     ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
         impl<I, const P: i32> TryFrom<$float_type> for StaticPrecFpdec<I, P>
             where I: FromPrimitive + FpdecInner
@@ -269,6 +283,17 @@ macro_rules! convert_static_from_float {
             /// Since it's hard for the float types to represent decimal fraction
             /// exactly, so this method always rounds the float number into
             /// StaticPrecFpdec.
+            ///
+            /// Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
+            /// type Decimal = StaticPrecFpdec<i32, 4>;
+            ///
+            /// assert_eq!(Decimal::try_from(1.23).unwrap(), Decimal::from_str("1.23").unwrap());
+            /// assert_eq!(Decimal::try_from(1.23456789).unwrap(), Decimal::from_str("1.2346").unwrap());
+            /// ```
             fn try_from(f: $float_type) -> Result<Self, Self::Error> {
                 let base: $float_type = 10.0;
                 let inner_f = f * base.powi(P) as $float_type;
@@ -282,6 +307,18 @@ macro_rules! convert_static_from_float {
             where I: FpdecInner
         {
             /// Convert into float type.
+            ///
+            /// Examples:
+            ///
+            /// ```
+            /// use std::str::FromStr;
+            /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError, fpdec};
+            /// type Decimal = StaticPrecFpdec<i32, 4>;
+            ///
+            /// let dec: Decimal = fpdec!(1.23);
+            /// let f: f32 = dec.into();
+            /// assert_eq!(f, 1.23);
+            /// ```
             fn from(dec: StaticPrecFpdec<I, P>) -> Self {
                 let base: $float_type = 10.0;
                 dec.0.$to_fn().unwrap() / base.powi(P)
@@ -290,8 +327,8 @@ macro_rules! convert_static_from_float {
     }
 }
 
-convert_static_from_float!(f32, from_f32, to_f32);
-convert_static_from_float!(f64, from_f64, to_f64);
+convert_from_float!(f32, from_f32, to_f32);
+convert_from_float!(f64, from_f64, to_f64);
 
 impl<I, const P: i32> std::ops::Neg for StaticPrecFpdec<I, P>
 where I: FpdecInner
