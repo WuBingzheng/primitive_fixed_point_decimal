@@ -48,8 +48,8 @@ where I: FpdecInner
     /// are required and precision may be lost.
     /// You can specify the rounding type and cumulative error.
     ///
-    /// See [the module-level documentation](super) for more information and
-    /// examples about cumulative error.
+    /// See the [cumulative error section](index.html#cumulative-error)
+    /// for more information and examples.
     ///
     /// # Examples
     /// 
@@ -107,8 +107,8 @@ where I: FpdecInner
     /// while have different precision `R`.
     ///
     /// You can specify the rounding type and cumulative error.
-    /// See [the module-level documentation](super) for more information and
-    /// examples about cumulative error.
+    /// See the [cumulative error section](index.html#cumulative-error)
+    /// for more information and examples.
     ///
     /// # Examples
     /// 

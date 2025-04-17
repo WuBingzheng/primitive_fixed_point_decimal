@@ -68,11 +68,10 @@ macro_rules! define_none_prec_common {
 
         /// Checked division by integer with rounding and cumulative-error.
         ///
-        /// Computes `self / n`, returning `None` if `n == 0` or precison loss with
-        /// `Rounding::Unexpected` specified.
+        /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
         ///
-        /// See the *cumulative error* section in the [module-level documentation](super)
-        /// for more information abount cumulative error.
+        /// See the [cumulative error section](index.html#cumulative-error)
+        /// for more information and examples.
         pub fn checked_div_int_ext(
             self,
             n: I,

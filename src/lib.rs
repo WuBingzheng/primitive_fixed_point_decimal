@@ -236,9 +236,10 @@ impl From<ParseIntError> for ParseError {
     }
 }
 
-/// Build decimal from integer or float number.
+/// Build decimal from integer or float number easily.
 ///
-/// It depends on TryFrom trait and will panic if `try_from()` fails.
+/// It wraps TryFrom trait and will panic if `try_from()` fails. So it
+/// should be used by const numbers or for non-production codes.
 ///
 /// It accepts 1 argument for `StaticPrecFpdec`, and accepts 1 extra
 /// argument for `OobPrecFpdec`, the out-of-band precision of course.
@@ -255,10 +256,10 @@ impl From<ParseIntError> for ParseError {
 /// ```
 #[macro_export]
 macro_rules! fpdec {
-    ($inner:expr) => {
-        StaticPrecFpdec::try_from($inner).unwrap()
+    ($n:expr) => {
+        StaticPrecFpdec::try_from($n).unwrap()
     };
-    ($inner:expr, $precision:expr) => {
-        OobPrecFpdec::try_from(($inner, $precision)).unwrap()
+    ($n:expr, $precision:expr) => {
+        OobPrecFpdec::try_from(($n, $precision)).unwrap()
     };
 }
