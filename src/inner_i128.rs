@@ -1,8 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
-use int_div_cum_error::{
-    Rounding,
-    checked_divide,
-};
+use int_div_cum_error::{Rounding, checked_divide};
 
 impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;

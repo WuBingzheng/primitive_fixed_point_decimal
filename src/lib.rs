@@ -214,6 +214,7 @@ pub use crate::oob_prec_fpdec::{OobPrecFpdec, OobFmt};
 
 /// Error in converting from string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ParseError {
     /// Empty string.
     Empty,

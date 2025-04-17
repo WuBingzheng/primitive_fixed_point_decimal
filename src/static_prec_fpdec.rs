@@ -83,7 +83,7 @@ where I: FpdecInner
         where J: FpdecInner
     {
         self.0.checked_mul_ext(I::from(rhs.0)?, P + Q - R, rounding, cum_error)
-            .map(StaticPrecFpdec::<I, R>)
+            .map(StaticPrecFpdec)
     }
 
     /// Checked division. Computes `self / rhs`, returning `None` if
@@ -132,7 +132,7 @@ where I: FpdecInner
         where J: FpdecInner
     {
         self.0.checked_div_ext(I::from(rhs.0)?, P - Q - R, rounding, cum_error)
-            .map(StaticPrecFpdec::<I, R>)
+            .map(StaticPrecFpdec)
     }
 
     /// Shrink to a lower precision.
@@ -395,7 +395,8 @@ where I: FpdecInner + fmt::Display
 
 #[cfg(feature="serde")]
 impl<'de, I, const P: i32> Deserialize<'de> for StaticPrecFpdec<I, P>
-where I: FromPrimitive + FpdecInner
+where I: FromPrimitive + FpdecInner,
+      ParseError: From<<I as Num>::FromStrRadixErr>
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: Deserializer<'de>
@@ -409,14 +410,15 @@ where I: FromPrimitive + FpdecInner
         macro_rules! visit_num {
             ($func_name:ident, $num_type:ty) => {
                 fn $func_name<E: de::Error>(self, n: $num_type) -> Result<Self::Value, E> {
-                    StaticPrecFpdec::<I, P>::try_from(n)
+                    StaticPrecFpdec::try_from(n)
                         .map_err(|_| E::custom("decimal overflow"))
                 }
             }
         }
 
         impl<'de, I, const P: i32> Visitor<'de> for StaticPrecFpdecVistor<I, P>
-        where I: FromPrimitive + FpdecInner
+        where I: FromPrimitive + FpdecInner,
+              ParseError: From<<I as Num>::FromStrRadixErr>
         {
             type Value = StaticPrecFpdec<I, P>;
 
@@ -425,24 +427,19 @@ where I: FromPrimitive + FpdecInner
             }
 
             fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                StaticPrecFpdec::<I, P>::from_str(s)
+                StaticPrecFpdec::from_str(s)
                     .map_err(|e| E::custom(format!("decimal {:?}", e)))
             }
 
             visit_num!(visit_f32, f32);
             visit_num!(visit_f64, f64);
             visit_num!(visit_i8, i8);
-            visit_num!(visit_u8, u8);
             visit_num!(visit_i16, i16);
-            visit_num!(visit_u16, u16);
             visit_num!(visit_i32, i32);
-            visit_num!(visit_u32, u32);
             visit_num!(visit_i64, i64);
-            visit_num!(visit_u64, u64);
             visit_num!(visit_i128, i128);
-            visit_num!(visit_u128, u128);
         }
 
-        deserializer.deserialize_any(StaticPrecFpdecVistor::<I, P>(PhantomData::<I>))
+        deserializer.deserialize_any(StaticPrecFpdecVistor(PhantomData))
     }
 }
