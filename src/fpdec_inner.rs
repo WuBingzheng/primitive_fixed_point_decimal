@@ -194,15 +194,16 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         match Self::get_exp(precision) {
             Some(exp) => {
                 let i = self / exp;
-                let mut frac = self % exp;
+                let frac = self % exp;
                 if frac.is_zero() {
                     write!(f, "{}", i)
                 } else {
-                    if frac.is_negative() {
-                        frac = -frac;
+                    let (frac, zeros) = strip_zeros(frac.abs());
+                    if i.is_zero() && (self ^ exp).is_negative() {
+                        write!(f, "-0.{:0>width$}", frac, width=precision-zeros)
+                    } else {
+                        write!(f, "{}.{:0>width$}", i, frac, width=precision-zeros)
                     }
-                    let (frac, zeros) = strip_zeros(frac);
-                    write!(f, "{}.{:0>width$}", i, frac, width=precision-zeros)
                 }
             }
             None => {
