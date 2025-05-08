@@ -4,6 +4,7 @@ use crate::static_prec_fpdec::StaticPrecFpdec;
 use int_div_cum_error::{Rounding, checked_divide};
 use num_traits::{Num, cast::FromPrimitive, float::Float};
 use std::fmt;
+use std::str::FromStr;
 
 
 /// Out-of-band-precision fixed-point decimal.
@@ -53,7 +54,7 @@ where I: FpdecInner
     /// for more information and examples.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use primitive_fixed_point_decimal::{OobPrecFpdec, Rounding, fpdec};
     /// type Balance = OobPrecFpdec<i64>;
@@ -115,7 +116,7 @@ where I: FpdecInner
     /// for more information and examples.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use primitive_fixed_point_decimal::{OobPrecFpdec, Rounding, fpdec};
     /// type Balance = OobPrecFpdec<i64>;
@@ -417,21 +418,29 @@ where I: FpdecInner
     }
 }
 
-/// Wrapper to display OobPrecFpdec.
+/// Wrapper to display/load OobPrecFpdec.
 ///
 /// Since the precision of OobPrecFpdec is out-of-band, we can not
-/// display it directly. We have to give the precision to display.
-/// `OobFmt` merge the OobPrecFpdec and precision together to display.
+/// display or load it directly. We have to give the precision.
+/// `OobFmt` merges the OobPrecFpdec and precision together to display/load.
+///
+/// So `OobFmt` is available for `serde`.
 ///
 /// Examples:
 ///
 /// ```
 /// use primitive_fixed_point_decimal::{OobPrecFpdec, OobFmt, fpdec};
-/// type Decimal = OobPrecFpdec<i64>;
+/// type Decimal = OobPrecFpdec<i32>;
 ///
 /// let d: Decimal = fpdec!(3.14, 4);
 ///
+/// // display
 /// assert_eq!(format!("pi is {}", OobFmt(d, 4)), String::from("pi is 3.14"));
+///
+/// // load from string
+/// let of: OobFmt<i32> = "3.14".parse().unwrap();
+/// let d2: Decimal = of.rescale(4).unwrap();
+/// assert_eq!(d, d2);
 /// ```
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
 pub struct OobFmt<I>(pub OobPrecFpdec<I>, pub i32);
@@ -442,5 +451,139 @@ where I: FpdecInner + fmt::Display
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let precision = self.1;
         self.0.0.display_fmt(precision, f)
+    }
+}
+
+/// Load from string and guess the precision by counting the fraction part.
+///
+/// Examples:
+///
+/// ```
+/// use primitive_fixed_point_decimal::{OobPrecFpdec, OobFmt, fpdec, ParseError};
+/// type DecFmt = OobFmt<i16>;
+///
+/// // normal cases
+/// assert_eq!("3.14".parse::<DecFmt>(), Ok(OobFmt(fpdec!(3.14, 2), 2)));
+/// assert_eq!("-3.14".parse::<DecFmt>(), Ok(OobFmt(fpdec!(-3.14, 2), 2)));
+///
+/// // large precision
+/// assert_eq!("0.000000000314".parse::<DecFmt>(), Ok(OobFmt(fpdec!(3.14e-10, 12), 12)));
+///
+/// // negative precison
+/// assert_eq!("314000000000".parse::<DecFmt>(), Ok(OobFmt(fpdec!(3.14e11, -9), -9)));
+///
+/// // too large precision
+/// assert_eq!("1.000000000314".parse::<DecFmt>(), Err(ParseError::Precision));
+///
+/// // overflow
+/// assert_eq!("31415.926".parse::<DecFmt>(), Err(ParseError::Overflow));
+/// ```
+impl<I> FromStr for OobFmt<I>
+where I: FpdecInner,
+      ParseError: From<<I as Num>::FromStrRadixErr>
+{
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (inner, precision) = I::try_from_str_only(s)?;
+        Ok(OobFmt(OobPrecFpdec(inner), precision))
+    }
+}
+
+impl<I> OobFmt<I>
+where I: FpdecInner
+{
+    /// Convert to OobPrecFpdec with precision specified.
+    ///
+    /// Return error if overflow occurred (to bigger precision) or precision
+    /// lost (to smaller precision).
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{OobPrecFpdec, OobFmt, fpdec, ParseError};
+    /// type DecFmt = OobFmt<i16>;
+    ///
+    /// let df = "3.14".parse::<DecFmt>().unwrap();
+    /// assert_eq!(df.rescale(4), Ok(fpdec!(3.14, 4)));
+    /// assert_eq!(df.rescale(1), Err(ParseError::Precision));
+    /// assert_eq!(df.rescale(10), Err(ParseError::Overflow));
+    /// ```
+    pub fn rescale(self, precision: i32) -> Result<OobPrecFpdec<I>, ParseError> {
+        let OobFmt(dec, prec0) = self;
+
+        if precision == prec0 {
+            Ok(dec)
+
+        } else if precision > prec0 {
+            let inner = I::get_exp((precision - prec0) as usize)
+                .ok_or(ParseError::Overflow)?
+                .checked_mul(&dec.0)
+                .ok_or(ParseError::Overflow)?;
+            Ok(OobPrecFpdec(inner))
+
+        } else {
+            let diff_exp = I::get_exp((prec0 - precision) as usize)
+                .ok_or(ParseError::Precision)?;
+            let inner = dec.0 / diff_exp;
+            if (dec.0 % diff_exp).is_zero() {
+                Ok(OobPrecFpdec(inner))
+            } else {
+                Err(ParseError::Precision)
+            }
+        }
+    }
+}
+
+#[cfg(feature="serde")]
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+
+#[cfg(feature="serde")]
+impl<I> Serialize for OobFmt<I>
+where I: FpdecInner + fmt::Display
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        serializer.collect_str(self)
+    }
+}
+
+/// Because we need to guess the precision, so we can load from
+/// string only, but not integer or float numbers.
+#[cfg(feature="serde")]
+impl<'de, I> Deserialize<'de> for OobFmt<I>
+where I: FromPrimitive + FpdecInner,
+      ParseError: From<<I as Num>::FromStrRadixErr>
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        use serde::de::{self, Visitor};
+        use std::str::FromStr;
+        use std::marker::PhantomData;
+
+        struct OobFmtVistor<I>(PhantomData<I>);
+
+        impl<'de, I> Visitor<'de> for OobFmtVistor<I>
+        where I: FromPrimitive + FpdecInner,
+              ParseError: From<<I as Num>::FromStrRadixErr>
+        {
+            type Value = OobFmt<I>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "decimal")
+            }
+
+            fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
+                OobFmt::from_str(s)
+                    .map_err(|e| E::custom(format!("decimal {:?}", e)))
+            }
+        }
+
+        // TODO:
+        // 1. why deserialize_any() works for StaticPrecFpdec?
+        // 2. move to serde.rs?
+        // 3. more rescale() to fpdec_inner.rs?
+        deserializer.deserialize_str(OobFmtVistor(PhantomData))
     }
 }

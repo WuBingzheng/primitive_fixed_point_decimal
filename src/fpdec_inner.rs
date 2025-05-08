@@ -162,6 +162,54 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         if is_neg { Ok(-inner) } else { Ok(inner) }
     }
 
+    fn try_from_str_only(s: &str) -> Result<(Self, i32), ParseError>
+        where Self: Num,
+              ParseError: From<<Self as Num>::FromStrRadixErr>
+    {
+        // sign
+        let (s, is_neg) = match s.as_bytes().first() {
+            None => return Err(ParseError::Empty),
+            Some(b'-') => (&s[1..], true),
+            Some(b'+') => (&s[1..], false),
+            _ => (s, false),
+        };
+
+        if s == "0" || s == "0." {
+            return Ok((Self::ZERO, 0));
+        }
+        if s.is_empty() {
+            return Err(ParseError::Empty);
+        }
+
+        let (inner, precision) = if let Some((int_str, frac_str)) = s.split_once('.') {
+            let int_num = Self::from_str_radix(int_str, 10)?;
+            let frac_num = Self::from_str_radix(frac_str, 10)?;
+
+            let inner = if int_num.is_zero() {
+                // only fraction part
+                frac_num
+            } else {
+                // exp * integer + fraction
+                Self::get_exp(frac_str.len())
+                    .ok_or(ParseError::Precision)?
+                    .checked_mul(&int_num)
+                    .ok_or(ParseError::Overflow)?
+                    .checked_add(&frac_num)
+                    .ok_or(ParseError::Overflow)?
+            };
+            (inner, frac_str.len() as i32)
+
+        } else {
+            // only integer part
+            let new_int_str = s.trim_end_matches('0');
+            let diff = s.len() - new_int_str.len();
+            (Self::from_str_radix(new_int_str, 10)?, -(diff as i32))
+        };
+
+        let inner = if is_neg { -inner } else { inner };
+        Ok((inner, precision))
+    }
+
     fn display_fmt(self, precision: i32, f: &mut std::fmt::Formatter)
         -> Result<(), std::fmt::Error> 
         where Self: std::fmt::Display
