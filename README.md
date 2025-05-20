@@ -26,10 +26,14 @@ So here are the *primitive fixed-point* decimal types.
 It is a common idea to use integers to represent decimals. But we have
 some specialties.
 
+The decimal types here keep their precision for their whole lifetime
+instead of changing their precision as soon as you perform an operation.
+
 The `+`, `-` and comparison operations only perform between same types in
 same precision. There is no implicitly type or precision conversion.
 This makes sence, for we do not want to add balance type by
-fee-rate type. This also makes the operations very fast.
+fee-rate type. Even for two balance types we do not want to add
+USD by CNY. This also makes the operations very fast.
 
 However, the `*` and `/` operations accept operand with different
 types and precisions, and allow the result's precision specified. Certainly
