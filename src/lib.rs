@@ -258,9 +258,9 @@ impl From<ParseIntError> for ParseError {
 #[macro_export]
 macro_rules! fpdec {
     ($n:expr) => {
-        StaticPrecFpdec::try_from($n).unwrap()
+        primitive_fixed_point_decimal::StaticPrecFpdec::try_from($n).unwrap()
     };
     ($n:expr, $precision:expr) => {
-        OobPrecFpdec::try_from(($n, $precision)).unwrap()
+        primitive_fixed_point_decimal::OobPrecFpdec::try_from(($n, $precision)).unwrap()
     };
 }
