@@ -237,12 +237,21 @@ macro_rules! convert_from_int {
             /// type Decimal = OobPrecFpdec<i32>;
             ///
             /// assert_eq!(Decimal::try_from((123, 4)).unwrap(), Decimal::try_from_str("123", 4).unwrap());
+            /// assert_eq!(Decimal::try_from((123_i8, 4)).unwrap(), Decimal::try_from_str("123", 4).unwrap());
+            /// assert_eq!(Decimal::try_from((120000000000_i64, -10)).unwrap(), Decimal::try_from_str("120000000000", -10).unwrap());
             /// assert_eq!(Decimal::try_from((9999999, 4)), Err(ParseError::Overflow));
             /// assert_eq!(Decimal::try_from((123, -4)), Err(ParseError::Precision));
             /// ```
             fn try_from(i: ($from_int_type, i32)) -> Result<Self, Self::Error> {
-                let i2 = <$from_int_type>::checked_from_int(i.0, i.1)?;
-                I::from(i2).ok_or(ParseError::Overflow).map(Self)
+                if i.1 > 0 {
+                    // convert from type i to I first
+                    let i2 = I::from(i.0).ok_or(ParseError::Overflow)?;
+                    I::checked_from_int(i2, i.1).map(Self)
+                } else {
+                    // convert to fpdec inner first
+                    let i2 = <$from_int_type>::checked_from_int(i.0, i.1)?;
+                    I::from(i2).ok_or(ParseError::Overflow).map(Self)
+                }
             }
         }
     }
