@@ -241,6 +241,13 @@ impl From<ParseIntError> for ParseError {
     }
 }
 
+use std::fmt;
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 /// Build decimal from integer or float number easily.
 ///
 /// It wraps TryFrom trait and will panic if `try_from()` fails. So it
