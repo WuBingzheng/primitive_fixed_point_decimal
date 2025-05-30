@@ -152,7 +152,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
                 return Err(ParseError::Precision);
             }
             let end = s.len() - (-precision) as usize;
-            if *&int_str[end..].chars().all(|ch| ch == '0') {
+            if !int_str[end..].chars().all(|ch| ch == '0') {
                 return Err(ParseError::Precision);
             }
 

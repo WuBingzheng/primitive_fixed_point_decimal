@@ -251,16 +251,25 @@ macro_rules! convert_from_int {
             /// ```
             /// use std::str::FromStr;
             /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
-            /// type Decimal = StaticPrecFpdec<i32, 4>;
-            /// type NegPrec = StaticPrecFpdec<i32, -4>;
+            /// type Decimal = StaticPrecFpdec<i32, 6>;
+            /// type NegPrec = StaticPrecFpdec<i16, -6>;
             ///
             /// assert_eq!(Decimal::try_from(123).unwrap(), Decimal::from_str("123").unwrap());
+            /// assert_eq!(Decimal::try_from(123_i8).unwrap(), Decimal::from_str("123").unwrap());
+            /// assert_eq!(NegPrec::try_from(12000000).unwrap(), NegPrec::from_str("12000000").unwrap());
             /// assert_eq!(Decimal::try_from(9999999), Err(ParseError::Overflow));
             /// assert_eq!(NegPrec::try_from(123), Err(ParseError::Precision));
             /// ```
             fn try_from(i: $from_int_type) -> Result<Self, Self::Error> {
-                let i2 = <$from_int_type>::checked_from_int(i, P)?;
-                I::from(i2).ok_or(ParseError::Overflow).map(Self)
+                if P > 0 {
+                    // convert from type i to I first
+                    let i2 = I::from(i).ok_or(ParseError::Overflow)?;
+                    I::checked_from_int(i2, P).map(Self)
+                } else {
+                    // convert to fpdec inner first
+                    let i2 = <$from_int_type>::checked_from_int(i, P)?;
+                    I::from(i2).ok_or(ParseError::Overflow).map(Self)
+                }
             }
         }
     }
