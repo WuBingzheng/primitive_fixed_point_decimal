@@ -16,6 +16,7 @@ categories = ["data-structures", "finance", "mathematics"]
 [dependencies]
 int-div-cum-error = "0.2"
 num-traits = "0.2"
+thiserror = "2.0.12"
 
 [dependencies.serde]
 version = "1.0"
