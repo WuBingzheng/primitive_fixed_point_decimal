@@ -217,16 +217,20 @@ pub use crate::static_prec_fpdec::StaticPrecFpdec;
 pub use crate::oob_prec_fpdec::{OobPrecFpdec, OobFmt};
 
 /// Error in converting from string.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ParseError {
     /// Empty string.
+    #[error("empty string")]
     Empty,
     /// Invalid digit in the string.
+    #[error("invalid digit")]
     Invalid,
     /// Overflow.
+    #[error("overflow")]
     Overflow,
-    /// Too many precisions.
+    /// Precision out of range.
+    #[error("precision out of range")]
     Precision,
 }
 
@@ -238,13 +242,6 @@ impl From<ParseIntError> for ParseError {
             IntErrorKind::InvalidDigit => ParseError::Invalid,
             _ => ParseError::Overflow,
         }
-    }
-}
-
-use std::fmt;
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
     }
 }
 
