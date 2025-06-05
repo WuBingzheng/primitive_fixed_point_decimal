@@ -1,11 +1,10 @@
 use crate::fpdec_inner::FpdecInner;
-use crate::ParseError;
 use crate::static_prec_fpdec::StaticPrecFpdec;
-use int_div_cum_error::{Rounding, checked_divide};
-use num_traits::{Num, cast::FromPrimitive, float::Float};
+use crate::ParseError;
+use int_div_cum_error::{checked_divide, Rounding};
+use num_traits::{cast::FromPrimitive, float::Float, Num};
 use std::fmt;
 use std::str::FromStr;
-
 
 /// Out-of-band-precision fixed-point decimal.
 ///
@@ -20,7 +19,8 @@ use std::str::FromStr;
 pub struct OobPrecFpdec<I>(I);
 
 impl<I> OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     crate::none_prec_common::define_none_prec_common!();
 
@@ -33,7 +33,8 @@ where I: FpdecInner
         rhs: OobPrecFpdec<J>,
         diff_precision: i32, // P(self) + P(rhs) - P(result)
     ) -> Option<OobPrecFpdec<I>>
-        where J: FpdecInner
+    where
+        J: FpdecInner,
     {
         self.checked_mul_ext(rhs, diff_precision, Rounding::Round, None)
     }
@@ -83,9 +84,11 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<OobPrecFpdec<I>>
-        where J: FpdecInner
+    where
+        J: FpdecInner,
     {
-        self.0.checked_mul_ext(I::from(rhs.0)?, diff_precision, rounding, cum_error)
+        self.0
+            .checked_mul_ext(I::from(rhs.0)?, diff_precision, rounding, cum_error)
             .map(Self)
     }
 
@@ -98,7 +101,8 @@ where I: FpdecInner
         rhs: OobPrecFpdec<J>,
         diff_precision: i32, // P(self) - P(rhs) - P(result)
     ) -> Option<OobPrecFpdec<I>>
-        where J: FpdecInner
+    where
+        J: FpdecInner,
     {
         self.checked_div_ext(rhs, diff_precision, Rounding::Round, None)
     }
@@ -135,9 +139,11 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<OobPrecFpdec<I>>
-        where J: FpdecInner
+    where
+        J: FpdecInner,
     {
-        self.0.checked_div_ext(I::from(rhs.0)?, diff_precision, rounding, cum_error)
+        self.0
+            .checked_div_ext(I::from(rhs.0)?, diff_precision, rounding, cum_error)
             .map(Self)
     }
 
@@ -167,11 +173,7 @@ where I: FpdecInner
     /// assert_eq!(price.shrink_with_rounding(2, Rounding::Floor),
     ///     fpdec!(12.123456, 8));
     /// ```
-    pub fn shrink_with_rounding(
-        self,
-        reduce_precision: i32,
-        rounding: Rounding,
-    ) -> Self {
+    pub fn shrink_with_rounding(self, reduce_precision: i32, rounding: Rounding) -> Self {
         Self(self.0.shrink_with_rounding(reduce_precision, rounding))
     }
 
@@ -195,7 +197,8 @@ where I: FpdecInner
     /// assert_eq!(Decimal::try_from_str("1.23456", 4), Err(ParseError::Precision));
     /// ```
     pub fn try_from_str(s: &str, precision: i32) -> Result<Self, ParseError>
-        where ParseError: From<<I as Num>::FromStrRadixErr>
+    where
+        ParseError: From<<I as Num>::FromStrRadixErr>,
     {
         I::try_from_str(s, precision).map(Self)
     }
@@ -212,7 +215,8 @@ where I: FpdecInner
     /// assert_eq!(dec.into_float::<f32>(4), 1.234);
     /// ```
     pub fn into_float<F>(self, precision: i32) -> F
-    where F: Float
+    where
+        F: Float,
     {
         let base = F::from(10.0).unwrap();
         F::from(self.0).unwrap() / base.powi(precision)
@@ -222,7 +226,8 @@ where I: FpdecInner
 macro_rules! convert_from_int {
     ($from_int_type:ty) => {
         impl<I> TryFrom<($from_int_type, i32)> for OobPrecFpdec<I>
-            where I: FpdecInner
+        where
+            I: FpdecInner,
         {
             type Error = ParseError;
 
@@ -254,7 +259,7 @@ macro_rules! convert_from_int {
                 }
             }
         }
-    }
+    };
 }
 convert_from_int!(i8);
 convert_from_int!(i16);
@@ -265,7 +270,8 @@ convert_from_int!(i128);
 macro_rules! convert_from_float {
     ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
         impl<I> TryFrom<($float_type, i32)> for OobPrecFpdec<I>
-            where I: FromPrimitive + FpdecInner
+        where
+            I: FromPrimitive + FpdecInner,
         {
             type Error = ParseError;
 
@@ -293,22 +299,22 @@ macro_rules! convert_from_float {
                     .ok_or(ParseError::Overflow)
             }
         }
-    }
+    };
 }
 
 convert_from_float!(f32, from_f32, to_f32);
 convert_from_float!(f64, from_f64, to_f64);
 
-
 impl<I> OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     /// Checked multiplication with StaticPrecFpdec.
     ///
     /// Equivalent to [`Self::checked_mul_static_ext`] with `Rounding::Round`.
-    pub fn checked_mul_static<J, const Q: i32>(self, rhs: StaticPrecFpdec<J, Q>)
-        -> Option<Self>
-    where J: FpdecInner
+    pub fn checked_mul_static<J, const Q: i32>(self, rhs: StaticPrecFpdec<J, Q>) -> Option<Self>
+    where
+        J: FpdecInner,
     {
         self.checked_mul_static_ext(rhs, Rounding::Round, None)
     }
@@ -337,18 +343,20 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<Self>
-    where J: FpdecInner
+    where
+        J: FpdecInner,
     {
-        self.0.checked_mul_ext(I::from(rhs.get_inner())?, Q, rounding, cum_error)
+        self.0
+            .checked_mul_ext(I::from(rhs.get_inner())?, Q, rounding, cum_error)
             .map(Self)
     }
 
     /// Checked division with StaticPrecFpdec.
     ///
     /// Equivalent to [`Self::checked_div_static_ext`] with `Rounding::Round`.
-    pub fn checked_div_static<J, const Q: i32>(self, rhs: StaticPrecFpdec<J, Q>)
-        -> Option<Self>
-    where J: FpdecInner
+    pub fn checked_div_static<J, const Q: i32>(self, rhs: StaticPrecFpdec<J, Q>) -> Option<Self>
+    where
+        J: FpdecInner,
     {
         self.checked_div_static_ext(rhs, Rounding::Round, None)
     }
@@ -377,15 +385,18 @@ where I: FpdecInner
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<Self>
-    where J: FpdecInner
+    where
+        J: FpdecInner,
     {
-        self.0.checked_div_ext(I::from(rhs.get_inner())?, -Q, rounding, cum_error)
+        self.0
+            .checked_div_ext(I::from(rhs.get_inner())?, -Q, rounding, cum_error)
             .map(Self)
     }
 }
 
 impl<I> std::ops::Neg for OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     type Output = Self;
     fn neg(self) -> Self::Output {
@@ -394,7 +405,8 @@ where I: FpdecInner
 }
 
 impl<I> std::ops::Add for OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
@@ -403,7 +415,8 @@ where I: FpdecInner
 }
 
 impl<I> std::ops::Sub for OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -412,7 +425,8 @@ where I: FpdecInner
 }
 
 impl<I> std::ops::AddAssign for OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
@@ -420,7 +434,8 @@ where I: FpdecInner
 }
 
 impl<I> std::ops::SubAssign for OobPrecFpdec<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
@@ -455,11 +470,12 @@ where I: FpdecInner
 pub struct OobFmt<I>(pub OobPrecFpdec<I>, pub i32);
 
 impl<I> fmt::Display for OobFmt<I>
-where I: FpdecInner + fmt::Display
+where
+    I: FpdecInner + fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let precision = self.1;
-        self.0.0.display_fmt(precision, f)
+        self.0 .0.display_fmt(precision, f)
     }
 }
 
@@ -488,8 +504,9 @@ where I: FpdecInner + fmt::Display
 /// assert_eq!("31415.926".parse::<DecFmt>(), Err(ParseError::Overflow));
 /// ```
 impl<I> FromStr for OobFmt<I>
-where I: FpdecInner,
-      ParseError: From<<I as Num>::FromStrRadixErr>
+where
+    I: FpdecInner,
+    ParseError: From<<I as Num>::FromStrRadixErr>,
 {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -499,7 +516,8 @@ where I: FpdecInner,
 }
 
 impl<I> OobFmt<I>
-where I: FpdecInner
+where
+    I: FpdecInner,
 {
     /// Convert to OobPrecFpdec with precision specified.
     ///
@@ -522,17 +540,14 @@ where I: FpdecInner
 
         if precision == prec0 {
             Ok(dec)
-
         } else if precision > prec0 {
             let inner = I::get_exp((precision - prec0) as usize)
                 .ok_or(ParseError::Overflow)?
                 .checked_mul(&dec.0)
                 .ok_or(ParseError::Overflow)?;
             Ok(OobPrecFpdec(inner))
-
         } else {
-            let diff_exp = I::get_exp((prec0 - precision) as usize)
-                .ok_or(ParseError::Precision)?;
+            let diff_exp = I::get_exp((prec0 - precision) as usize).ok_or(ParseError::Precision)?;
             let inner = dec.0 / diff_exp;
             if (dec.0 % diff_exp).is_zero() {
                 Ok(OobPrecFpdec(inner))
@@ -543,15 +558,17 @@ where I: FpdecInner
     }
 }
 
-#[cfg(feature="serde")]
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[cfg(feature="serde")]
+#[cfg(feature = "serde")]
 impl<I> Serialize for OobFmt<I>
-where I: FpdecInner + fmt::Display
+where
+    I: FpdecInner + fmt::Display,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.collect_str(self)
     }
@@ -559,23 +576,26 @@ where I: FpdecInner + fmt::Display
 
 /// Because we need to guess the precision, so we can load from
 /// string only, but not integer or float numbers.
-#[cfg(feature="serde")]
+#[cfg(feature = "serde")]
 impl<'de, I> Deserialize<'de> for OobFmt<I>
-where I: FromPrimitive + FpdecInner,
-      ParseError: From<<I as Num>::FromStrRadixErr>
+where
+    I: FromPrimitive + FpdecInner,
+    ParseError: From<<I as Num>::FromStrRadixErr>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         use serde::de::{self, Visitor};
-        use std::str::FromStr;
         use std::marker::PhantomData;
+        use std::str::FromStr;
 
         struct OobFmtVistor<I>(PhantomData<I>);
 
         impl<'de, I> Visitor<'de> for OobFmtVistor<I>
-        where I: FromPrimitive + FpdecInner,
-              ParseError: From<<I as Num>::FromStrRadixErr>
+        where
+            I: FromPrimitive + FpdecInner,
+            ParseError: From<<I as Num>::FromStrRadixErr>,
         {
             type Value = OobFmt<I>;
 
@@ -584,8 +604,7 @@ where I: FromPrimitive + FpdecInner,
             }
 
             fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                OobFmt::from_str(s)
-                    .map_err(|e| E::custom(format!("decimal {:?}", e)))
+                OobFmt::from_str(s).map_err(|e| E::custom(format!("decimal {:?}", e)))
             }
         }
 

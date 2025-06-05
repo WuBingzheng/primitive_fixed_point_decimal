@@ -189,7 +189,6 @@
 //!
 //! More tests are need before ready for production.
 
-
 // modules:
 //
 //     StaticPrecFpdec                            OobPrecFpdec
@@ -205,16 +204,16 @@
 // +------------------------------------+  +-----------------------+
 // |    inner_shorts: i8,i16,i32,i64    |  |   inner_i128: i128    |
 // +------------------------------------+  +-----------------------+
-mod static_prec_fpdec;
-mod oob_prec_fpdec;
-mod none_prec_common;
 mod fpdec_inner;
-mod inner_shorts;
 mod inner_i128;
+mod inner_shorts;
+mod none_prec_common;
+mod oob_prec_fpdec;
+mod static_prec_fpdec;
 
-pub use int_div_cum_error::Rounding;
+pub use crate::oob_prec_fpdec::{OobFmt, OobPrecFpdec};
 pub use crate::static_prec_fpdec::StaticPrecFpdec;
-pub use crate::oob_prec_fpdec::{OobPrecFpdec, OobFmt};
+pub use int_div_cum_error::Rounding;
 
 /// Error in converting from string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,7 +229,7 @@ pub enum ParseError {
     Precision,
 }
 
-use std::num::{ParseIntError, IntErrorKind};
+use std::num::{IntErrorKind, ParseIntError};
 impl From<ParseIntError> for ParseError {
     fn from(pie: ParseIntError) -> Self {
         match pie.kind() {

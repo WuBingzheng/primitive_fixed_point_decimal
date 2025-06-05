@@ -1,5 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
-use int_div_cum_error::{Rounding, checked_divide};
+use int_div_cum_error::{checked_divide, Rounding};
 
 impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;
@@ -9,16 +9,44 @@ impl FpdecInner for i128 {
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i128; 39] = [
             1,
-            10_i128.pow(1), 10_i128.pow(2), 10_i128.pow(3), 10_i128.pow(4),
-            10_i128.pow(5), 10_i128.pow(6), 10_i128.pow(7), 10_i128.pow(8),
-            10_i128.pow(9), 10_i128.pow(10), 10_i128.pow(11), 10_i128.pow(12),
-            10_i128.pow(13), 10_i128.pow(14), 10_i128.pow(15), 10_i128.pow(16),
-            10_i128.pow(17), 10_i128.pow(18), 10_i128.pow(19), 10_i128.pow(20),
-            10_i128.pow(21), 10_i128.pow(22), 10_i128.pow(23), 10_i128.pow(24),
-            10_i128.pow(25), 10_i128.pow(26), 10_i128.pow(27), 10_i128.pow(28),
-            10_i128.pow(29), 10_i128.pow(30), 10_i128.pow(31), 10_i128.pow(32),
-            10_i128.pow(33), 10_i128.pow(34), 10_i128.pow(35), 10_i128.pow(36),
-            10_i128.pow(37), 10_i128.pow(38),
+            10_i128.pow(1),
+            10_i128.pow(2),
+            10_i128.pow(3),
+            10_i128.pow(4),
+            10_i128.pow(5),
+            10_i128.pow(6),
+            10_i128.pow(7),
+            10_i128.pow(8),
+            10_i128.pow(9),
+            10_i128.pow(10),
+            10_i128.pow(11),
+            10_i128.pow(12),
+            10_i128.pow(13),
+            10_i128.pow(14),
+            10_i128.pow(15),
+            10_i128.pow(16),
+            10_i128.pow(17),
+            10_i128.pow(18),
+            10_i128.pow(19),
+            10_i128.pow(20),
+            10_i128.pow(21),
+            10_i128.pow(22),
+            10_i128.pow(23),
+            10_i128.pow(24),
+            10_i128.pow(25),
+            10_i128.pow(26),
+            10_i128.pow(27),
+            10_i128.pow(28),
+            10_i128.pow(29),
+            10_i128.pow(30),
+            10_i128.pow(31),
+            10_i128.pow(32),
+            10_i128.pow(33),
+            10_i128.pow(34),
+            10_i128.pow(35),
+            10_i128.pow(36),
+            10_i128.pow(37),
+            10_i128.pow(38),
         ];
 
         ALL_EXPS.get(i).copied()
@@ -31,7 +59,6 @@ impl FpdecInner for i128 {
         rounding: Rounding,
         cum_error: Option<&mut Self>,
     ) -> Option<Self> {
-
         // happy path, no overflow
         if let Some(r) = self.checked_mul(b) {
             return checked_divide(r, c, rounding, cum_error);
@@ -60,11 +87,14 @@ fn mul2(a: u128, b: u128) -> (u128, u128) {
 }
 
 // calculate: (mhigh,mlow) / divisor
-fn div2(mhigh: u128, mlow: u128, is_dividend_neg: bool,
+fn div2(
+    mhigh: u128,
+    mlow: u128,
+    is_dividend_neg: bool,
     divisor: i128,
-    rounding: Rounding, cum_error: Option<&mut i128>,
+    rounding: Rounding,
+    cum_error: Option<&mut i128>,
 ) -> Option<i128> {
-
     let is_divisor_neg = divisor < 0;
     let divisor = divisor.unsigned_abs();
 
@@ -93,7 +123,6 @@ fn div2(mhigh: u128, mlow: u128, is_dividend_neg: bool,
 
         q <<= 128 - total_shft;
         dividend << (128 - total_shft) | mlow << total_shft >> total_shft
-
     } else {
         mlow
     };
@@ -101,7 +130,8 @@ fn div2(mhigh: u128, mlow: u128, is_dividend_neg: bool,
     // back to signed i128: dividend
     let mut dividend = match i128::try_from(dividend) {
         Ok(dividend) => dividend,
-        Err(_) => { // one more division
+        Err(_) => {
+            // one more division
             q = q.checked_add(dividend / divisor)?;
             (dividend % divisor) as i128
         }
@@ -133,7 +163,6 @@ mod tests {
     use super::*;
 
     fn calc_mul_add_div(a: i128, b: i128, e: i128, c: i128) -> i128 {
-
         let mut cum_error = 0;
 
         // happy path, no overflow
@@ -169,7 +198,15 @@ mod tests {
         }
 
         // q = (mhigh, mlow) /  c
-        div2(mhigh, mlow, is_ab_neg, c, Rounding::Round, Some(&mut cum_error)).unwrap()
+        div2(
+            mhigh,
+            mlow,
+            is_ab_neg,
+            c,
+            Rounding::Round,
+            Some(&mut cum_error),
+        )
+        .unwrap()
     }
 
     fn check_calc_mul_div(a: i128, b: i128, c: i128) {
@@ -212,12 +249,37 @@ mod tests {
     }
     #[test]
     fn test_mul_div_list() {
-        let nums = [4, 101, 256, 9999999, 10000000, 100000003,
-            i32::MAX as i128, i32::MAX as i128 + 1, i32::MAX as i128 + 2, i32::MAX as i128 * 2 + 7,
-            i64::MAX as i128, i64::MAX as i128 + 1, i64::MAX as i128 + 2, i64::MAX as i128 * 2 + 7,
-            i128::MAX / 127, i128::MAX / 2, i128::MAX - 3, i128::MAX,
+        let nums = [
+            4,
+            101,
+            256,
+            9999999,
+            10000000,
+            100000003,
+            i32::MAX as i128,
+            i32::MAX as i128 + 1,
+            i32::MAX as i128 + 2,
+            i32::MAX as i128 * 2 + 7,
+            i64::MAX as i128,
+            i64::MAX as i128 + 1,
+            i64::MAX as i128 + 2,
+            i64::MAX as i128 * 2 + 7,
+            i128::MAX / 127,
+            i128::MAX / 2,
+            i128::MAX - 3,
+            i128::MAX,
         ];
-        let num2 = [1, 3, 7, 10, 100, 10000, 9999999, i32::MAX as i128, i64::MAX as i128];
+        let num2 = [
+            1,
+            3,
+            7,
+            10,
+            100,
+            10000,
+            9999999,
+            i32::MAX as i128,
+            i64::MAX as i128,
+        ];
         for a in nums {
             for c in nums {
                 check_calc_mul_div_signs(a, a, c);

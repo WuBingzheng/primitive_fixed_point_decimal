@@ -1,6 +1,5 @@
 macro_rules! define_none_prec_common {
     () => {
-
         /// The zero value.
         pub const ZERO: Self = Self(I::ZERO);
 
@@ -19,7 +18,7 @@ macro_rules! define_none_prec_common {
         pub const MAX_POWERS: Self = Self(I::MAX_POWERS);
 
         /// Computes the absolute value of self.
-        /// 
+        ///
         /// # Overflow behavior
         ///
         /// The absolute value of `MIN` cannot be represented as this type,
@@ -109,7 +108,7 @@ macro_rules! define_none_prec_common {
         pub const fn get_inner(self) -> I {
             self.0
         }
-    }
+    };
 }
 
 pub(crate) use define_none_prec_common;
