@@ -244,9 +244,17 @@ impl From<ParseIntError> for ParseError {
 use std::fmt;
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        let s = match self {
+            ParseError::Empty => "empty string",
+            ParseError::Invalid => "invalid digit in the string",
+            ParseError::Overflow => "overflow",
+            ParseError::Precision => "too many precisions",
+        };
+        write!(f, "{s}")
     }
 }
+
+impl std::error::Error for ParseError {}
 
 /// Build decimal from integer or float number easily.
 ///
