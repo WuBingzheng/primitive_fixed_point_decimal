@@ -339,7 +339,7 @@ where I: FpdecInner
     ) -> Option<Self>
     where J: FpdecInner
     {
-        self.0.checked_mul_ext(I::from(rhs.0)?, Q, rounding, cum_error)
+        self.0.checked_mul_ext(I::from(rhs.get_inner())?, Q, rounding, cum_error)
             .map(Self)
     }
 
@@ -379,7 +379,7 @@ where I: FpdecInner
     ) -> Option<Self>
     where J: FpdecInner
     {
-        self.0.checked_div_ext(I::from(rhs.0)?, -Q, rounding, cum_error)
+        self.0.checked_div_ext(I::from(rhs.get_inner())?, -Q, rounding, cum_error)
             .map(Self)
     }
 }

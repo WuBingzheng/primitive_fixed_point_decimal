@@ -95,6 +95,20 @@ macro_rules! define_none_prec_common {
         pub fn is_zero(&self) -> bool {
             self.0.is_zero()
         }
+
+        /// Return the inner integer, ignoring the precision.
+        ///
+        /// Use this carefully!
+        pub const fn from_inner(inner: I) -> Self {
+            Self(inner)
+        }
+
+        /// Build a decimal from inner integer, ignoring the precision.
+        ///
+        /// Use this carefully!
+        pub const fn get_inner(self) -> I {
+            self.0
+        }
     }
 }
 

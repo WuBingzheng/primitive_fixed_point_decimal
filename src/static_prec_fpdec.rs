@@ -16,7 +16,7 @@ use std::fmt;
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
-pub struct StaticPrecFpdec<I, const P: i32>(pub(crate) I);
+pub struct StaticPrecFpdec<I, const P: i32>(I);
 
 impl<I, const P: i32> StaticPrecFpdec<I, P>
 where I: FpdecInner
