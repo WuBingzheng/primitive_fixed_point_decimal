@@ -18,6 +18,13 @@ macro_rules! define_none_prec_common {
         /// The largest powers of 10.
         pub const MAX_POWERS: Self = Self(I::MAX_POWERS);
 
+        /// Returns the inner integer.
+        /// 
+        /// Can be used to write conversions to and from fixed-point types of other crates.
+        pub const fn mantissa(&self) -> I {
+            self.0
+        }
+
         /// Computes the absolute value of self.
         /// 
         /// # Overflow behavior

@@ -21,6 +21,18 @@ pub struct StaticPrecFpdec<I, const P: i32>(pub(crate) I);
 impl<I, const P: i32> StaticPrecFpdec<I, P>
 where I: FpdecInner
 {
+    /// Create a new instance with the specified mantissa and the type's precision.
+    pub const fn new(mantissa: I) -> Self {
+        Self(mantissa)
+    }
+
+    /// Returns the constant value of type parameter `P`.
+    /// 
+    /// Can be used with [`Self::mantissa()`] for conversions to avoid repeating yourself.
+    pub const fn precision(&self) -> i32 {
+        P
+    }
+
     crate::none_prec_common::define_none_prec_common!();
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
