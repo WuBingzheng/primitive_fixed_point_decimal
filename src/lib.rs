@@ -225,7 +225,7 @@ pub enum ParseError {
     Invalid,
     /// Overflow.
     Overflow,
-    /// Too many precisions.
+    /// Precision out of range.
     Precision,
 }
 
@@ -247,7 +247,7 @@ impl fmt::Display for ParseError {
             ParseError::Empty => "empty string",
             ParseError::Invalid => "invalid digit in the string",
             ParseError::Overflow => "overflow",
-            ParseError::Precision => "too many precisions",
+            ParseError::Precision => "precision out of range",
         };
         write!(f, "{s}")
     }
