@@ -95,17 +95,17 @@ macro_rules! define_none_prec_common {
             self.0.is_zero()
         }
 
-        /// Return the inner integer, ignoring the precision.
+        /// Create a decimal from the underlying integer representation.
         ///
-        /// Use this carefully!
-        pub const fn from_inner(inner: I) -> Self {
-            Self(inner)
+        /// You must take care of the precision. Use this carefully!
+        pub const fn from_mantissa(i: I) -> Self {
+            Self(i)
         }
 
-        /// Build a decimal from inner integer, ignoring the precision.
+        /// Return the underlying integer representation.
         ///
-        /// Use this carefully!
-        pub const fn get_inner(self) -> I {
+        /// You must take care of the precision. Use this carefully!
+        pub const fn as_mantissa(self) -> I {
             self.0
         }
     };
