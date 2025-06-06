@@ -97,14 +97,14 @@ macro_rules! define_none_prec_common {
 
         /// Create a decimal from the underlying integer representation.
         ///
-        /// You must take care of the precision. Use this carefully!
+        /// You must take care of the precision yourself.
         pub const fn from_mantissa(i: I) -> Self {
             Self(i)
         }
 
         /// Return the underlying integer representation.
         ///
-        /// You must take care of the precision. Use this carefully!
+        /// You must take care of the precision yourself.
         pub const fn as_mantissa(self) -> I {
             self.0
         }

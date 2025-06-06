@@ -23,6 +23,11 @@ where
 {
     crate::none_prec_common::define_none_prec_common!();
 
+    /// Precision.
+    ///
+    /// It is the const generics `P` in the type.
+    pub const PRECISION: i32 = P;
+
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
     /// overflow occurred.
     ///
