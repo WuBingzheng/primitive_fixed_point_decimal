@@ -105,7 +105,7 @@ macro_rules! define_none_prec_common {
         /// Return the underlying integer representation.
         ///
         /// You must take care of the precision yourself.
-        pub const fn as_mantissa(self) -> I {
+        pub const fn mantissa(self) -> I {
             self.0
         }
     };
