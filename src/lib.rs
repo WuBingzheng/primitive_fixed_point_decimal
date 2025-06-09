@@ -41,6 +41,31 @@
 //! See the examples below for more details.
 //!
 //!
+//! # When to or Not to Use This
+//!
+//! Compared with other decimal crates, such as `bigdecimal` and `rust_decimal`,
+//! our characteristic is that fixed precision, and `+`/`-` only performing
+//! between decimals of the same precision. Thus, its application scenarios
+//! are very clear.
+//!
+//! For specific applications, if you know how many the precision required
+//! and the operations involved are mostly simple `+`/`-`, such as in a
+//! financial management system or an exchange matching engine, then it is
+//! suitable for this crate.
+//!
+//! For general-purpose applications or libraries, where you don't know the
+//! precision that the end users will need, nor the operations that might
+//! be used, such as in storage systems like Redis, then it is not suitable
+//! for this crate.
+//!
+//! There are also some exceptions. For example, in options services, although
+//! many complex mathematical formulas are involved, such as pricing and Greeks,
+//! it is not necessary to retain full precision here. You can convert the
+//! input fixed-point decimal values (e.g. prices, balances and volumes) to
+//! floats to calculate the formulas, and then convert the result back to decimal.
+//! Therefore, this crate is also suitable for such programs.
+//!
+//!
 //! # Specify Precision
 //!
 //! There are 2 ways to specify the precision: *static* and *out-of-band*:
