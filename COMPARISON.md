@@ -1,4 +1,4 @@
-# Comparation to Other Decimal Crates
+# Comparison to Other Decimal Crates
 
 This document compares `primitive_fixed_point_decimal` crate to
 [`rust_decimal`](https://docs.rs/rust_decimal) and
@@ -127,12 +127,12 @@ while `bigdecimal` has the strongest expression ability (unlimited mantissa).
 
 ## Operations
 
-In `primitive_fixed_point_decimal`, the `+`, `-` and comparation operations
+In `primitive_fixed_point_decimal`, the `+`, `-` and comparison operations
 work only between decimals of the same precision, which is designed intentionally.
 The `*` and `/` operations can work between decimals of different precisions
 and can also set the result's precision. See the crate's document for details.
 
-Other 2 crates both support `+`, `-` and comparation operations between
+Other 2 crates both support `+`, `-` and comparison operations between
 decimals of different precisions. They first rescale the decimal with smaller
 precision into the larger precision, and then execute the operations. And
 the result's precision of `*` operation is the sum of 2 oprands. Because
