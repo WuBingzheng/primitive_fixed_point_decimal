@@ -64,6 +64,8 @@ In my opinon, complex mathematical formulas do not require full precision.
 So you can convert the decimal inputs (e.g. prices, balances and volumes)
 to floats and then perform the calculations.
 
+See [more detailed comparison](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md).
+
 
 ## Specify Precision
 
