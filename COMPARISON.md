@@ -58,9 +58,9 @@ So it takes 128 bits (16 bytes) totally.
 The memory layout:
 
 ```
-+-32---------------+-96------------- ... --+
-|sign,scale,unused | mantissa              |
-+------------------+---------------- ... --+
++-32---------------+-96------------------- ... --+
+|sign,scale,unused | mantissa                    |
++------------------+---------------------- ... --+
 ```
 
 The [definition](https://docs.rs/rust_decimal/latest/src/rust_decimal/decimal.rs.html#115-126):
@@ -92,13 +92,13 @@ and uncertain-size for mantissa data.
 The memory layout:
 
 ```
-+-64-----+-8----+-?-----+-usize*3----------------------------+
-| scale  | sign |padding| mantissa: Vec<u32/u64>             |
-+--------+------+-------+---+--------------------------------+
++-64-------+-8--+-?-----+-usize*3----------------------------+
+| scale    |sign|padding| mantissa: Vec<u32/u64>             |
++----------+----+-------+---+--------------------------------+
                             |
-                            V-?------- ... ---+
-                            | mantissa        |
-                            +--------- ... ---+
+                            V-?------------- ... ---+
+                            | mantissa              |
+                            +--------------- ... ---+
 ```
 
 The [definition](https://docs.rs/bigdecimal/latest/src/bigdecimal/lib.rs.html#206-210):

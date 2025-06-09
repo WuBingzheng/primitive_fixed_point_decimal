@@ -25,7 +25,7 @@ where
 
     /// Precision.
     ///
-    /// It is the const generics `P` in the type.
+    /// It is just `P`.
     pub const PRECISION: i32 = P;
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
