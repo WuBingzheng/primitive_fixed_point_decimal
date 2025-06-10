@@ -142,13 +142,34 @@ it will also try to reduce the result's precision if overflow.
 
 ## How to Choose
 
-The biggest characteristic of `primitive_fixed_point_decimal` is real
-fixed-point. Thus, its application scenarios are very clear.
+As I understand it, these types can be categorized into the following:
+
+- `primitive_fixed_point_decimal`: fixed-point in base 10
+
+- `rust_decimal` and `bigdecimal`: floating-point in base 10
+
+- Rust floats(`f32` and `f64`): floating-point in base 2
+
+All `primitive_fixed_point_decimal`, `rust_decimal` and `bigdecimal` are in
+base 10, which is the reason they are called `*_decimal`.
+Therefore, they can represent decimal fractions accurately, and avoid
+calculation error such as `0.1 + 0.2 != 0.3`.
+
+The difference is that `primitive_fixed_point_decimal` is *fixed-point*,
+while the 2 others are *floating-point*. Thus, the application scenarios
+are very clear.
 
 For specific applications, if you know the precisions required, such as in
 a financial system using 2 precisions for balance and 6 for prices, then
-it is suitable for this crate.
+it is suitable for `primitive_fixed_point_decimal`.
 
 While for general-purpose applications or libraries, where you don't know the
 precision that the end users will need, such as in storage systems like
-Redis, then it is not suitable for this crate.
+Redis, then it is suitable for `rust_decimal` and `bigdecimal`.
+
+Note: [The document of `rust_decimal`](https://docs.rs/rust_decimal/1.37.1/rust_decimal/struct.Decimal.html)
+says it's "a fixed-precision decimal number".
+And [the document of `bigdecimal`](https://docs.rs/bigdecimal/0.4.8/bigdecimal/index.html)
+also implies it's fixed-point by: "avoids common floating point errors".
+However, I still think they are floating-point, because the scale is carried
+in the number and changes during calculation.
