@@ -41,6 +41,9 @@ which supports all Rust primitive signed integers: `i8`, `i16`, `i32`,
 `i64` and `i128`. For example, `StaticPrecFpdec<i64, 4>` takes 64 bits
 (8 bytes).
 
+The precision is in decimal *type* but not *instance*, so it is not shown
+in the memory layout above.
+
 The [definition](https://docs.rs/primitive_fixed_point_decimal/latest/src/primitive_fixed_point_decimal/static_prec_fpdec.rs.html#18):
 
 ```rust
@@ -89,6 +92,8 @@ and `sizeof(usize)*3` bits for the Vec of mantissa data.
 For example, on 64-bits system, it takes 320 bits (40 bytes) for the meta data
 and uncertain-size for mantissa data.
 
+Obviously the `BigDecimal` is not `Copy`.
+
 The memory layout:
 
 ```
@@ -118,10 +123,13 @@ pub struct BigUint {
 }
 ```
 
-Obviously the `BigDecimal` is not `Copy`.
+### Summary
 
+The biggest difference of `primitive_fixed_point_decimal`, compared with the
+other two crates, is that it saves the precision in decimal *type*, while the
+other two crates save the precision in decimal *instance*.
 
-In summary, `primitive_fixed_point_decimal` has the most compact memory layout,
+Besides, `primitive_fixed_point_decimal` has the most compact memory layout,
 while `bigdecimal` has the strongest expression ability (unlimited mantissa).
 
 

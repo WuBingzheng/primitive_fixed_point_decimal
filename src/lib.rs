@@ -1,31 +1,37 @@
 //! Primitive fixed-point decimal types.
 //!
-//! The built-in `f32` and `f64` types are not suitable for some fields
+//! Rust built-in `f32` and `f64` types are not suitable for some fields
 //! (e.g. finance) because of two drawbacks:
 //!
 //! 1. can not represent decimal numbers in base 10 accurately, because they are in base 2;
 //!
-//! 2. can not guarantee fraction precision, because of floating-point.
+//! 2. can not guarantee fraction precision, because they are floating-point.
 //!
-//! This crate provides fixed-point decimal types which use build-in
-//! integer types (`i8`, `i16`, `i32`, `i64` or `i128`) to represent
-//! number value to achieve the accuracy, and specify precision staticly
-//! to guarantee the fraction precision.
+//! This crate provides fixed-point decimal types to address the issues by
+//!
+//! 1. using integer types to represent number and handling radix-point in
+//!    base 10, to achieve the accuracy. This is a common idea. Many other
+//!    decimal crates do the same thing;
+//!
+//! 2. specifying precision staticly (fixed-point) to guarantee the fraction
+//!    precision. The precision is part of the type. This feature is _unique_!
+//!
+//! For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
+//! representation, and `4` is the static precision.
 //!
 //! The "primitive" in the crate name means that we hope our decimal types
 //! have the most straightforward representation, most compact memory layout,
-//! highest performance, and easiest API.  See the
-//! [comparison](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
-//! with other decimal crates.
+//! highest performance, and easiest API.
 //!
 //!
 //! # Distinctive
 //!
-//! It is a common idea to use integers to represent decimals. Many other
-//! decimal crates do the same thing. But our biggest feature is: *real*
-//! fixed-point!
+//! Although [other decimal crates](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
+//! also claim to be fixed-point, they all embed the precision (or called "scale")
+//! within each decimal *instance*, which changes during operations.
 //!
-//! The decimal types here keep their precision for their whole lifetime
+//! While in this crate, the precision is in the decimal *type* and static.
+//! The decimal types keep their precision for their whole lifetime
 //! instead of changing their precision during operations.
 //!
 //! The `+`, `-` and comparison operations only perform between same types in
