@@ -1,51 +1,50 @@
 //! Primitive fixed-point decimal types.
 //!
-//! It's necessary to represent decimals accurately in some scenarios,
-//! such as financial field. Primitive floating-point types (`f32`
-//! and `f64`) can not accurately represent decimal fractions because
-//! they represent values in binary. Here we use integer types to
-//! represent values, and handle fractions in base 10.
+//! The built-in `f32` and `f64` types are not suitable for some fields
+//! (e.g. finance) because of two drawbacks:
 //!
-//! Primitive integers `i8`, `i16`, `i32`, `i64` and `i128` are used to represent
-//! values, which can represent about 2, 4, 9, 18 and 38 decimal significant
-//! digits respectively. So the number `12.345` is stored as `123450`
-//! for decimal with precision `4`. See below to find how to specify
-//! the precision.
+//! 1. can not represent decimal numbers in base 10 accurately, because they are in base 2;
 //!
-//! In addition, these scenarios generally require *fraction precision*,
-//! rather than the *significant digits* like in scientific calculations,
-//! so fixed-point is more suitable than floating-point.
+//! 2. can not guarantee fraction precision, because of floating-point.
 //!
-//! So here are the *primitive fixed-point* decimal types.
+//! This crate provides fixed-point decimal types which use build-in
+//! integer types (`i8`, `i16`, `i32`, `i64` or `i128`) to represent
+//! number value to achieve the accuracy, and specify precision staticly
+//! to guarantee the fraction precision.
+//!
+//! The "primitive" in the crate name means that we hope our decimal types
+//! have the most straightforward representation, most compact memory layout,
+//! highest performance, and easiest API.  See the
+//! [comparison](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
+//! with other decimal crates.
 //!
 //!
 //! # Distinctive
 //!
-//! It is a common idea to use integers to represent decimals. But we have
-//! some specialties.
+//! It is a common idea to use integers to represent decimals. Many other
+//! decimal crates do the same thing. But our biggest feature is: *real*
+//! fixed-point!
 //!
 //! The decimal types here keep their precision for their whole lifetime
-//! instead of changing their precision as soon as you perform an operation.
+//! instead of changing their precision during operations.
 //!
 //! The `+`, `-` and comparison operations only perform between same types in
 //! same precision. There is no implicitly type or precision conversion.
 //! This makes sence, for we do not want to add balance type by
 //! fee-rate type. Even for two balance types we do not want to add
-//! USD by CNY. This also makes the operations very fast.
+//! USD currency by CNY. This also makes the operations very fast.
 //!
 //! However, the `*` and `/` operations accept operand with different
-//! types and precisions, and allow the result's precision specified. Certainly
-//! we need to multiply between balance type and fee-rate type and get
-//! fee type.
+//! types and precisions, and allow the result's precision specified.
+//! Certainly we need to multiply between balance type and fee-rate type
+//! and get balance type.
 //!
 //! See the examples below for more details.
 //!
 //!
 //! # When to or Not to Use This
 //!
-//! Compared with other decimal crates, such as `bigdecimal` and `rust_decimal`,
-//! our biggest characteristic is real fixed-point. Thus, its application
-//! scenarios are very clear.
+//! Because of the real fixed-point, the application scenarios are very clear.
 //!
 //! For specific applications, if you know the precisions required, such as in
 //! a financial system using 2 precisions for balance and 6 for prices, then
@@ -55,14 +54,13 @@
 //! precision that the end users will need, such as in storage systems like
 //! Redis, then it is not suitable for this crate.
 //!
-//! Additionally, the `+`/`-` are only supported between decimals of the same precision,
-//! which is designed intentionally. One consequence of this is that it's verbose
-//! to calculate complex mathematical formulas, e.g. options pricing and Greeks.
-//! In my opinon, complex mathematical formulas do not require full precision.
-//! So you can convert the decimal inputs (e.g. prices, balances and volumes)
-//! to floats and then perform the calculations.
-//!
-//! See [more detailed comparison](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md).
+//! Additionally, the real fixed-point is suitable for simple operations and
+//! may make it verbose to calculate complex mathematical formulas,
+//! e.g. options pricing and Greeks.
+//! However, in my opinon, complex mathematical formulas do not require
+//! accurate precision generally. So in this case you can convert the decimal
+//! inputs (e.g. prices, balances and volumes) to floats and then perform
+//! the complex calculations.
 //!
 //!
 //! # Specify Precision
