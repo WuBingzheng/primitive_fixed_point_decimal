@@ -1,4 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
+use crate::oob_prec_fpdec::OobPrecFpdec;
 use crate::ParseError;
 use int_div_cum_error::{checked_divide, Rounding};
 use num_traits::{cast::FromPrimitive, Num};
@@ -241,6 +242,28 @@ where
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, ParseError> {
         I::try_from_str(s, P).map(Self)
+    }
+}
+
+impl<I, const P: i32> From<OobPrecFpdec<I>> for StaticPrecFpdec<I, P>
+where
+    I: FpdecInner,
+{
+    /// Convert from [`OobPrecFpdec`] with precision `P`.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
+    /// type StaticDec = StaticPrecFpdec<i32, 6>;
+    /// type OobDec = OobPrecFpdec<i32>; // the OOB precision is 6 too
+    ///
+    /// let od: OobDec = fpdec!(123.45, 6); // make sure that `od` has the same precision=6
+    /// let sd: StaticDec = od.into();
+    /// assert_eq!(sd, fpdec!(123.45));
+    /// ```
+    fn from(od: OobPrecFpdec<I>) -> Self {
+        Self(od.mantissa())
     }
 }
 

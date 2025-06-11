@@ -223,6 +223,28 @@ where
     }
 }
 
+impl<I, const P: i32> From<StaticPrecFpdec<I, P>> for OobPrecFpdec<I>
+where
+    I: FpdecInner,
+{
+    /// Convert from [`StaticPrecFpdec`] to `OobPrecFpdec` with precision `P`.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
+    /// type StaticDec = StaticPrecFpdec<i32, 6>;
+    /// type OobDec = OobPrecFpdec<i32>; // the OOB precision is 6 too
+    ///
+    /// let sd: StaticDec = fpdec!(123.45);
+    /// let od: OobDec = sd.into(); // `od` has the same precision=6
+    /// assert_eq!(od, fpdec!(123.45, 6));
+    /// ```
+    fn from(sd: StaticPrecFpdec<I, P>) -> Self {
+        Self(sd.mantissa())
+    }
+}
+
 macro_rules! convert_from_int {
     ($from_int_type:ty) => {
         impl<I> TryFrom<($from_int_type, i32)> for OobPrecFpdec<I>
