@@ -21,9 +21,9 @@ This crate provides fixed-point decimal types to address the issues by
 For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
 representation, and `4` is the static precision.
 
-The "primitive" in the crate name means that we hope our decimal types
-have straightforward representation, compact memory layout,
-high performance, and clean APIs, just like Rust's primitive types.
+The "primitive" in the crate name means straightforward representation,
+compact memory layout, high performance, and clean APIs, just like Rust's
+primitive types.
 
 
 ## Distinctive
