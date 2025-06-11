@@ -29,10 +29,10 @@ highest performance, and easiest API.
 ## Distinctive
 
 Although [other decimal crates](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
-also claim to be fixed-point, they all embed the precision (or called "scale")
-within each decimal *instance*, which changes during operations.
+also claim to be fixed-point, they all bind the precision (or called "scale")
+to each decimal *instance*, which changes during operations.
 
-While in this crate, the precision is in the decimal *type* and static.
+While this crate binds the precision to decimal *type*. It's static.
 The decimal types keep their precision for their whole lifetime
 instead of changing their precision during operations.
 

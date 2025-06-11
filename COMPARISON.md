@@ -126,7 +126,7 @@ pub struct BigUint {
 ### Summary
 
 The biggest difference of `primitive_fixed_point_decimal`, compared with the
-other two crates, is that it saves the precision in decimal *type*, while the
+other two crates, is that it binds the precision to decimal *type*, while the
 other two crates save the precision in decimal *instance*.
 
 Besides, `primitive_fixed_point_decimal` has the most compact memory layout,

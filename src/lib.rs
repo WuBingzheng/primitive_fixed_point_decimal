@@ -27,10 +27,10 @@
 //! # Distinctive
 //!
 //! Although [other decimal crates](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
-//! also claim to be fixed-point, they all embed the precision (or called "scale")
-//! within each decimal *instance*, which changes during operations.
+//! also claim to be fixed-point, they all bind the precision (or called "scale")
+//! to each decimal *instance*, which changes during operations.
 //!
-//! While in this crate, the precision is in the decimal *type* and static.
+//! While this crate binds the precision to decimal *type*. It's static.
 //! The decimal types keep their precision for their whole lifetime
 //! instead of changing their precision during operations.
 //!
@@ -285,11 +285,12 @@ impl std::error::Error for ParseError {}
 
 /// Build decimal from integer or float number easily.
 ///
-/// It wraps TryFrom trait and will panic if `try_from()` fails. So it
-/// should be used by const numbers or for non-production codes.
-///
 /// It accepts 1 argument for `StaticPrecFpdec`, and accepts 1 extra
 /// argument for `OobPrecFpdec`, the out-of-band precision of course.
+///
+/// Panics:
+///
+/// It wraps `TryFrom` trait and will panic if `try_from()` fails.
 ///
 /// Examples:
 ///
