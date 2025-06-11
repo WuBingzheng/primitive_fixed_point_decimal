@@ -139,24 +139,6 @@ assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_precision));
 
 Obviously it's verbose to use, but offers greater flexibility.
 
-You can even use the 2 types at same time. For example, use *out-of-band*
-type for balance which have different precisions for different assets; and
-use *static* type for fee-rate which has a fixed precision:
-
-```rust
-use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
-type Balance = OobPrecFpdec<i64>; // out-of-band type
-type FeeRate = StaticPrecFpdec<i16, 6>; // static type
-
-let btc_precision = 8;
-
-let btc: Balance = fpdec!(0.34, btc_precision);
-let fee_rate: FeeRate = fpdec!(0.0002);
-
-let fee = btc.checked_mul_static(fee_rate).unwrap();
-assert_eq!(fee, fpdec!(0.000068, btc_precision));
-```
-
 
 ## Cumulative Error
 
