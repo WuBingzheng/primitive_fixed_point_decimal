@@ -17,6 +17,9 @@ macro_rules! define_none_prec_common {
         /// The largest powers of 10.
         pub const MAX_POWERS: Self = Self(I::MAX_POWERS);
 
+        /// Approximate number of significant digits in base 10.
+        pub const DIGITS: u32 = I::DIGITS;
+
         /// Computes the absolute value of self.
         ///
         /// # Overflow behavior

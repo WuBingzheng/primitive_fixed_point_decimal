@@ -6,6 +6,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     const MAX: Self;
     const MIN: Self;
     const MAX_POWERS: Self;
+    const DIGITS: u32;
 
     fn get_exp(i: usize) -> Option<Self>;
 

@@ -24,8 +24,6 @@ where
     crate::none_prec_common::define_none_prec_common!();
 
     /// Precision.
-    ///
-    /// It is just `P`.
     pub const PRECISION: i32 = P;
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
