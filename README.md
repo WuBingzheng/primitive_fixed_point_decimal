@@ -22,15 +22,17 @@ For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
 representation, and `4` is the static precision.
 
 The "primitive" in the crate name means that we hope our decimal types
-have the most straightforward representation, most compact memory layout,
-highest performance, and easiest API.
+have straightforward representation, compact memory layout,
+high performance, and clean APIs, just like Rust's primitive types.
 
 
 ## Distinctive
 
-Although [other decimal crates](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
-also claim to be fixed-point, they all bind the precision (or called "scale")
-to each decimal *instance*, which changes during operations.
+Although other decimal crates also claim to be fixed-point, they all
+bind the precision (or called "scale") to each decimal *instance*,
+which changes during operations.  See the
+[comparison document](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
+for more details.
 
 While this crate binds the precision to decimal *type*. It's static.
 The decimal types keep their precision for their whole lifetime
@@ -62,9 +64,8 @@ While for general-purpose applications or libraries, where you don't know the
 precision that the end users will need, such as in storage systems like
 Redis, then it is not suitable for this crate.
 
-Additionally, the real fixed-point is suitable for simple operations and
-may make it verbose to calculate complex mathematical formulas,
-e.g. options pricing and Greeks.
+Besides, the real fixed-point is suitable for simple operations but not
+complex mathematical formulas, e.g. options pricing and Greeks.
 However, in my opinon, complex mathematical formulas do not require
 accurate precision generally. So in this case you can convert the decimal
 inputs (e.g. prices, balances and volumes) to floats and then perform
