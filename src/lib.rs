@@ -92,8 +92,8 @@
 //!
 //! ```
 //! use primitive_fixed_point_decimal::{StaticPrecFpdec, fpdec};
-//! type Balance = StaticPrecFpdec<i64, 2>;
-//! type Price = StaticPrecFpdec<i32, 6>; // 6 is big enough for all markets
+//! type Balance = StaticPrecFpdec<i64, 2>; // 2 is enough for all currencies
+//! type Price = StaticPrecFpdec<i32, 6>; // 6 is enough for all markets
 //!
 //! let usd: Balance = fpdec!(1234.56);
 //! let price: Price = fpdec!(146.4730);
@@ -110,23 +110,25 @@
 //!
 //! ```
 //! use primitive_fixed_point_decimal::{OobPrecFpdec, fpdec};
-//! type Balance = OobPrecFpdec<i64>;
-//! type Price = OobPrecFpdec<i32>; // no precision set
+//! type Balance = OobPrecFpdec<i64>; // no global precision set
+//! type Price = OobPrecFpdec<i32>; // no global precision set
 //!
+//! // each market has its own precision configuration
 //! struct Market {
 //!     base_asset_precision: i32,
 //!     quote_asset_precision: i32,
 //!     price_precision: i32,
 //! }
 //!
+//! // let's take BTC/USDT market as example
 //! let btc_usdt = Market {
 //!     base_asset_precision: 8,
 //!     quote_asset_precision: 6,
 //!     price_precision: 1,
 //! };
 //!
-//! // we need tell the precision, for `try_from()` and `fpdec!` both.
-//! let btc = Balance::try_from((0.34, btc_usdt.base_asset_precision)).unwrap();
+//! // we need tell the precision to `fpdec!`
+//! let btc: Balance = fpdec!(0.34, btc_usdt.base_asset_precision);
 //! let price: Price = fpdec!(81234.0, btc_usdt.price_precision);
 //!
 //! // we need tell the precision difference to `checked_mul()` method
@@ -191,9 +193,7 @@
 //!
 //! # Features
 //!
-//! - `serde` enables serde traits integration (`Serialize`/`Deserialize`)
-//!   for *static* precision type. While the *out-of-band* type does not
-//!   support serde at all.
+//! - `serde` enables serde traits integration (`Serialize`/`Deserialize`).
 //!
 //!
 //! # Status

@@ -249,7 +249,7 @@ impl<I, const P: i32> From<OobPrecFpdec<I>> for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
 {
-    /// Convert from [`OobPrecFpdec`] with precision `P`.
+    /// Convert from `OobPrecFpdec` with precision `P` to `StaticPrecFpdec`.
     ///
     /// Examples:
     ///
@@ -299,7 +299,7 @@ macro_rules! convert_from_int {
                     I::checked_from_int(i2, P).map(Self)
                 } else {
                     // convert to fpdec inner first
-                    let i2 = <$from_int_type>::checked_from_int(i, P)?;
+                    let i2 = i.checked_from_int(P)?;
                     I::from(i2).ok_or(ParseError::Overflow).map(Self)
                 }
             }

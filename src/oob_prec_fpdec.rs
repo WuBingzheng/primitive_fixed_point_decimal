@@ -14,6 +14,15 @@ use std::str::FromStr;
 /// integer with about 18 significant digits. It's your job to save
 /// the out-of-band precision somewhere else.
 ///
+/// Compared to [`StaticPrecFpdec`], this `OobPrecFpdec` has more verbose APIs:
+///
+/// - extra `diff_precision` argument for most operations such as `*` and `/`, but no need for `+` and `-`,
+/// - use `(OobPrecFpdec, i32)` tuple for converting from integers or floats,
+/// - use `to_float()` to convert to floats,
+/// - use `try_from_str()` to convert from string with precision set,
+/// - use [`OobFmt`] for `Display` and `FromStr`,
+/// - no associate const `PRECISION`.
+///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
 pub struct OobPrecFpdec<I>(I);
@@ -181,7 +190,7 @@ where
     ///
     /// This method has 2 limitations:
     /// 1. Support decimal format only but not scientific notation;
-    /// 2. Return `ParseError::Precision` if the string has more precision than `P`.
+    /// 2. Return `ParseError::Precision` if the string has more precision.
     ///
     /// If you want to skip these limitations, you can parse the string
     /// to float number first and then convert the number to this decimal.
@@ -212,9 +221,9 @@ where
     /// type Decimal = OobPrecFpdec<i32>;
     ///
     /// let dec: Decimal = fpdec!(1.234, 4);
-    /// assert_eq!(dec.into_float::<f32>(4), 1.234);
+    /// assert_eq!(dec.to_float::<f32>(4), 1.234);
     /// ```
-    pub fn into_float<F>(self, precision: i32) -> F
+    pub fn to_float<F>(self, precision: i32) -> F
     where
         F: Float,
     {
@@ -227,7 +236,7 @@ impl<I, const P: i32> From<StaticPrecFpdec<I, P>> for OobPrecFpdec<I>
 where
     I: FpdecInner,
 {
-    /// Convert from [`StaticPrecFpdec`] to `OobPrecFpdec` with precision `P`.
+    /// Convert from `StaticPrecFpdec` to `OobPrecFpdec` with precision `P`.
     ///
     /// Examples:
     ///
@@ -276,7 +285,7 @@ macro_rules! convert_from_int {
                     I::checked_from_int(i2, i.1).map(Self)
                 } else {
                     // convert to fpdec inner first
-                    let i2 = <$from_int_type>::checked_from_int(i.0, i.1)?;
+                    let i2 = i.0.checked_from_int(i.1)?;
                     I::from(i2).ok_or(ParseError::Overflow).map(Self)
                 }
             }
@@ -414,6 +423,12 @@ where
 
 /// Load from string and guess the precision by counting the fraction part.
 ///
+/// Generally you should then call [`OobFmt::rescale()`] to convert to the target
+/// precision.
+///
+/// You can also use [`OobPrecFpdec::try_from_str()`] instead with precision set, to avoid
+/// the guessing and rescaling.
+///
 /// Examples:
 ///
 /// ```
@@ -423,6 +438,9 @@ where
 /// // normal cases
 /// assert_eq!("3.14".parse::<DecFmt>(), Ok(OobFmt(fpdec!(3.14, 2), 2)));
 /// assert_eq!("-3.14".parse::<DecFmt>(), Ok(OobFmt(fpdec!(-3.14, 2), 2)));
+///
+/// // call rescale() if you want 3 precision
+/// assert_eq!("3.14".parse::<DecFmt>().unwrap().rescale(3), Ok(fpdec!(3.14, 3)));
 ///
 /// // large precision
 /// assert_eq!("0.000000000314".parse::<DecFmt>(), Ok(OobFmt(fpdec!(3.14e-10, 12), 12)));
