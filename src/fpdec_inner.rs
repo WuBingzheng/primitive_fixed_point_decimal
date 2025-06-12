@@ -1,4 +1,5 @@
 use crate::ParseError;
+use core::fmt;
 use int_div_cum_error::{checked_divide, checked_divide_with_rounding, PrimSignedInt, Rounding};
 use num_traits::Num;
 
@@ -206,9 +207,9 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         Ok((inner, precision))
     }
 
-    fn display_fmt(self, precision: i32, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error>
+    fn display_fmt(self, precision: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     where
-        Self: std::fmt::Display,
+        Self: fmt::Display,
     {
         if self.is_zero() {
             return write!(f, "0");

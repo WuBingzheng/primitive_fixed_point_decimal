@@ -1,10 +1,9 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::static_prec_fpdec::StaticPrecFpdec;
 use crate::ParseError;
+use core::{fmt, ops, str::FromStr};
 use int_div_cum_error::{checked_divide, Rounding};
-use num_traits::{cast::FromPrimitive, float::Float, Num};
-use std::fmt;
-use std::str::FromStr;
+use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
 
 /// Out-of-band-precision fixed-point decimal.
 ///
@@ -17,7 +16,7 @@ use std::str::FromStr;
 /// Compared to [`StaticPrecFpdec`], this `OobPrecFpdec` has more verbose APIs:
 ///
 /// - extra `diff_precision` argument for most operations such as `*` and `/`, but no need for `+` and `-`,
-/// - use `(OobPrecFpdec, i32)` tuple for converting from integers or floats,
+/// - use `(*, i32)` tuple for converting from integers or floats,
 /// - use `to_float()` to convert to floats,
 /// - use `try_from_str()` to convert from string with precision set,
 /// - use [`OobFmt`] for `Display` and `FromStr`,
@@ -225,7 +224,7 @@ where
     /// ```
     pub fn to_float<F>(self, precision: i32) -> F
     where
-        F: Float,
+        F: FloatCore,
     {
         let base = F::from(10.0).unwrap();
         F::from(self.0).unwrap() / base.powi(precision)
@@ -268,7 +267,7 @@ macro_rules! convert_from_int {
             /// Examples:
             ///
             /// ```
-            /// use std::str::FromStr;
+            /// use core::str::FromStr;
             /// use primitive_fixed_point_decimal::{OobPrecFpdec, ParseError};
             /// type Decimal = OobPrecFpdec<i32>;
             ///
@@ -315,7 +314,7 @@ macro_rules! convert_from_float {
             /// Examples:
             ///
             /// ```
-            /// use std::str::FromStr;
+            /// use core::str::FromStr;
             /// use primitive_fixed_point_decimal::{OobPrecFpdec, ParseError};
             /// type Decimal = OobPrecFpdec<i32>;
             ///
@@ -336,7 +335,7 @@ macro_rules! convert_from_float {
 convert_from_float!(f32, from_f32, to_f32);
 convert_from_float!(f64, from_f64, to_f64);
 
-impl<I> std::ops::Neg for OobPrecFpdec<I>
+impl<I> ops::Neg for OobPrecFpdec<I>
 where
     I: FpdecInner,
 {
@@ -346,7 +345,7 @@ where
     }
 }
 
-impl<I> std::ops::Add for OobPrecFpdec<I>
+impl<I> ops::Add for OobPrecFpdec<I>
 where
     I: FpdecInner,
 {
@@ -356,7 +355,7 @@ where
     }
 }
 
-impl<I> std::ops::Sub for OobPrecFpdec<I>
+impl<I> ops::Sub for OobPrecFpdec<I>
 where
     I: FpdecInner,
 {
@@ -366,7 +365,7 @@ where
     }
 }
 
-impl<I> std::ops::AddAssign for OobPrecFpdec<I>
+impl<I> ops::AddAssign for OobPrecFpdec<I>
 where
     I: FpdecInner,
 {
@@ -375,7 +374,7 @@ where
     }
 }
 
-impl<I> std::ops::SubAssign for OobPrecFpdec<I>
+impl<I> ops::SubAssign for OobPrecFpdec<I>
 where
     I: FpdecInner,
 {
@@ -537,9 +536,9 @@ where
     where
         D: Deserializer<'de>,
     {
+        use core::marker::PhantomData;
+        use core::str::FromStr;
         use serde::de::{self, Visitor};
-        use std::marker::PhantomData;
-        use std::str::FromStr;
 
         struct OobFmtVistor<I>(PhantomData<I>);
 
@@ -555,7 +554,7 @@ where
             }
 
             fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                OobFmt::from_str(s).map_err(|e| E::custom(format!("decimal {:?}", e)))
+                OobFmt::from_str(s).map_err(E::custom)
             }
         }
 

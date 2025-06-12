@@ -1,3 +1,5 @@
+#![no_std]
+
 //! Primitive fixed-point decimal types.
 //!
 //! Rust built-in `f32` and `f64` types are not suitable for some fields
@@ -14,14 +16,16 @@
 //!    decimal crates do the same thing;
 //!
 //! 2. specifying precision staticly (fixed-point) to guarantee the fraction
-//!    precision. The precision is part of the type. This feature is _unique_!
+//!    precision. The precision is part of the type. _This feature is unique!_
 //!
 //! For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
 //! representation, and `4` is the static precision.
 //!
 //! The "primitive" in the crate name means straightforward representation,
 //! compact memory layout, high performance, and clean APIs, just like Rust's
-//! primitive types.
+//! primitive number types.
+//!
+//! This crate is `no_std`.
 //!
 //!
 //! # Distinctive
@@ -240,7 +244,7 @@ pub enum ParseError {
     Precision,
 }
 
-use std::num::{IntErrorKind, ParseIntError};
+use core::num::{IntErrorKind, ParseIntError};
 impl From<ParseIntError> for ParseError {
     fn from(pie: ParseIntError) -> Self {
         match pie.kind() {
@@ -251,7 +255,7 @@ impl From<ParseIntError> for ParseError {
     }
 }
 
-use std::fmt;
+use core::fmt;
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
@@ -264,7 +268,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl std::error::Error for ParseError {}
+impl core::error::Error for ParseError {}
 
 /// Build decimal from integer or float number easily.
 ///

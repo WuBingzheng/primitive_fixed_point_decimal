@@ -1,9 +1,11 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::oob_prec_fpdec::OobPrecFpdec;
 use crate::ParseError;
+use core::{fmt, ops, str::FromStr};
 use int_div_cum_error::{checked_divide, Rounding};
+#[allow(unused_imports)]
+use num_traits::float::FloatCore; // used only for `no_std`
 use num_traits::{cast::FromPrimitive, Num};
-use std::fmt;
 
 /// Static-precision fixed-point decimal.
 ///
@@ -226,7 +228,7 @@ where
 /// Examples:
 ///
 /// ```
-/// use std::str::FromStr;
+/// use core::str::FromStr;
 /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
 /// type Decimal = StaticPrecFpdec<i16, 4>;
 ///
@@ -234,7 +236,7 @@ where
 /// assert_eq!(Decimal::from_str("9999"), Err(ParseError::Overflow));
 /// assert_eq!(Decimal::from_str("1.23456"), Err(ParseError::Precision));
 /// ```
-impl<I, const P: i32> std::str::FromStr for StaticPrecFpdec<I, P>
+impl<I, const P: i32> FromStr for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
     ParseError: From<<I as Num>::FromStrRadixErr>,
@@ -281,7 +283,7 @@ macro_rules! convert_from_int {
             /// Examples:
             ///
             /// ```
-            /// use std::str::FromStr;
+            /// use core::str::FromStr;
             /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
             /// type Decimal = StaticPrecFpdec<i32, 6>;
             /// type NegPrec = StaticPrecFpdec<i16, -6>;
@@ -329,7 +331,7 @@ macro_rules! convert_from_float {
             /// Examples:
             ///
             /// ```
-            /// use std::str::FromStr;
+            /// use core::str::FromStr;
             /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
             /// type Decimal = StaticPrecFpdec<i32, 4>;
             ///
@@ -354,7 +356,7 @@ macro_rules! convert_from_float {
             /// Examples:
             ///
             /// ```
-            /// use std::str::FromStr;
+            /// use core::str::FromStr;
             /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError, fpdec};
             /// type Decimal = StaticPrecFpdec<i32, 4>;
             ///
@@ -373,7 +375,7 @@ macro_rules! convert_from_float {
 convert_from_float!(f32, from_f32, to_f32);
 convert_from_float!(f64, from_f64, to_f64);
 
-impl<I, const P: i32> std::ops::Neg for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::Neg for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -383,7 +385,7 @@ where
     }
 }
 
-impl<I, const P: i32> std::ops::Add for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::Add for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -393,7 +395,7 @@ where
     }
 }
 
-impl<I, const P: i32> std::ops::Sub for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::Sub for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -403,7 +405,7 @@ where
     }
 }
 
-impl<I, const P: i32> std::ops::AddAssign for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::AddAssign for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -412,7 +414,7 @@ where
     }
 }
 
-impl<I, const P: i32> std::ops::SubAssign for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::SubAssign for StaticPrecFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -452,9 +454,9 @@ where
     where
         D: Deserializer<'de>,
     {
+        use core::marker::PhantomData;
+        use core::str::FromStr;
         use serde::de::{self, Visitor};
-        use std::marker::PhantomData;
-        use std::str::FromStr;
 
         struct StaticPrecFpdecVistor<I, const P: i32>(PhantomData<I>);
 
@@ -478,7 +480,7 @@ where
             }
 
             fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                StaticPrecFpdec::from_str(s).map_err(|e| E::custom(format!("decimal {:?}", e)))
+                StaticPrecFpdec::from_str(s).map_err(E::custom)
             }
 
             visit_num!(visit_f32, f32);

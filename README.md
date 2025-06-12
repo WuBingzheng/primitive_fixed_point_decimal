@@ -16,14 +16,16 @@ This crate provides fixed-point decimal types to address the issues by
    decimal crates do the same thing;
 
 2. specifying precision staticly (fixed-point) to guarantee the fraction
-   precision. The precision is part of the type. This feature is _unique_!
+   precision. The precision is part of the type. _This feature is unique!_
 
 For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
 representation, and `4` is the static precision.
 
 The "primitive" in the crate name means straightforward representation,
 compact memory layout, high performance, and clean APIs, just like Rust's
-primitive types.
+primitive number types.
+
+This crate is `no_std`.
 
 
 ## Distinctive
