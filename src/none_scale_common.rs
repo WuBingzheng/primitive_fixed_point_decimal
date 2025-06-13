@@ -3,15 +3,15 @@ macro_rules! define_none_scale_common {
         /// The zero value.
         pub const ZERO: Self = Self(I::ZERO);
 
-        /// The largest value, (2<sup>b</sup> - 1) / 10<sup>P</sup>, where `b`
+        /// The largest value, (2<sup>b</sup> - 1) / 10<sup>S</sup>, where `b`
         /// is the bits of `I`.
         pub const MAX: Self = Self(I::MAX);
 
-        /// The smallest value, -(2<sup>b</sup> / 10<sup>P</sup>), where `b`
+        /// The smallest value, -(2<sup>b</sup> / 10<sup>S</sup>), where `b`
         /// is the bits of `I`.
         pub const MIN: Self = Self(I::MIN);
 
-        /// The smallest positive value, 10<sup>-P</sup> .
+        /// The smallest positive value, 10<sup>-S</sup> .
         pub const MIN_POSITIVE: Self = Self(I::ONE);
 
         /// The largest powers of 10.

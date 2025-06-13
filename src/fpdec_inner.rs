@@ -22,7 +22,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     fn checked_mul_ext(
         self,
         rhs: Self,
-        diff_scale: i32, // = P + Q - R
+        diff_scale: i32, // = scale (self + rhs - result)
         rounding: Rounding,
         cum_error: Option<&mut Self>,
     ) -> Option<Self> {
@@ -42,7 +42,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     fn checked_div_ext(
         self,
         rhs: Self,
-        diff_scale: i32, // = P - Q - R
+        diff_scale: i32, // = scale (self - rhs - result)
         rounding: Rounding,
         cum_error: Option<&mut Self>,
     ) -> Option<Self> {

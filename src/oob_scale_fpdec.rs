@@ -40,7 +40,7 @@ where
     pub fn checked_mul<J>(
         self,
         rhs: OobScaleFpdec<J>,
-        diff_scale: i32, // P(self) + P(rhs) - P(result)
+        diff_scale: i32, // scale (self + rhs - result)
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
@@ -89,7 +89,7 @@ where
     pub fn checked_mul_ext<J>(
         self,
         rhs: OobScaleFpdec<J>,
-        diff_scale: i32, // P(self) + P(rhs) - P(result)
+        diff_scale: i32, // scale (self + rhs - result)
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<OobScaleFpdec<I>>
@@ -108,7 +108,7 @@ where
     pub fn checked_div<J>(
         self,
         rhs: OobScaleFpdec<J>,
-        diff_scale: i32, // P(self) - P(rhs) - P(result)
+        diff_scale: i32, // scale (self - rhs - result)
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
@@ -144,7 +144,7 @@ where
     pub fn checked_div_ext<J>(
         self,
         rhs: OobScaleFpdec<J>,
-        diff_scale: i32, // P(self) - P(rhs) - P(result)
+        diff_scale: i32, // scale (self - rhs - result)
         rounding: Rounding,
         cum_error: Option<&mut I>,
     ) -> Option<OobScaleFpdec<I>>
@@ -232,11 +232,11 @@ where
     }
 }
 
-impl<I, const P: i32> From<ConstScaleFpdec<I, P>> for OobScaleFpdec<I>
+impl<I, const S: i32> From<ConstScaleFpdec<I, S>> for OobScaleFpdec<I>
 where
     I: FpdecInner,
 {
-    /// Convert from `ConstScaleFpdec` to `OobScaleFpdec` with scale `P`.
+    /// Convert from `ConstScaleFpdec` to `OobScaleFpdec` with scale `S`.
     ///
     /// Examples:
     ///
@@ -249,7 +249,7 @@ where
     /// let od: OobDec = sd.into(); // `od` has the same scale=6
     /// assert_eq!(od, fpdec!(123.45, 6));
     /// ```
-    fn from(sd: ConstScaleFpdec<I, P>) -> Self {
+    fn from(sd: ConstScaleFpdec<I, S>) -> Self {
         Self(sd.mantissa())
     }
 }
