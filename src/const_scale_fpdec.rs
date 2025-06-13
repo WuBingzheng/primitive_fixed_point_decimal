@@ -27,8 +27,8 @@ where
 {
     crate::none_scale_common::define_none_scale_common!();
 
-    /// Precision.
-    pub const PRECISION: i32 = P;
+    /// Static scale.
+    pub const SCALE: i32 = P;
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
     /// overflow occurred.

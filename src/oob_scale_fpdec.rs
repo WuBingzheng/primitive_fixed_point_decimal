@@ -20,7 +20,8 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
 /// - use `to_float()` to convert to floats,
 /// - use `try_from_str()` to convert from string with scale set,
 /// - use [`OobFmt`] for `Display` and `FromStr`,
-/// - no associate const `PRECISION`.
+/// - no associate const `SCALE`,
+/// - and others.
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
