@@ -7,19 +7,21 @@
 //!
 //! 1. can not represent decimal numbers in base 10 accurately, because they are in base 2;
 //!
-//! 2. can not guarantee fraction precision, because they are floating-point.
+//! 2. can not guarantee the fraction precision, because they are floating-point.
 //!
 //! This crate provides fixed-point decimal types to address the issues by
 //!
-//! 1. using integer types to represent number and handling radix-point in
-//!    base 10, to achieve the accuracy. This is a common idea. Many other
-//!    decimal crates do the same thing;
+//! 1. using integer types to represent numbers with a scaling factor (also
+//!    called as "scale") in base 10 to achieve the accuracy. This is a
+//!    [common idea](https://en.wikipedia.org/wiki/Fixed-point_arithmetic#Representation).
+//!    Many other decimal crates do the same thing;
 //!
-//! 2. specifying precision staticly (fixed-point) to guarantee the fraction
-//!    precision. The precision is part of the type. _This feature is unique!_
+//! 2. specifying the scale staticly to guarantee the fraction precision.
+//!    The scale is binded to the decimal type. It's fixed-point. Surprisingly,
+//!    it seems that [no crate has done this before](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md).
 //!
-//! For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
-//! representation, and `4` is the static precision.
+//! For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
+//! representation, and `4` is the static scale.
 //!
 //! The "primitive" in the crate name means straightforward representation,
 //! compact memory layout, high performance, and clean APIs, just like Rust's
@@ -31,23 +33,23 @@
 //! # Distinctive
 //!
 //! Although other decimal crates also claim to be fixed-point, they all
-//! bind the precision (or called "scale") to each decimal *instance*,
-//! which changes during operations.  See the
-//! [comparison document](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
-//! for more details.
+//! bind the scale to each decimal *instance*, which changes during operations.
+//! They're more like *floating-point*, or let's call them *dynamic* fixed-point.
+//! See the [comparison document](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
+//! for details.
 //!
-//! While this crate binds the precision to decimal *type*. It's static.
-//! The decimal types keep their precision for their whole lifetime
-//! instead of changing their precision during operations.
+//! While this crate binds the scale to decimal *type*. It's *static*.
+//! The decimal types keep their scale for their whole lifetime
+//! instead of changing their scale during operations.
 //!
-//! The `+`, `-` and comparison operations only perform between same types in
-//! same precision. There is no implicitly type or precision conversion.
+//! The `+`, `-` and comparison operations only perform between same types
+//! in same scale. There is no implicitly type or scale conversion.
 //! This makes sence, for we do not want to add balance type by
 //! fee-rate type. Even for two balance types we do not want to add
 //! USD currency by CNY. This also makes the operations very fast.
 //!
 //! However, the `*` and `/` operations accept operand with different
-//! types and precisions, and allow the result's precision specified.
+//! types and scales, and allow the result's scale specified.
 //! Certainly we need to multiply between balance type and fee-rate type
 //! and get balance type.
 //!
@@ -58,13 +60,14 @@
 //!
 //! Because of the real fixed-point, the application scenarios are very clear.
 //!
-//! For specific applications, if you know the precisions required, such as in
-//! a financial system using 2 precisions for balance and 6 for prices, then
-//! it is suitable for this crate. See the following examples.
+//! For specific applications, if you know the fraction precision required,
+//! such as in a accounting system needing 2 fraction precisions for balance
+//! and 6 for prices, then it is suitable for this crate. See the following
+//! examples.
 //!
-//! While for general-purpose applications or libraries, where you don't know the
-//! precision that the end users will need, such as in storage systems like
-//! Redis, then it is not suitable for this crate.
+//! While for general-purpose applications or libraries, where you don't know
+//! the fraction precision that the end users will need, then it is suitable
+//! for those *dynamic* fixed-point decimal crates.
 //!
 //! Besides, the real fixed-point is suitable for simple operations but not
 //! complex mathematical formulas, e.g. options pricing and Greeks.
@@ -74,30 +77,30 @@
 //! the complex calculations.
 //!
 //!
-//! # Specify Precision
+//! # Specify Scale
 //!
-//! There are 2 ways to specify the precision: *static* and *out-of-band*:
+//! There are 2 ways to specify the scale: *const* and *out-of-band*:
 //!
-//! - For the *static* type, [`StaticPrecFpdec`], we use Rust's *const generics*
-//!   to specify the precision. For example, `StaticPrecFpdec<i64, 4>` means
-//!   4 precision.
+//! - For the *const* type, [`ConstScaleFpdec`], we use Rust's *const generics*
+//!   to specify the scale. For example, `ConstScaleFpdec<i64, 4>` means
+//!   4 scale.
 //!
-//! - For the *out-of-band* type, [`OobPrecFpdec`], we do NOT save the
-//!   precision with our decimal types, so it's your job to save it somewhere
+//! - For the *out-of-band* type, [`OobScaleFpdec`], we do NOT save the
+//!   scale with decimal types, so it's your job to save it somewhere
 //!   and apply it in the following operations later. For example,
-//!   `OobPrecFpdec<i64>` takes no precision information.
+//!   `OobScaleFpdec<i64>` takes no scale information.
 //!
-//! Generally, the *static* type is more convenient and suitable for most
+//! Generally, the *const* type is more convenient and suitable for most
 //! scenarios. For example, in traditional currency exchange, you can use
-//! `StaticPrecFpdec<i64, 2>` to represent balance, e.g. `1234.56` USD and
-//! `8888800.00` JPY. And use `StaticPrecFpdec<i32, 6>` to represent all
-//! market prices since 6-digit-precision is big enough for all currency
+//! `ConstScaleFpdec<i64, 2>` to represent balance, e.g. `1234.56` USD and
+//! `8888800.00` JPY. And use `ConstScaleFpdec<i32, 6>` to represent all
+//! market prices since 6-digit-scale is big enough for all currency
 //! pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 //!
 //! ```
-//! use primitive_fixed_point_decimal::{StaticPrecFpdec, fpdec};
-//! type Balance = StaticPrecFpdec<i64, 2>; // 2 is enough for all currencies
-//! type Price = StaticPrecFpdec<i32, 6>; // 6 is enough for all markets
+//! use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+//! type Balance = ConstScaleFpdec<i64, 2>; // 2 is enough for all currencies
+//! type Price = ConstScaleFpdec<i32, 6>; // 6 is enough for all markets
 //!
 //! let usd: Balance = fpdec!(1234.56);
 //! let price: Price = fpdec!(146.4730);
@@ -109,36 +112,36 @@
 //! However in some scenarios, such as in cryptocurrency exchange, the
 //! price differences across various markets are very significant. For
 //! example `81234.0` in BTC/USDT and `0.000004658` in PEPE/USDT. Here
-//! we need to select different precisions for each market. So it's
+//! we need to select different scales for each market. So it's
 //! the *Out-of-band* type:
 //!
 //! ```
-//! use primitive_fixed_point_decimal::{OobPrecFpdec, fpdec};
-//! type Balance = OobPrecFpdec<i64>; // no global precision set
-//! type Price = OobPrecFpdec<i32>; // no global precision set
+//! use primitive_fixed_point_decimal::{OobScaleFpdec, fpdec};
+//! type Balance = OobScaleFpdec<i64>; // no global scale set
+//! type Price = OobScaleFpdec<i32>; // no global scale set
 //!
-//! // each market has its own precision configuration
+//! // each market has its own scale configuration
 //! struct Market {
-//!     base_asset_precision: i32,
-//!     quote_asset_precision: i32,
-//!     price_precision: i32,
+//!     base_asset_scale: i32,
+//!     quote_asset_scale: i32,
+//!     price_scale: i32,
 //! }
 //!
 //! // let's take BTC/USDT market as example
 //! let btc_usdt = Market {
-//!     base_asset_precision: 8,
-//!     quote_asset_precision: 6,
-//!     price_precision: 1,
+//!     base_asset_scale: 8,
+//!     quote_asset_scale: 6,
+//!     price_scale: 1,
 //! };
 //!
-//! // we need tell the precision to `fpdec!`
-//! let btc: Balance = fpdec!(0.34, btc_usdt.base_asset_precision);
-//! let price: Price = fpdec!(81234.0, btc_usdt.price_precision);
+//! // we need tell the scale to `fpdec!`
+//! let btc: Balance = fpdec!(0.34, btc_usdt.base_asset_scale);
+//! let price: Price = fpdec!(81234.0, btc_usdt.price_scale);
 //!
-//! // we need tell the precision difference to `checked_mul()` method
-//! let diff = btc_usdt.base_asset_precision + btc_usdt.price_precision - btc_usdt.quote_asset_precision;
+//! // we need tell the scale difference to `checked_mul()` method
+//! let diff = btc_usdt.base_asset_scale + btc_usdt.price_scale - btc_usdt.quote_asset_scale;
 //! let usdt = btc.checked_mul(price, diff).unwrap();
-//! assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_precision));
+//! assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_scale));
 //! ```
 //!
 //! Obviously it's verbose to use, but offers greater flexibility.
@@ -160,7 +163,7 @@
 //!
 //! Take the transaction fees in an exchange as an example. An order may be
 //! executed in multiple deals, with each deal independently charged a fee.
-//! For instance, the funds precision is 2 decimal places, one order quantity
+//! For instance, the funds scale is 2 decimal places, one order quantity
 //! is `10.00` USD, and the fee rate is `0.003`. If the order is executed all
 //! at once, the fee would be `10.00 × 0.003 = 0.03` USD. However, if the
 //! order is executed in five separate deals, each worth 2.00 USD, then the
@@ -171,9 +174,9 @@
 //! However, this issue can be avoid if using the cum_error mechanism.
 //!
 //! ```
-//! use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, Rounding, fpdec};
-//! type Balance = StaticPrecFpdec<i64, 2>;
-//! type FeeRate = StaticPrecFpdec<i16, 6>;
+//! use primitive_fixed_point_decimal::{ConstScaleFpdec, OobScaleFpdec, Rounding, fpdec};
+//! type Balance = ConstScaleFpdec<i64, 2>;
+//! type FeeRate = ConstScaleFpdec<i16, 6>;
 //!
 //! let deal: Balance = fpdec!(2.00); // 2.00 for each deal
 //! let fee_rate: FeeRate = fpdec!(0.003);
@@ -206,13 +209,13 @@
 
 // modules:
 //
-//     StaticPrecFpdec                            OobPrecFpdec
-//            ^                                         ^
-//            +---------------\          /--------------+
-//            |               |          |              |
-// +----------+--------+  +---+----------+---+  +-------+----------+
-// | static_prec_fpdec |  | none_prec_common |  |  oob_prec_fpdec  |
-// +-------------------+  +------------------+  +------------------+
+//     ConstScaleFpdec                             OobScaleFpdec
+//            ^                                          ^
+//            +---------------\           /--------------+
+//            |               |           |              |
+// +----------+--------+  +---+-----------+---+  +-------+---------+
+// | const_scale_fpdec |  | none_scale_common |  | oob_scale_fpdec |
+// +-------------------+  +-------------------+  +-----------------+
 // +---------------------------------------------------------------+
 // |                fpdec_inner: FpdecInner trait                  |
 // +---------------------------------------------------------------+
@@ -222,12 +225,12 @@
 mod fpdec_inner;
 mod inner_i128;
 mod inner_shorts;
-mod none_prec_common;
-mod oob_prec_fpdec;
-mod static_prec_fpdec;
+mod none_scale_common;
+mod oob_scale_fpdec;
+mod const_scale_fpdec;
 
-pub use crate::oob_prec_fpdec::{OobFmt, OobPrecFpdec};
-pub use crate::static_prec_fpdec::StaticPrecFpdec;
+pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
+pub use crate::const_scale_fpdec::ConstScaleFpdec;
 pub use int_div_cum_error::Rounding;
 
 /// Error in converting from string.
@@ -272,8 +275,8 @@ impl core::error::Error for ParseError {}
 
 /// Build decimal from integer or float number easily.
 ///
-/// It accepts 1 argument for `StaticPrecFpdec`, and accepts 1 extra
-/// argument for `OobPrecFpdec`, the out-of-band precision of course.
+/// It accepts 1 argument for `ConstScaleFpdec`, and accepts 1 extra
+/// argument for `OobScaleFpdec`, the out-of-band scale of course.
 ///
 /// Panics:
 ///
@@ -282,19 +285,19 @@ impl core::error::Error for ParseError {}
 /// Examples:
 ///
 /// ```
-/// use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
-/// type DecStatic = StaticPrecFpdec<i64, 2>;
-/// type DecOob = OobPrecFpdec<i64>;
+/// use primitive_fixed_point_decimal::{ConstScaleFpdec, OobScaleFpdec, fpdec};
+/// type DecConst = ConstScaleFpdec<i64, 2>;
+/// type DecOob = OobScaleFpdec<i64>;
 ///
-/// let d1: DecStatic = fpdec!(1.23); // 1 argument for StaticPrecFpdec
-/// let d2: DecOob = fpdec!(1.23, 2); // 2 arguments for OobPrecFpdec
+/// let d1: DecConst = fpdec!(1.23); // 1 argument for ConstScaleFpdec
+/// let d2: DecOob = fpdec!(1.23, 2); // 2 arguments for OobScaleFpdec
 /// ```
 #[macro_export]
 macro_rules! fpdec {
     ($n:expr) => {
-        primitive_fixed_point_decimal::StaticPrecFpdec::try_from($n).unwrap()
+        primitive_fixed_point_decimal::ConstScaleFpdec::try_from($n).unwrap()
     };
-    ($n:expr, $precision:expr) => {
-        primitive_fixed_point_decimal::OobPrecFpdec::try_from(($n, $precision)).unwrap()
+    ($n:expr, $scale:expr) => {
+        primitive_fixed_point_decimal::OobScaleFpdec::try_from(($n, $scale)).unwrap()
     };
 }

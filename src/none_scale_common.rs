@@ -1,4 +1,4 @@
-macro_rules! define_none_prec_common {
+macro_rules! define_none_scale_common {
     () => {
         /// The zero value.
         pub const ZERO: Self = Self(I::ZERO);
@@ -43,14 +43,14 @@ macro_rules! define_none_prec_common {
 
         /// Checked addition. Computes `self + rhs`, returning `None` if overflow occurred.
         ///
-        /// The right operand must have the same precision with self.
+        /// The right operand must have the same scale with self.
         pub fn checked_add(self, rhs: Self) -> Option<Self> {
             self.0.checked_add(&rhs.0).map(Self)
         }
 
         /// Checked subtraction. Computes `self - rhs`, returning `None` if overflow occurred.
         ///
-        /// The right operand must have the same precision with self.
+        /// The right operand must have the same scale with self.
         pub fn checked_sub(self, rhs: Self) -> Option<Self> {
             self.0.checked_sub(&rhs.0).map(Self)
         }
@@ -100,18 +100,18 @@ macro_rules! define_none_prec_common {
 
         /// Create a decimal from the underlying integer representation.
         ///
-        /// You must take care of the precision yourself.
+        /// You must take care of the scale yourself.
         pub const fn from_mantissa(i: I) -> Self {
             Self(i)
         }
 
         /// Return the underlying integer representation.
         ///
-        /// You must take care of the precision yourself.
+        /// You must take care of the scale yourself.
         pub const fn mantissa(self) -> I {
             self.0
         }
     };
 }
 
-pub(crate) use define_none_prec_common;
+pub(crate) use define_none_scale_common;
