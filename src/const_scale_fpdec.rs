@@ -148,17 +148,16 @@ where
             .map(ConstScaleFpdec)
     }
 
-    /// Shrink to a lower scale.
+    /// Round the decimal at the specified scale.
     ///
-    /// Equivalent to [`Self::shrink_to_with_rounding`] with `Rounding::Round`.
-    pub fn shrink_to(self, retain_scale: i32) -> Self {
-        self.shrink_to_with_rounding(retain_scale, Rounding::Round)
+    /// Equivalent to [`Self::round_with_rounding`] with `Rounding::Round`.
+    pub fn round(self, scale: i32) -> Self {
+        self.round_with_rounding(scale, Rounding::Round)
     }
 
-    /// Shrink to a lower scale.
+    /// Round the decimal at the specified scale with rounding type.
     ///
-    /// The `retain_scale` argument specifies the number of scale to be
-    /// retained, rather than the number to be reduced.
+    /// Return the original decimal if `scale >= P`.
     ///
     /// Examples:
     ///
@@ -168,12 +167,12 @@ where
     ///
     /// let price: Price = fpdec!(12.12345678);
     ///
-    /// assert_eq!(price.shrink_to(6), fpdec!(12.123457)); // Rounding::Round as default
+    /// assert_eq!(price.round(6), fpdec!(12.123457)); // `Rounding::Round` as default
     ///
-    /// assert_eq!(price.shrink_to_with_rounding(6, Rounding::Floor), fpdec!(12.123456));
+    /// assert_eq!(price.round_with_rounding(6, Rounding::Floor), fpdec!(12.123456));
     /// ```
-    pub fn shrink_to_with_rounding(self, retain_scale: i32, rounding: Rounding) -> Self {
-        Self(self.0.shrink_with_rounding(P - retain_scale, rounding))
+    pub fn round_with_rounding(self, scale: i32, rounding: Rounding) -> Self {
+        Self(self.0.round_diff_with_rounding(P - scale, rounding))
     }
 }
 

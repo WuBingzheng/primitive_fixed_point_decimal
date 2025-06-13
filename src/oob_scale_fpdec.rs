@@ -155,17 +155,17 @@ where
             .map(Self)
     }
 
-    /// Shrink some precision.
+    /// Round the decimal.
     ///
-    /// Equivalent to [`Self::shrink_with_rounding`] with `Rounding::Round`.
-    pub fn shrink(self, reduce_precision: i32) -> Self {
-        self.shrink_with_rounding(reduce_precision, Rounding::Round)
+    /// Equivalent to [`Self::round_diff_with_rounding`] with `Rounding::Round`.
+    pub fn round_diff(self, diff_scale: i32) -> Self {
+        self.round_diff_with_rounding(diff_scale, Rounding::Round)
     }
 
-    /// Shrink some precision.
+    /// Round the decimal with rounding type.
     ///
-    /// The `reduce_precision` argument specifies the number of scale to be
-    /// reduced rather than the number to be retained.
+    /// The argument `diff_scale` is `original_scale - round_scale`.
+    /// Return the original decimal if `diff_scale <= 0`.
     ///
     /// Examples:
     ///
@@ -173,16 +173,16 @@ where
     /// use primitive_fixed_point_decimal::{OobScaleFpdec, Rounding, fpdec};
     /// type Price = OobScaleFpdec<i64>;
     ///
-    /// let price: Price = fpdec!(12.12345678, 8);
+    /// let price: Price = fpdec!(12.12345678, 8); // scale=8
     ///
-    /// assert_eq!(price.shrink(2), // reduce 2 scale
-    ///     fpdec!(12.123457, 8)); // Rounding::Round as default
+    /// assert_eq!(price.round_diff(2), // reduce 2 scale
+    ///     fpdec!(12.123457, 8)); // `Rounding::Round` as default
     ///
-    /// assert_eq!(price.shrink_with_rounding(2, Rounding::Floor),
+    /// assert_eq!(price.round_diff_with_rounding(2, Rounding::Floor),
     ///     fpdec!(12.123456, 8));
     /// ```
-    pub fn shrink_with_rounding(self, reduce_precision: i32, rounding: Rounding) -> Self {
-        Self(self.0.shrink_with_rounding(reduce_precision, rounding))
+    pub fn round_diff_with_rounding(self, diff_scale: i32, rounding: Rounding) -> Self {
+        Self(self.0.round_diff_with_rounding(diff_scale, rounding))
     }
 
     /// Read decimal from string.

@@ -60,7 +60,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         }
     }
 
-    fn shrink_with_rounding(
+    fn round_diff_with_rounding(
         self,
         diff_scale: i32, // = src - dst
         rounding: Rounding,
