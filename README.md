@@ -174,7 +174,7 @@ which is significantly higher than the original `0.03` USD.
 However, this issue can be avoid if using the cum_error mechanism.
 
 ```rust
-use primitive_fixed_point_decimal::{ConstScaleFpdec, OobScaleFpdec, Rounding, fpdec};
+use primitive_fixed_point_decimal::{ConstScaleFpdec, Rounding, fpdec};
 type Balance = ConstScaleFpdec<i64, 2>;
 type FeeRate = ConstScaleFpdec<i16, 6>;
 

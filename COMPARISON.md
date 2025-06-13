@@ -8,25 +8,24 @@ Because I have not used these 2 other crates in real project, the following
 comparison is superficial and subjective.
 
 Note: `primitive_fixed_point_decimal` supports 2 types, `StaticPrecFpdec`
-and `OobPrecFpdec`. They differ only in the way they specify precision.
+and `OobPrecFpdec`. They differ only in the way they specify scale.
 So only the former is used in the following description.
 
 
 ## Representation
 
-A decimal consists of 3 parts: a scale (precision), a sign, and the
-mantissa (significant digits).
+A decimal consists of 3 parts: a scale, a sign, and the mantissa (significant digits).
 
 Now let's look at how the three crates represent these parts respectively.
 
 
 ### `primitive_fixed_point_decimal::StaticPrecFpdec`
 
-The *precision* is specified in the type's constant generics. The *sign*
+The *scale* is specified in the type's constant generics. The *sign*
 and *mantissa* are represented by the underlying signed integer.
 
 For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
-representation for sign and mantissa, and `4` is the precision.
+representation for sign and mantissa, and `4` is the scale.
 
 The memory layout:
 
@@ -41,8 +40,8 @@ which supports all Rust primitive signed integers: `i8`, `i16`, `i32`,
 `i64` and `i128`. For example, `StaticPrecFpdec<i64, 4>` takes 64 bits
 (8 bytes).
 
-The precision is in decimal *type* but not *instance*, so it is not shown
-in the memory layout above.
+The scale is binded on the decimal *type* but not *instance*, so it is not
+shown in the memory layout above.
 
 The [definition](https://docs.rs/primitive_fixed_point_decimal/latest/src/primitive_fixed_point_decimal/static_prec_fpdec.rs.html#18):
 
@@ -126,8 +125,8 @@ pub struct BigUint {
 ### Summary
 
 The biggest difference of `primitive_fixed_point_decimal`, compared with the
-other two crates, is that it binds the precision to decimal *type*, while the
-other two crates save the precision in decimal *instance*.
+other two crates, is that it binds the scale to decimal *type*, while the
+other two crates save the scale in decimal *instance*.
 
 Besides, `primitive_fixed_point_decimal` has the most compact memory layout,
 while `bigdecimal` has the strongest expression ability (unlimited mantissa).
@@ -136,16 +135,16 @@ while `bigdecimal` has the strongest expression ability (unlimited mantissa).
 ## Operations
 
 In `primitive_fixed_point_decimal`, the `+`, `-` and comparison operations
-work only between decimals of the same precision, which is designed intentionally.
-The `*` and `/` operations can work between decimals of different precisions
-and can also set the result's precision. See the crate's document for details.
+work only between decimals of the same scale, which is designed intentionally.
+The `*` and `/` operations can work between decimals of different scales
+and can also set the result's scale. See the crate's document for details.
 
 Other 2 crates both support `+`, `-` and comparison operations between
-decimals of different precisions. They first rescale the decimal with smaller
-precision into the larger precision, and then execute the operations. And
-the result's precision of `*` operation is the sum of 2 oprands. Because
+decimals of different scales. They first rescale the decimal with smaller
+scale into the larger scale, and then execute the operations. And
+the result's scale of `*` operation is the sum of 2 oprands. Because
 `rust_decimal` has limited mantissa which makes it easy to become overflow,
-it will also try to reduce the result's precision if overflow.
+it will also try to reduce the result's scale if overflow.
 
 
 ## How to Choose
@@ -167,13 +166,13 @@ The difference is that `primitive_fixed_point_decimal` is *fixed-point*,
 while the 2 others are *floating-point*. Thus, the application scenarios
 are very clear.
 
-For specific applications, if you know the precisions required, such as in
-a financial system using 2 precisions for balance and 6 for prices, then
+For specific applications, if you know the scales required, such as in
+a financial system using 2 scales for balance and 6 for prices, then
 it is suitable for `primitive_fixed_point_decimal`.
 
-While for general-purpose applications or libraries, where you don't know the
-precision that the end users will need, such as in storage systems like
-Redis, then it is suitable for `rust_decimal` and `bigdecimal`.
+While for general-purpose applications or libraries, where you don't
+know the scale that the end users will need, then it is suitable for
+`rust_decimal` and `bigdecimal`.
 
 Note: [The document of `rust_decimal`](https://docs.rs/rust_decimal/1.37.1/rust_decimal/struct.Decimal.html)
 says it's "a fixed-precision decimal number".
