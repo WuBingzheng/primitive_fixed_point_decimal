@@ -1,5 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
-use crate::oob_prec_fpdec::OobPrecFpdec;
+use crate::oob_scale_fpdec::OobScaleFpdec;
 use crate::ParseError;
 use core::{fmt, ops, str::FromStr};
 use int_div_cum_error::{checked_divide, Rounding};
@@ -7,24 +7,25 @@ use int_div_cum_error::{checked_divide, Rounding};
 use num_traits::float::FloatCore; // used only for `no_std`
 use num_traits::{cast::FromPrimitive, Num};
 
-/// Static-precision fixed-point decimal.
+/// Const-scale fixed-point decimal.
 ///
-/// `I` is the inner integer type, could be `i8`, `i16`, `i32`, `i64`, or `i128`.
+/// `I` is the inner integer type, could be `i8`, `i16`, `i32`, `i64`,
+/// or `i128`, with 2, 4, 9, 18 and 38 significant digits respectively.
 ///
-/// `P` is the static precision.
+/// `P` is the static scale.
 ///
-/// For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the inner
-/// integer with about 18 significant digits, and having `4` fraction precision.
+/// For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
+/// integer, and having `4` fraction precision.
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
-pub struct StaticPrecFpdec<I, const P: i32>(I);
+pub struct ConstScaleFpdec<I, const P: i32>(I);
 
-impl<I, const P: i32> StaticPrecFpdec<I, P>
+impl<I, const P: i32> ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
-    crate::none_prec_common::define_none_prec_common!();
+    crate::none_scale_common::define_none_scale_common!();
 
     /// Precision.
     pub const PRECISION: i32 = P;
@@ -35,8 +36,8 @@ where
     /// Equivalent to [`Self::checked_mul_ext`] with `Rounding::Round`.
     pub fn checked_mul<J, const Q: i32, const R: i32>(
         self,
-        rhs: StaticPrecFpdec<J, Q>,
-    ) -> Option<StaticPrecFpdec<I, R>>
+        rhs: ConstScaleFpdec<J, Q>,
+    ) -> Option<ConstScaleFpdec<I, R>>
     where
         J: FpdecInner,
     {
@@ -46,12 +47,12 @@ where
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
     /// overflow occurred.
     ///
-    /// The type of `rhs` can have different inner integer `J` and precision `Q`
+    /// The type of `rhs` can have different inner integer `J` and scale `Q`
     /// with `self`. The type of result must have the same inner integer `I`
-    /// while have different precision `R`.
+    /// while have different scale `R`.
     ///
-    /// If the precision of the result's type `R` is less than the sum of
-    /// precisions of the two multiplicands `P + Q`, then rounding operations
+    /// If the scale of the result's type `R` is less than the sum of
+    /// scales of the two multiplicands `P + Q`, then rounding operations
     /// are required and precision may be lost.
     /// You can specify the rounding type and cumulative error.
     ///
@@ -61,9 +62,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding, fpdec};
-    /// type Balance = StaticPrecFpdec<i64, 2>;
-    /// type FeeRate = StaticPrecFpdec<i16, 4>; // different types
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, Rounding, fpdec};
+    /// type Balance = ConstScaleFpdec<i64, 2>;
+    /// type FeeRate = ConstScaleFpdec<i16, 4>; // different types
     ///
     /// let balance: Balance = fpdec!(12.60);
     /// let rate: FeeRate = fpdec!(0.01);
@@ -83,16 +84,16 @@ where
     /// ```
     pub fn checked_mul_ext<J, const Q: i32, const R: i32>(
         self,
-        rhs: StaticPrecFpdec<J, Q>,
+        rhs: ConstScaleFpdec<J, Q>,
         rounding: Rounding,
         cum_error: Option<&mut I>,
-    ) -> Option<StaticPrecFpdec<I, R>>
+    ) -> Option<ConstScaleFpdec<I, R>>
     where
         J: FpdecInner,
     {
         self.0
             .checked_mul_ext(I::from(rhs.0)?, P + Q - R, rounding, cum_error)
-            .map(StaticPrecFpdec)
+            .map(ConstScaleFpdec)
     }
 
     /// Checked division. Computes `self / rhs`, returning `None` if
@@ -101,8 +102,8 @@ where
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
     pub fn checked_div<J, const Q: i32, const R: i32>(
         self,
-        rhs: StaticPrecFpdec<J, Q>,
-    ) -> Option<StaticPrecFpdec<I, R>>
+        rhs: ConstScaleFpdec<J, Q>,
+    ) -> Option<ConstScaleFpdec<I, R>>
     where
         J: FpdecInner,
     {
@@ -112,9 +113,9 @@ where
     /// Checked division. Computes `self / rhs`, returning `None` if
     /// division by 0 or overflow occurred.
     ///
-    /// The type of `rhs` can have different inner integer `J` and precision `Q`
+    /// The type of `rhs` can have different inner integer `J` and scale `Q`
     /// with `self`. The type of result must have the same inner integer `I`
-    /// while have different precision `R`.
+    /// while have different scale `R`.
     ///
     /// You can specify the rounding type and cumulative error.
     /// See the [cumulative error section](index.html#cumulative-error)
@@ -123,9 +124,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding, fpdec};
-    /// type Balance = StaticPrecFpdec<i64, 2>;
-    /// type FeeRate = StaticPrecFpdec<i16, 4>; // different types
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, Rounding, fpdec};
+    /// type Balance = ConstScaleFpdec<i64, 2>;
+    /// type FeeRate = ConstScaleFpdec<i16, 4>; // different types
     ///
     /// let rate: FeeRate = fpdec!(0.03);
     /// let fee: Balance = fpdec!(0.13);
@@ -135,48 +136,47 @@ where
     /// ```
     pub fn checked_div_ext<J, const Q: i32, const R: i32>(
         self,
-        rhs: StaticPrecFpdec<J, Q>,
+        rhs: ConstScaleFpdec<J, Q>,
         rounding: Rounding,
         cum_error: Option<&mut I>,
-    ) -> Option<StaticPrecFpdec<I, R>>
+    ) -> Option<ConstScaleFpdec<I, R>>
     where
         J: FpdecInner,
     {
         self.0
             .checked_div_ext(I::from(rhs.0)?, P - Q - R, rounding, cum_error)
-            .map(StaticPrecFpdec)
+            .map(ConstScaleFpdec)
     }
 
-    /// Shrink to a lower precision.
+    /// Round the decimal at the specified scale.
     ///
-    /// Equivalent to [`Self::shrink_to_with_rounding`] with `Rounding::Round`.
-    pub fn shrink_to(self, retain_precision: i32) -> Self {
-        self.shrink_to_with_rounding(retain_precision, Rounding::Round)
+    /// Equivalent to [`Self::round_with_rounding`] with `Rounding::Round`.
+    pub fn round(self, scale: i32) -> Self {
+        self.round_with_rounding(scale, Rounding::Round)
     }
 
-    /// Shrink to a lower precision.
+    /// Round the decimal at the specified scale with rounding type.
     ///
-    /// The `retain_precision` argument specifies the number of precision to be
-    /// retained, rather than the number to be reduced.
+    /// Return the original decimal if `scale >= P`.
     ///
     /// Examples:
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, Rounding, fpdec};
-    /// type Price = StaticPrecFpdec<i64, 8>;
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, Rounding, fpdec};
+    /// type Price = ConstScaleFpdec<i64, 8>;
     ///
     /// let price: Price = fpdec!(12.12345678);
     ///
-    /// assert_eq!(price.shrink_to(6), fpdec!(12.123457)); // Rounding::Round as default
+    /// assert_eq!(price.round(6), fpdec!(12.123457)); // `Rounding::Round` as default
     ///
-    /// assert_eq!(price.shrink_to_with_rounding(6, Rounding::Floor), fpdec!(12.123456));
+    /// assert_eq!(price.round_with_rounding(6, Rounding::Floor), fpdec!(12.123456));
     /// ```
-    pub fn shrink_to_with_rounding(self, retain_precision: i32, rounding: Rounding) -> Self {
-        Self(self.0.shrink_with_rounding(P - retain_precision, rounding))
+    pub fn round_with_rounding(self, scale: i32, rounding: Rounding) -> Self {
+        Self(self.0.round_diff_with_rounding(P - scale, rounding))
     }
 }
 
-impl<I, const P: i32> fmt::Debug for StaticPrecFpdec<I, P>
+impl<I, const P: i32> fmt::Debug for ConstScaleFpdec<I, P>
 where
     I: fmt::Display,
 {
@@ -190,10 +190,10 @@ where
 /// Examples:
 ///
 /// ```
-/// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
-/// type Decimal = StaticPrecFpdec<i16, 4>;
-/// type BigPrec = StaticPrecFpdec<i16, 8>;
-/// type NegPrec = StaticPrecFpdec<i16, -2>;
+/// use primitive_fixed_point_decimal::{ConstScaleFpdec, ParseError};
+/// type Decimal = ConstScaleFpdec<i16, 4>;
+/// type BigPrec = ConstScaleFpdec<i16, 8>;
+/// type NegPrec = ConstScaleFpdec<i16, -2>;
 ///
 /// assert_eq!(format!("{}", Decimal::try_from(1.230).unwrap()), String::from("1.23"));
 /// assert_eq!(format!("{}", Decimal::try_from(-1.230).unwrap()), String::from("-1.23")); // negative
@@ -207,7 +207,7 @@ where
 /// assert_eq!(format!("{}", NegPrec::try_from(-12300).unwrap()), String::from("-12300"));
 /// assert_eq!(format!("{}", NegPrec::try_from(-3276800).unwrap()), String::from("-3276800"));
 /// ```
-impl<I, const P: i32> fmt::Display for StaticPrecFpdec<I, P>
+impl<I, const P: i32> fmt::Display for ConstScaleFpdec<I, P>
 where
     I: FpdecInner + fmt::Display,
 {
@@ -229,14 +229,14 @@ where
 ///
 /// ```
 /// use core::str::FromStr;
-/// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
-/// type Decimal = StaticPrecFpdec<i16, 4>;
+/// use primitive_fixed_point_decimal::{ConstScaleFpdec, ParseError};
+/// type Decimal = ConstScaleFpdec<i16, 4>;
 ///
 /// assert_eq!(Decimal::from_str("1.23"), Decimal::try_from(1.23));
 /// assert_eq!(Decimal::from_str("9999"), Err(ParseError::Overflow));
 /// assert_eq!(Decimal::from_str("1.23456"), Err(ParseError::Precision));
 /// ```
-impl<I, const P: i32> FromStr for StaticPrecFpdec<I, P>
+impl<I, const P: i32> FromStr for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
     ParseError: From<<I as Num>::FromStrRadixErr>,
@@ -247,46 +247,46 @@ where
     }
 }
 
-impl<I, const P: i32> From<OobPrecFpdec<I>> for StaticPrecFpdec<I, P>
+impl<I, const P: i32> From<OobScaleFpdec<I>> for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
-    /// Convert from `OobPrecFpdec` with precision `P` to `StaticPrecFpdec`.
+    /// Convert from `OobScaleFpdec` with scale `P` to `ConstScaleFpdec`.
     ///
     /// Examples:
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{StaticPrecFpdec, OobPrecFpdec, fpdec};
-    /// type StaticDec = StaticPrecFpdec<i32, 6>;
-    /// type OobDec = OobPrecFpdec<i32>; // the OOB precision is 6 too
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, OobScaleFpdec, fpdec};
+    /// type ConstDec = ConstScaleFpdec<i32, 6>;
+    /// type OobDec = OobScaleFpdec<i32>; // the OOB scale is 6 too
     ///
-    /// let od: OobDec = fpdec!(123.45, 6); // make sure that `od` has the same precision=6
-    /// let sd: StaticDec = od.into();
+    /// let od: OobDec = fpdec!(123.45, 6); // make sure that `od` has the same scale=6
+    /// let sd: ConstDec = od.into();
     /// assert_eq!(sd, fpdec!(123.45));
     /// ```
-    fn from(od: OobPrecFpdec<I>) -> Self {
+    fn from(od: OobScaleFpdec<I>) -> Self {
         Self(od.mantissa())
     }
 }
 
 macro_rules! convert_from_int {
     ($from_int_type:ty) => {
-        impl<I, const P: i32> TryFrom<$from_int_type> for StaticPrecFpdec<I, P>
+        impl<I, const P: i32> TryFrom<$from_int_type> for ConstScaleFpdec<I, P>
         where
             I: FpdecInner,
         {
             type Error = ParseError;
 
             /// Convert from integer. Returning error if overflow occurred
-            /// or lossing precision under `precision < 0`.
+            /// or lossing precision under `scale < 0`.
             ///
             /// Examples:
             ///
             /// ```
             /// use core::str::FromStr;
-            /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
-            /// type Decimal = StaticPrecFpdec<i32, 6>;
-            /// type NegPrec = StaticPrecFpdec<i16, -6>;
+            /// use primitive_fixed_point_decimal::{ConstScaleFpdec, ParseError};
+            /// type Decimal = ConstScaleFpdec<i32, 6>;
+            /// type NegPrec = ConstScaleFpdec<i16, -6>;
             ///
             /// assert_eq!(Decimal::try_from(123).unwrap(), Decimal::from_str("123").unwrap());
             /// assert_eq!(Decimal::try_from(123_i8).unwrap(), Decimal::from_str("123").unwrap());
@@ -316,7 +316,7 @@ convert_from_int!(i128);
 
 macro_rules! convert_from_float {
     ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
-        impl<I, const P: i32> TryFrom<$float_type> for StaticPrecFpdec<I, P>
+        impl<I, const P: i32> TryFrom<$float_type> for ConstScaleFpdec<I, P>
         where
             I: FromPrimitive + FpdecInner,
         {
@@ -326,14 +326,14 @@ macro_rules! convert_from_float {
             ///
             /// Since it's hard for the float types to represent decimal fraction
             /// exactly, so this method always rounds the float number into
-            /// StaticPrecFpdec.
+            /// ConstScaleFpdec.
             ///
             /// Examples:
             ///
             /// ```
             /// use core::str::FromStr;
-            /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError};
-            /// type Decimal = StaticPrecFpdec<i32, 4>;
+            /// use primitive_fixed_point_decimal::{ConstScaleFpdec, ParseError};
+            /// type Decimal = ConstScaleFpdec<i32, 4>;
             ///
             /// assert_eq!(Decimal::try_from(1.23).unwrap(), Decimal::from_str("1.23").unwrap());
             /// assert_eq!(Decimal::try_from(1.23456789).unwrap(), Decimal::from_str("1.2346").unwrap());
@@ -347,7 +347,7 @@ macro_rules! convert_from_float {
             }
         }
 
-        impl<I, const P: i32> From<StaticPrecFpdec<I, P>> for $float_type
+        impl<I, const P: i32> From<ConstScaleFpdec<I, P>> for $float_type
         where
             I: FpdecInner,
         {
@@ -357,14 +357,14 @@ macro_rules! convert_from_float {
             ///
             /// ```
             /// use core::str::FromStr;
-            /// use primitive_fixed_point_decimal::{StaticPrecFpdec, ParseError, fpdec};
-            /// type Decimal = StaticPrecFpdec<i32, 4>;
+            /// use primitive_fixed_point_decimal::{ConstScaleFpdec, ParseError, fpdec};
+            /// type Decimal = ConstScaleFpdec<i32, 4>;
             ///
             /// let dec: Decimal = fpdec!(1.23);
             /// let f: f32 = dec.into();
             /// assert_eq!(f, 1.23);
             /// ```
-            fn from(dec: StaticPrecFpdec<I, P>) -> Self {
+            fn from(dec: ConstScaleFpdec<I, P>) -> Self {
                 let base: $float_type = 10.0;
                 dec.0.$to_fn().unwrap() / base.powi(P)
             }
@@ -375,7 +375,7 @@ macro_rules! convert_from_float {
 convert_from_float!(f32, from_f32, to_f32);
 convert_from_float!(f64, from_f64, to_f64);
 
-impl<I, const P: i32> ops::Neg for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::Neg for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -385,7 +385,7 @@ where
     }
 }
 
-impl<I, const P: i32> ops::Add for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::Add for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -395,7 +395,7 @@ where
     }
 }
 
-impl<I, const P: i32> ops::Sub for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::Sub for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -405,7 +405,7 @@ where
     }
 }
 
-impl<I, const P: i32> ops::AddAssign for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::AddAssign for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -414,7 +414,7 @@ where
     }
 }
 
-impl<I, const P: i32> ops::SubAssign for StaticPrecFpdec<I, P>
+impl<I, const P: i32> ops::SubAssign for ConstScaleFpdec<I, P>
 where
     I: FpdecInner,
 {
@@ -427,7 +427,7 @@ where
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "serde")]
-impl<I, const P: i32> Serialize for StaticPrecFpdec<I, P>
+impl<I, const P: i32> Serialize for ConstScaleFpdec<I, P>
 where
     I: FpdecInner + fmt::Display,
 {
@@ -445,7 +445,7 @@ where
 }
 
 #[cfg(feature = "serde")]
-impl<'de, I, const P: i32> Deserialize<'de> for StaticPrecFpdec<I, P>
+impl<'de, I, const P: i32> Deserialize<'de> for ConstScaleFpdec<I, P>
 where
     I: FromPrimitive + FpdecInner,
     ParseError: From<<I as Num>::FromStrRadixErr>,
@@ -458,29 +458,29 @@ where
         use core::str::FromStr;
         use serde::de::{self, Visitor};
 
-        struct StaticPrecFpdecVistor<I, const P: i32>(PhantomData<I>);
+        struct ConstScaleFpdecVistor<I, const P: i32>(PhantomData<I>);
 
         macro_rules! visit_num {
             ($func_name:ident, $num_type:ty) => {
                 fn $func_name<E: de::Error>(self, n: $num_type) -> Result<Self::Value, E> {
-                    StaticPrecFpdec::try_from(n).map_err(|_| E::custom("decimal overflow"))
+                    ConstScaleFpdec::try_from(n).map_err(|_| E::custom("decimal overflow"))
                 }
             };
         }
 
-        impl<'de, I, const P: i32> Visitor<'de> for StaticPrecFpdecVistor<I, P>
+        impl<'de, I, const P: i32> Visitor<'de> for ConstScaleFpdecVistor<I, P>
         where
             I: FromPrimitive + FpdecInner,
             ParseError: From<<I as Num>::FromStrRadixErr>,
         {
-            type Value = StaticPrecFpdec<I, P>;
+            type Value = ConstScaleFpdec<I, P>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "decimal")
             }
 
             fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                StaticPrecFpdec::from_str(s).map_err(E::custom)
+                ConstScaleFpdec::from_str(s).map_err(E::custom)
             }
 
             visit_num!(visit_f32, f32);
@@ -492,6 +492,6 @@ where
             visit_num!(visit_i128, i128);
         }
 
-        deserializer.deserialize_any(StaticPrecFpdecVistor(PhantomData))
+        deserializer.deserialize_any(ConstScaleFpdecVistor(PhantomData))
     }
 }

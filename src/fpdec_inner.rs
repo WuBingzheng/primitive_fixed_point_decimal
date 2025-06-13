@@ -22,17 +22,17 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     fn checked_mul_ext(
         self,
         rhs: Self,
-        diff_precision: i32, // = P + Q - R
+        diff_scale: i32, // = P + Q - R
         rounding: Rounding,
         cum_error: Option<&mut Self>,
     ) -> Option<Self> {
-        if diff_precision > 0 {
+        if diff_scale > 0 {
             // self * rhs / diff_exp
-            let exp = Self::get_exp(diff_precision as usize)?;
+            let exp = Self::get_exp(diff_scale as usize)?;
             self.calc_mul_div(rhs, exp, rounding, cum_error)
-        } else if diff_precision < 0 {
+        } else if diff_scale < 0 {
             // self * rhs * diff_exp
-            let exp = Self::get_exp(-diff_precision as usize)?;
+            let exp = Self::get_exp(-diff_scale as usize)?;
             self.checked_mul(&rhs)?.checked_mul(&exp)
         } else {
             self.checked_mul(&rhs)
@@ -42,34 +42,34 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     fn checked_div_ext(
         self,
         rhs: Self,
-        diff_precision: i32, // = P - Q - R
+        diff_scale: i32, // = P - Q - R
         rounding: Rounding,
         cum_error: Option<&mut Self>,
     ) -> Option<Self> {
-        if diff_precision > 0 {
+        if diff_scale > 0 {
             // self / rhs / diff_exp
-            let exp = Self::get_exp(diff_precision as usize)?;
+            let exp = Self::get_exp(diff_scale as usize)?;
             let q = checked_divide(self, rhs, rounding, None)?;
             checked_divide(q, exp, rounding, cum_error)
-        } else if diff_precision < 0 {
+        } else if diff_scale < 0 {
             // self * diff_exp / rhs
-            let exp = Self::get_exp(-diff_precision as usize)?;
+            let exp = Self::get_exp(-diff_scale as usize)?;
             self.calc_mul_div(exp, rhs, rounding, cum_error)
         } else {
             self.checked_mul(&rhs)
         }
     }
 
-    fn shrink_with_rounding(
+    fn round_diff_with_rounding(
         self,
-        diff_precision: i32, // = src - dst
+        diff_scale: i32, // = src - dst
         rounding: Rounding,
     ) -> Self {
-        if diff_precision <= 0 {
+        if diff_scale <= 0 {
             return self;
         }
 
-        match Self::get_exp(diff_precision as usize) {
+        match Self::get_exp(diff_scale as usize) {
             None => Self::ZERO,
             Some(exp) => {
                 // self / exp * exp
@@ -81,7 +81,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         }
     }
 
-    fn try_from_str(s: &str, precision: i32) -> Result<Self, ParseError>
+    fn try_from_str(s: &str, scale: i32) -> Result<Self, ParseError>
     where
         Self: Num,
         ParseError: From<<Self as Num>::FromStrRadixErr>,
@@ -104,17 +104,17 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         // fraction part
         let (int_str, frac_num) = if let Some((int_str, frac_str)) = s.split_once('.') {
             let frac_len = frac_str.len();
-            if frac_len as i32 > precision {
+            if frac_len as i32 > scale {
                 return Err(ParseError::Precision);
             }
 
-            // here precision > 0
-            let precision = precision as usize;
+            // here scale > 0
+            let scale = scale as usize;
 
             let mut frac_num = Self::from_str_radix(frac_str, 10)?;
 
-            if frac_len < precision {
-                let diff_exp = Self::get_exp(precision - frac_len).ok_or(ParseError::Overflow)?;
+            if frac_len < scale {
+                let diff_exp = Self::get_exp(scale - frac_len).ok_or(ParseError::Overflow)?;
                 frac_num = frac_num
                     .checked_mul(&diff_exp)
                     .ok_or(ParseError::Overflow)?;
@@ -126,8 +126,8 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         };
 
         // integer part
-        let inner = if precision > 0 {
-            match Self::get_exp(precision as usize) {
+        let inner = if scale > 0 {
+            match Self::get_exp(scale as usize) {
                 Some(exp) => Self::from_str_radix(int_str, 10)?
                     .checked_mul(&exp)
                     .ok_or(ParseError::Overflow)?
@@ -141,10 +141,10 @@ pub trait FpdecInner: Sized + PrimSignedInt {
                 }
             }
         } else {
-            if s.len() <= -precision as usize {
+            if s.len() <= -scale as usize {
                 return Err(ParseError::Precision);
             }
-            let end = s.len() - (-precision) as usize;
+            let end = s.len() - (-scale) as usize;
             if !int_str[end..].chars().all(|ch| ch == '0') {
                 return Err(ParseError::Precision);
             }
@@ -179,7 +179,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             return Err(ParseError::Empty);
         }
 
-        let (inner, precision) = if let Some((int_str, frac_str)) = s.split_once('.') {
+        let (inner, scale) = if let Some((int_str, frac_str)) = s.split_once('.') {
             let int_num = Self::from_str_radix(int_str, 10)?;
             let frac_num = Self::from_str_radix(frac_str, 10)?;
 
@@ -204,25 +204,25 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         };
 
         let inner = if is_neg { -inner } else { inner };
-        Ok((inner, precision))
+        Ok((inner, scale))
     }
 
-    fn display_fmt(self, precision: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
+    fn display_fmt(self, scale: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
     where
         Self: fmt::Display,
     {
         if self.is_zero() {
             return write!(f, "0");
         }
-        if precision == 0 {
+        if scale == 0 {
             return write!(f, "{}", self);
         }
-        if precision < 0 {
-            return write!(f, "{}{:0>width$}", self, 0, width = (-precision) as usize);
+        if scale < 0 {
+            return write!(f, "{}{:0>width$}", self, 0, width = (-scale) as usize);
         }
 
-        // precision > 0
-        let precision = precision as usize;
+        // scale > 0
+        let scale = scale as usize;
 
         fn strip_zeros<I>(mut n: I) -> (I, usize)
         where
@@ -238,7 +238,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             (n, zeros)
         }
 
-        match Self::get_exp(precision) {
+        match Self::get_exp(scale) {
             Some(exp) => {
                 let i = self / exp;
                 let frac = self % exp;
@@ -247,35 +247,35 @@ pub trait FpdecInner: Sized + PrimSignedInt {
                 } else {
                     let (frac, zeros) = strip_zeros(frac.abs());
                     if i.is_zero() && (self ^ exp).is_negative() {
-                        write!(f, "-0.{:0>width$}", frac, width = precision - zeros)
+                        write!(f, "-0.{:0>width$}", frac, width = scale - zeros)
                     } else {
-                        write!(f, "{}.{:0>width$}", i, frac, width = precision - zeros)
+                        write!(f, "{}.{:0>width$}", i, frac, width = scale - zeros)
                     }
                 }
             }
             None => {
                 if !self.is_negative() {
                     let (n, zeros) = strip_zeros(self);
-                    write!(f, "0.{:0>width$}", n, width = precision - zeros)
+                    write!(f, "0.{:0>width$}", n, width = scale - zeros)
                 } else if self != Self::MIN {
                     let (n, zeros) = strip_zeros(-self);
-                    write!(f, "-0.{:0>width$}", n, width = precision - zeros)
+                    write!(f, "-0.{:0>width$}", n, width = scale - zeros)
                 } else {
                     let ten = Self::from(10).unwrap();
                     let front = self / ten;
                     let last = self % ten;
-                    write!(f, "-0.{:0>width$}{}", -front, -last, width = precision - 1)
+                    write!(f, "-0.{:0>width$}{}", -front, -last, width = scale - 1)
                 }
             }
         }
     }
 
-    fn checked_from_int(self, precision: i32) -> Result<Self, ParseError> {
-        if precision > 0 {
-            let exp = Self::get_exp(precision as usize).ok_or(ParseError::Overflow)?;
+    fn checked_from_int(self, scale: i32) -> Result<Self, ParseError> {
+        if scale > 0 {
+            let exp = Self::get_exp(scale as usize).ok_or(ParseError::Overflow)?;
             self.checked_mul(&exp).ok_or(ParseError::Overflow)
-        } else if precision < 0 {
-            let exp = Self::get_exp(-precision as usize).ok_or(ParseError::Precision)?;
+        } else if scale < 0 {
+            let exp = Self::get_exp(-scale as usize).ok_or(ParseError::Precision)?;
             if !(self % exp).is_zero() {
                 return Err(ParseError::Precision);
             }
