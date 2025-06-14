@@ -2,8 +2,7 @@
 
 //! Primitive fixed-point decimal types.
 //!
-//! Rust built-in `f32` and `f64` types are not suitable for some fields
-//! (e.g. finance) because of two drawbacks:
+//! Rust built-in `f32` and `f64` types have two drawbacks:
 //!
 //! 1. can not represent decimal numbers in base 10 accurately, because they are in base 2;
 //!
@@ -34,11 +33,11 @@
 //!
 //! Although other decimal crates also claim to be fixed-point, they all
 //! bind the scale to each decimal *instance*, which changes during operations.
-//! They're more like *floating-point*, or let's call them *dynamic* fixed-point.
+//! They're more like floating-point.
 //! See the [comparison document](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
 //! for details.
 //!
-//! While this crate binds the scale to decimal *type*. It's *static*.
+//! While this crate binds the scale to decimal *type*.
 //! The decimal types keep their scale for their whole lifetime
 //! instead of changing their scale during operations.
 //!
@@ -53,28 +52,12 @@
 //! Certainly we need to multiply between balance type and fee-rate type
 //! and get balance type.
 //!
+//! If each decimal type has a fixed scale in you application, which means
+//! all the decimal instances under each type have the same scale, it's
+//! suitable for this crate. Otherwise, you should use other floating-point
+//! decimal crates.
+//!
 //! See the examples below for more details.
-//!
-//!
-//! # When to or Not to Use This
-//!
-//! Because of the real fixed-point, the application scenarios are very clear.
-//!
-//! For specific applications, if you know the fraction precision required,
-//! such as in a accounting system needing 2 fraction precisions for balance
-//! and 6 for prices, then it is suitable for this crate. See the following
-//! examples.
-//!
-//! While for general-purpose applications or libraries, where you don't know
-//! the fraction precision that the end users will need, then it is suitable
-//! for those *dynamic* fixed-point decimal crates.
-//!
-//! Besides, the real fixed-point is suitable for simple operations but not
-//! complex mathematical formulas, e.g. options pricing and Greeks.
-//! However, in my opinon, complex mathematical formulas do not require
-//! accurate precision generally. So in this case you can convert the decimal
-//! inputs (e.g. prices, balances and volumes) to floats and then perform
-//! the complex calculations.
 //!
 //!
 //! # Specify Scale
@@ -146,6 +129,15 @@
 //!
 //! Obviously it's verbose to use, but offers greater flexibility.
 //!
+//! Another example that fits `OobScaleFpdec` is the `decimal` data type in SQL.
+//! The scale of each column is fixed on creating, but different columns
+//! have different scales.
+//!
+//! In summary, if the scale of your decimal type is fixed and known during
+//!
+//! - compile time, then use `ConstScaleFpdec`,
+//! - runtime, then use `OobScaleFpdec`.
+//!
 //!
 //! # Cumulative Error
 //!
@@ -206,6 +198,9 @@
 //! # Status
 //!
 //! More tests are need before ready for production.
+//!
+//! Note: Some types and functions names have changed in v0.7.0 and are
+//! not compatible with the previous versions.
 
 // modules:
 //

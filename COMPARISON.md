@@ -7,7 +7,7 @@ This document compares `primitive_fixed_point_decimal` crate to
 Because I have not used these 2 other crates in real project, the following
 comparison is superficial and subjective.
 
-Note: `primitive_fixed_point_decimal` supports 2 types, `StaticPrecFpdec`
+Note: `primitive_fixed_point_decimal` supports 2 types, `ConstScaleFpdec`
 and `OobPrecFpdec`. They differ only in the way they specify scale.
 So only the former is used in the following description.
 
@@ -19,12 +19,12 @@ A decimal consists of 3 parts: a scale, a sign, and the mantissa (significant di
 Now let's look at how the three crates represent these parts respectively.
 
 
-### `primitive_fixed_point_decimal::StaticPrecFpdec`
+### `primitive_fixed_point_decimal::ConstScaleFpdec`
 
 The *scale* is specified in the type's constant generics. The *sign*
 and *mantissa* are represented by the underlying signed integer.
 
-For example, `StaticPrecFpdec<i64, 4>` means using `i64` as the underlying
+For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
 representation for sign and mantissa, and `4` is the scale.
 
 The memory layout:
@@ -37,16 +37,16 @@ The memory layout:
 
 The size (`?` above) depends on the type of underlying signed integer,
 which supports all Rust primitive signed integers: `i8`, `i16`, `i32`,
-`i64` and `i128`. For example, `StaticPrecFpdec<i64, 4>` takes 64 bits
+`i64` and `i128`. For example, `ConstScaleFpdec<i64, 4>` takes 64 bits
 (8 bytes).
 
 The scale is binded on the decimal *type* but not *instance*, so it is not
 shown in the memory layout above.
 
-The [definition](https://docs.rs/primitive_fixed_point_decimal/latest/src/primitive_fixed_point_decimal/static_prec_fpdec.rs.html#18):
+The [definition](https://docs.rs/primitive_fixed_point_decimal/0.7.0/src/primitive_fixed_point_decimal/const_scale_fpdec.rs.html#23):
 
 ```rust
-pub struct StaticPrecFpdec<I, const P: i32>(I);
+pub struct ConstScaleFpdec<I, const S: i32>(I);
 ```
 
 where `I` is the type of underlying signed integer.
@@ -65,7 +65,7 @@ The memory layout:
 +------------------+---------------------- ... --+
 ```
 
-The [definition](https://docs.rs/rust_decimal/latest/src/rust_decimal/decimal.rs.html#115-126):
+The [definition](https://docs.rs/rust_decimal/1.37.2/src/rust_decimal/decimal.rs.html#115-126):
 
 ```rust
 pub struct Decimal {
@@ -105,7 +105,7 @@ The memory layout:
                             +--------------- ... ---+
 ```
 
-The [definition](https://docs.rs/bigdecimal/latest/src/bigdecimal/lib.rs.html#206-210):
+The [definition](https://docs.rs/bigdecimal/0.4.8/src/bigdecimal/lib.rs.html#206-210):
 
 ```rust
 pub struct BigDecimal {

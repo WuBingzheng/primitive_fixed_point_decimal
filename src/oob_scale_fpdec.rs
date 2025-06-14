@@ -13,6 +13,9 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
 /// For example, `OobScaleFpdec<i64>` means using `i64` as the underlying
 /// integer. It's your job to save the out-of-band scale somewhere else.
 ///
+/// The scale can be positive for fraction precision or be negative
+/// for omitting the low-order digits of integer values.
+///
 /// Compared to [`ConstScaleFpdec`], this `OobScaleFpdec` has more verbose APIs:
 ///
 /// - extra `diff_scale` argument for most operations such as `*` and `/`, but no need for `+` and `-`,

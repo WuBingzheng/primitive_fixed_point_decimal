@@ -12,7 +12,8 @@ use num_traits::{cast::FromPrimitive, Num};
 /// `I` is the inner integer type, could be `i8`, `i16`, `i32`, `i64`,
 /// or `i128`, with 2, 4, 9, 18 and 38 significant digits respectively.
 ///
-/// `S` is the static scale.
+/// `S` is the static scale. Positive means fraction precision. Negative
+/// means omitting the low-order digits of integer values.
 ///
 /// For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
 /// integer, and having `4` fraction precision.
@@ -27,7 +28,7 @@ where
 {
     crate::none_scale_common::define_none_scale_common!();
 
-    /// Static scale.
+    /// The static scale.
     pub const SCALE: i32 = S;
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
