@@ -19,9 +19,9 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
 /// Compared to [`ConstScaleFpdec`], this `OobScaleFpdec` has more verbose APIs:
 ///
 /// - extra `diff_scale` argument for most operations such as `*` and `/`, but no need for `+` and `-`,
+/// - use `try_from_str()` to convert from string with scale set,
 /// - use `(*, i32)` tuple for converting from integers or floats,
 /// - use `to_float()` to convert to floats,
-/// - use `try_from_str()` to convert from string with scale set,
 /// - use [`OobFmt`] for `Display` and `FromStr`,
 /// - no associate const `SCALE`,
 /// - and others.

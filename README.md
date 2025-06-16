@@ -33,7 +33,8 @@ This crate is `no_std`.
 
 Although other decimal crates also claim to be fixed-point, they all
 bind the scale to each decimal *instance*, which changes during operations.
-They're more like floating-point.
+They're more like
+[decimal floating point](https://en.wikipedia.org/wiki/Decimal_floating_point).
 See the [comparison document](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
 for details.
 
@@ -66,7 +67,7 @@ There are 2 ways to specify the scale: *const* and *out-of-band*:
 
 - For the *const* type, [`ConstScaleFpdec`], we use Rust's *const generics*
   to specify the scale. For example, `ConstScaleFpdec<i64, 4>` means
-  4 scale.
+  scale is 4.
 
 - For the *out-of-band* type, [`OobScaleFpdec`], we do NOT save the
   scale with decimal types, so it's your job to save it somewhere
@@ -130,13 +131,8 @@ assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_scale));
 Obviously it's verbose to use, but offers greater flexibility.
 
 Another example that fits `OobScaleFpdec` is the `decimal` data type in SQL.
-The scale of each column is fixed on creating, but different columns
+The scale of each column is fixed on created, but different columns
 have different scales.
-
-In summary, if the scale of your decimal type is fixed and known during
-
-- compile time, then use `ConstScaleFpdec`,
-- runtime, then use `OobScaleFpdec`.
 
 
 ## Cumulative Error

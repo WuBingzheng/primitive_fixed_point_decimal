@@ -166,17 +166,15 @@ The difference is that `primitive_fixed_point_decimal` is *fixed-point*,
 while the 2 others are *floating-point*. Thus, the application scenarios
 are very clear.
 
-For specific applications, if you know the scales required, such as in
-a financial system using 2 scales for balance and 6 for prices, then
-it is suitable for `primitive_fixed_point_decimal`.
-
-While for general-purpose applications or libraries, where you don't
-know the scale that the end users will need, then it is suitable for
-`rust_decimal` and `bigdecimal`.
+If each decimal type has a fixed scale in you application, which means
+all the decimal instances under each type have the same scale, it's
+suitable for `primitive_fixed_point_decimal` crate. Otherwise, you
+should use `rust_decimal` or `bigdecimal` crate.
 
 Note: [The document of `rust_decimal`](https://docs.rs/rust_decimal/1.37.1/rust_decimal/struct.Decimal.html)
 says it's "a fixed-precision decimal number".
 And [the document of `bigdecimal`](https://docs.rs/bigdecimal/0.4.8/bigdecimal/index.html)
 also implies it's fixed-point by: "avoids common floating point errors".
-However, I still think they are floating-point, because the scale is carried
-in the number and changes during calculation.
+However, I still think they are
+[floating-point](https://en.wikipedia.org/wiki/Decimal_floating_point),
+because the scale is carried in the number and changes during calculation.
