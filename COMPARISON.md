@@ -40,7 +40,7 @@ which supports all Rust primitive signed integers: `i8`, `i16`, `i32`,
 `i64` and `i128`. For example, `ConstScaleFpdec<i64, 4>` takes 64 bits
 (8 bytes).
 
-The scale is binded on the decimal *type* but not *instance*, so it is not
+The scale is bound to the decimal *type* but not *instance*, so it is not
 shown in the memory layout above.
 
 The [definition](https://docs.rs/primitive_fixed_point_decimal/0.7.0/src/primitive_fixed_point_decimal/const_scale_fpdec.rs.html#23):
@@ -143,7 +143,7 @@ Other 2 crates both support `+`, `-` and comparison operations between
 decimals of different scales. They first rescale the decimal with smaller
 scale into the larger scale, and then execute the operations. And
 the result's scale of `*` operation is the sum of 2 oprands. Because
-`rust_decimal` has limited mantissa which makes it easy to become overflow,
+`rust_decimal` has limited mantissa which makes it easy to overflow,
 it will also try to reduce the result's scale if overflow.
 
 
@@ -171,9 +171,9 @@ all the decimal instances under each type have the same scale, it's
 suitable for `primitive_fixed_point_decimal` crate. Otherwise, you
 should use `rust_decimal` or `bigdecimal` crate.
 
-Note: [The document of `rust_decimal`](https://docs.rs/rust_decimal/1.37.1/rust_decimal/struct.Decimal.html)
+Note: [The documentation of `rust_decimal`](https://docs.rs/rust_decimal/1.37.1/rust_decimal/struct.Decimal.html)
 says it's "a fixed-precision decimal number".
-And [the document of `bigdecimal`](https://docs.rs/bigdecimal/0.4.8/bigdecimal/index.html)
+And [the documentation of `bigdecimal`](https://docs.rs/bigdecimal/0.4.8/bigdecimal/index.html)
 also implies it's fixed-point by: "avoids common floating point errors".
 However, I still think they are
 [floating-point](https://en.wikipedia.org/wiki/Decimal_floating_point),

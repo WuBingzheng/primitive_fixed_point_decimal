@@ -428,7 +428,7 @@ where
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "serde")]
-impl<I, const S: i32> Serialize for ConstScaleFpdec<I, S>
+impl<I, const S0: i32> Serialize for ConstScaleFpdec<I, S0>
 where
     I: FpdecInner + fmt::Display,
 {

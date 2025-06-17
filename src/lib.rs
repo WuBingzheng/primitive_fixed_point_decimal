@@ -16,7 +16,7 @@
 //!    Many other decimal crates do the same thing;
 //!
 //! 2. specifying the scale staticly to guarantee the fraction precision.
-//!    The scale is binded to the decimal type. It's fixed-point. Surprisingly,
+//!    The scale is bound to the decimal type. It's fixed-point. Surprisingly,
 //!    it seems that [no crate has done this before](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md).
 //!
 //! For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
@@ -35,7 +35,7 @@
 //! bind the scale to each decimal *instance*, which changes during operations.
 //! They're more like
 //! [decimal floating point](https://en.wikipedia.org/wiki/Decimal_floating_point).
-//! See the [comparison document](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
+//! See the [comparison documentation](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
 //! for details.
 //!
 //! While this crate binds the scale to decimal *type*.
