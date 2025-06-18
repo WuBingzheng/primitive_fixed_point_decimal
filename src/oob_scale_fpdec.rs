@@ -36,8 +36,7 @@ where
 {
     crate::none_scale_common::define_none_scale_common!();
 
-    /// Checked multiplication. Computes `self * rhs`eturning `None` if
-    /// overflow occurred.
+    /// Checked multiplication.
     ///
     /// Equivalent to [`Self::checked_mul_ext`] with `Rounding::Round`.
     pub fn checked_mul<J>(
@@ -51,8 +50,9 @@ where
         self.checked_mul_ext(rhs, diff_scale, Rounding::Round, None)
     }
 
-    /// Checked multiplication. Computes `self * rhs`eturning `None` if
-    /// overflow occurred.
+    /// Checked multiplication. Computes `self * rhs`, returning `None` if
+    /// overflow occurred or argument `diff_scale` is out of range
+    /// `[-Self::DIGITS, Self::DIGITS]`.
     ///
     /// The type of `rhs` can have different inner integer `J`,
     /// while the type of result must have the same `I`.
@@ -104,8 +104,7 @@ where
             .map(Self)
     }
 
-    /// Checked division. Computes `self / rhs`eturning `None` if
-    /// division by 0 or overflow occurred.
+    /// Checked division.
     ///
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
     pub fn checked_div<J>(
@@ -119,8 +118,9 @@ where
         self.checked_div_ext(rhs, diff_scale, Rounding::Round, None)
     }
 
-    /// Checked division. Computes `self / rhs`eturning `None` if
-    /// division by 0 or overflow occurred.
+    /// Checked division. Computes `self / rhs`, returning `None` if
+    /// division by 0, or overflow occurred, or argument `diff_scale`
+    /// is out of range `[-Self::DIGITS, Self::DIGITS]`.
     ///
     /// The type of `rhs` can have different inner integer `J`,
     /// while the type of result must have the same `I`.

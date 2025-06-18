@@ -31,8 +31,7 @@ where
     /// The static scale.
     pub const SCALE: i32 = S;
 
-    /// Checked multiplication. Computes `self * rhs`, returning `None` if
-    /// overflow occurred.
+    /// Checked multiplication.
     ///
     /// Equivalent to [`Self::checked_mul_ext`] with `Rounding::Round`.
     pub fn checked_mul<J, const S2: i32, const SR: i32>(
@@ -46,7 +45,8 @@ where
     }
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
-    /// overflow occurred.
+    /// overflow occurred or the scale difference `S + S2 - SR` is out of range
+    /// `[-Self::DIGITS, Self::DIGITS]`.
     ///
     /// The type of `rhs` can have different inner integer `J` and scale `S2`
     /// with `self`. The type of result must have the same inner integer `I`
@@ -97,8 +97,7 @@ where
             .map(ConstScaleFpdec)
     }
 
-    /// Checked division. Computes `self / rhs`, returning `None` if
-    /// division by 0 or overflow occurred.
+    /// Checked division.
     ///
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
     pub fn checked_div<J, const S2: i32, const SR: i32>(
@@ -112,7 +111,8 @@ where
     }
 
     /// Checked division. Computes `self / rhs`, returning `None` if
-    /// division by 0 or overflow occurred.
+    /// division by 0, or overflow occurred, or the scale difference
+    /// `S - S2 - SR` is out of range `[-Self::DIGITS, Self::DIGITS]`.
     ///
     /// The type of `rhs` can have different inner integer `J` and scale `S2`
     /// with `self`. The type of result must have the same inner integer `I`
@@ -494,5 +494,170 @@ where
         }
 
         deserializer.deserialize_any(ConstScaleFpdecVistor(PhantomData))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate as primitive_fixed_point_decimal;
+    use crate::fpdec;
+
+    #[test]
+    fn test_mul_ones() {
+        let one_p12: ConstScaleFpdec<i32, 12> = fpdec!(1e-12);
+        let one_n12: ConstScaleFpdec<i32, -12> = fpdec!(1e+12);
+        let one_p6: ConstScaleFpdec<i32, 6> = fpdec!(1e-6);
+        let one_n6: ConstScaleFpdec<i32, -6> = fpdec!(1e+6);
+        let one_p3: ConstScaleFpdec<i32, 3> = fpdec!(1e-3);
+        let one_n3: ConstScaleFpdec<i32, -3> = fpdec!(1e+3);
+        let one_0: ConstScaleFpdec<i32, 0> = fpdec!(1);
+        let zero_p6 = ConstScaleFpdec::<i32, 6>::ZERO;
+        let zero_n6 = ConstScaleFpdec::<i32, -6>::ZERO;
+
+        // S + S2 = SR
+        assert_eq!(one_p3.checked_mul(one_p3), Some(one_p6));
+        assert_eq!(one_n3.checked_mul(one_n3), Some(one_n6));
+        assert_eq!(one_p6.checked_mul(one_p6), Some(one_p12));
+        assert_eq!(one_n6.checked_mul(one_n6), Some(one_n12));
+        assert_eq!(one_0.checked_mul(one_p6), Some(one_p6));
+        assert_eq!(one_0.checked_mul(one_n6), Some(one_n6));
+        assert_eq!(one_n6.checked_mul(one_p6), Some(one_0));
+
+        // S + S2 > SR
+        assert_eq!(one_p6.checked_mul(one_p6), Some(zero_p6));
+        assert_eq!(one_p6.checked_mul(one_p3), Some(zero_p6));
+        assert_eq!(one_n6.checked_mul(one_p3), Some(zero_n6));
+        assert_eq!(one_n12.checked_mul(one_p12), Some(zero_n6));
+
+        // S + S2 < SR
+        assert_eq!(one_p6.checked_mul(one_p3), one_p12.checked_mul_int(1000));
+        assert_eq!(one_p6.checked_mul(one_0), one_p12.checked_mul_int(1000_000));
+        assert_eq!(one_n6.checked_mul(one_n3), one_n3.checked_mul_int(1000_000));
+        assert_eq!(one_n6.checked_mul(one_p3), one_p3.checked_mul_int(1000_000));
+        assert_eq!(one_p6.checked_mul(one_n3), one_p6.checked_mul_int(1000));
+        assert_eq!(one_n12.checked_mul(one_p12), one_p3.checked_mul_int(1000));
+
+        // S + S2 - SR > 9
+        assert_eq!(one_p6.checked_mul::<_, 6, 0>(one_p6), None);
+        assert_eq!(one_p12.checked_mul::<_, 6, 6>(one_p6), None);
+        assert_eq!(one_p6.checked_mul::<_, -6, -10>(one_n6), None);
+
+        // S + S2 - SR < -9
+        assert_eq!(one_n6.checked_mul::<_, -6, 0>(one_n6), None);
+        assert_eq!(one_n12.checked_mul::<_, -6, -6>(one_n6), None);
+        assert_eq!(one_n6.checked_mul::<_, 6, 10>(one_p6), None);
+    }
+
+    #[test]
+    fn test_mul_overflow() {
+        let max_p6 = ConstScaleFpdec::<i32, 6>::MAX;
+        let min_p6 = ConstScaleFpdec::<i32, 6>::MIN;
+        let ten_p6: ConstScaleFpdec<i32, 6> = fpdec!(10);
+        let half_min_p6 = ConstScaleFpdec::<i32, 6>::MIN.checked_div_int(2).unwrap();
+        let half_max_p6 = ConstScaleFpdec::<i32, 6>::MAX
+            .checked_div_int_ext(2, Rounding::Floor, None)
+            .unwrap();
+
+        let max_p5 = ConstScaleFpdec::<i32, 5>::MAX;
+        let min_p5 = ConstScaleFpdec::<i32, 5>::MIN;
+
+        assert_eq!(max_p6.checked_mul_int(2), None);
+        assert_eq!(min_p6.checked_mul_int(2), None);
+        assert_eq!(half_min_p6.checked_mul_int(2), Some(min_p6));
+        assert_eq!(
+            half_max_p6.checked_mul_int(2),
+            max_p6.checked_sub(fpdec!(1e-6))
+        );
+
+        assert_eq!(max_p6.checked_mul(ten_p6), Some(max_p5));
+        assert_eq!(min_p6.checked_mul(ten_p6), Some(min_p5));
+
+        // mantissa overflow
+        assert_eq!(max_p6.checked_mul::<_, 6, 6>(max_p6), None);
+        assert_eq!(max_p6.checked_mul::<_, 6, 6>(ten_p6), None);
+        assert_eq!(half_max_p6.checked_mul::<_, 6, 6>(ten_p6), None);
+        assert_eq!(min_p6.checked_mul::<_, 6, 6>(min_p6), None);
+        assert_eq!(min_p6.checked_mul::<_, 6, 6>(ten_p6), None);
+        assert_eq!(half_min_p6.checked_mul::<_, 6, 6>(ten_p6), None);
+
+        // diff_scale out of range [-9, 9]
+        assert_eq!(max_p6.checked_mul::<_, 6, 2>(max_p6), None);
+        assert_eq!(ten_p6.checked_mul::<_, 6, 2>(ten_p6), None);
+        assert_eq!(max_p6.checked_mul::<_, 6, -22>(max_p6), None);
+        assert_eq!(ten_p6.checked_mul::<_, 6, -22>(ten_p6), None);
+    }
+
+    #[test]
+    fn test_div_ones() {
+        let one_p12: ConstScaleFpdec<i32, 12> = fpdec!(1e-12);
+        let one_n12: ConstScaleFpdec<i32, -12> = fpdec!(1e+12);
+        let one_p6: ConstScaleFpdec<i32, 6> = fpdec!(1e-6);
+        let one_n6: ConstScaleFpdec<i32, -6> = fpdec!(1e+6);
+        let one_p3: ConstScaleFpdec<i32, 3> = fpdec!(1e-3);
+        let one_n3: ConstScaleFpdec<i32, -3> = fpdec!(1e+3);
+        let one_0: ConstScaleFpdec<i32, 0> = fpdec!(1);
+        let zero_p6 = ConstScaleFpdec::<i32, 6>::ZERO;
+        let zero_n6 = ConstScaleFpdec::<i32, -6>::ZERO;
+
+        // S - S2 = SR
+        assert_eq!(one_p3.checked_div(one_p3), Some(one_0));
+        assert_eq!(one_n3.checked_div(one_n3), Some(one_0));
+        assert_eq!(one_p12.checked_div(one_p6), Some(one_p6));
+        assert_eq!(one_n6.checked_div(one_n12), Some(one_p6));
+        assert_eq!(one_0.checked_div(one_p6), Some(one_n6));
+        assert_eq!(one_0.checked_div(one_n6), Some(one_p6));
+        assert_eq!(one_n6.checked_div(one_p6), Some(one_n12));
+
+        // S - S2 > SR
+        assert_eq!(one_p6.checked_div(one_p6), Some(zero_n6));
+        assert_eq!(one_p12.checked_div(one_p3), Some(zero_p6));
+        assert_eq!(one_p6.checked_div(one_n3), Some(zero_p6));
+
+        // S - S2 < SR
+        assert_eq!(one_p6.checked_div(one_p3), one_p6.checked_mul_int(1000));
+        assert_eq!(one_p6.checked_div(one_0), one_p12.checked_mul_int(1000_000));
+        assert_eq!(one_n6.checked_div(one_n3), one_0.checked_mul_int(1000));
+        assert_eq!(one_n6.checked_div(one_p3), one_n6.checked_mul_int(1000));
+        assert_eq!(one_p6.checked_div(one_n3), one_p12.checked_mul_int(1000));
+
+        // S - S2 - SR > 9
+        assert_eq!(one_p6.checked_div::<_, 6, -10>(one_p6), None);
+        assert_eq!(one_p12.checked_div::<_, 6, -6>(one_p6), None);
+        assert_eq!(one_p6.checked_div::<_, -6, 0>(one_n6), None);
+
+        // S - S2 - SR < -9
+        assert_eq!(one_n6.checked_div::<_, -6, 10>(one_n6), None);
+        assert_eq!(one_n12.checked_div::<_, -6, 6>(one_n6), None);
+        assert_eq!(one_n6.checked_div::<_, 6, 0>(one_p6), None);
+    }
+
+    #[test]
+    fn test_div_overflow() {
+        let max_p6 = ConstScaleFpdec::<i32, 6>::MAX;
+        let min_p6 = ConstScaleFpdec::<i32, 6>::MIN;
+        let cent_p6: ConstScaleFpdec<i32, 6> = fpdec!(0.1);
+        let half_min_p6 = ConstScaleFpdec::<i32, 6>::MIN.checked_div_int(2).unwrap();
+        let half_max_p6 = ConstScaleFpdec::<i32, 6>::MAX
+            .checked_div_int_ext(2, Rounding::Floor, None)
+            .unwrap();
+
+        let max_p5 = ConstScaleFpdec::<i32, 5>::MAX;
+        let min_p5 = ConstScaleFpdec::<i32, 5>::MIN;
+
+        assert_eq!(max_p6.checked_div(cent_p6), Some(max_p5));
+        assert_eq!(min_p6.checked_div(cent_p6), Some(min_p5));
+
+        // mantissa overflow
+        assert_eq!(max_p6.checked_div::<_, 6, 6>(cent_p6), None);
+        assert_eq!(half_max_p6.checked_div::<_, 6, 6>(cent_p6), None);
+        assert_eq!(min_p6.checked_div::<_, 6, 6>(cent_p6), None);
+        assert_eq!(half_min_p6.checked_div::<_, 6, 6>(cent_p6), None);
+
+        // diff_scale out of range [-9, 9]
+        assert_eq!(max_p6.checked_div::<_, 6, 10>(max_p6), None);
+        assert_eq!(cent_p6.checked_div::<_, 6, 10>(cent_p6), None);
+        assert_eq!(max_p6.checked_div::<_, 6, -10>(max_p6), None);
+        assert_eq!(cent_p6.checked_div::<_, 6, -10>(cent_p6), None);
     }
 }

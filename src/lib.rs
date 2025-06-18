@@ -189,14 +189,6 @@
 //! # Features
 //!
 //! - `serde` enables serde traits integration (`Serialize`/`Deserialize`).
-//!
-//!
-//! # Status
-//!
-//! More tests are need before ready for production.
-//!
-//! Note: Some types and functions names have changed in v0.7.0 and are
-//! not compatible with the previous versions.
 
 // modules:
 //
@@ -213,15 +205,15 @@
 // +------------------------------------+  +-----------------------+
 // |    inner_shorts: i8,i16,i32,i64    |  |   inner_i128: i128    |
 // +------------------------------------+  +-----------------------+
+mod const_scale_fpdec;
 mod fpdec_inner;
 mod inner_i128;
 mod inner_shorts;
 mod none_scale_common;
 mod oob_scale_fpdec;
-mod const_scale_fpdec;
 
-pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
 pub use crate::const_scale_fpdec::ConstScaleFpdec;
+pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
 pub use int_div_cum_error::Rounding;
 
 /// Error in converting from string.

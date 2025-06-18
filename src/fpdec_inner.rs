@@ -19,6 +19,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         cum_error: Option<&mut Self>,
     ) -> Option<Self>;
 
+    // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
     fn checked_mul_ext(
         self,
         rhs: Self,
@@ -28,6 +29,12 @@ pub trait FpdecInner: Sized + PrimSignedInt {
     ) -> Option<Self> {
         if diff_scale > 0 {
             // self * rhs / diff_exp
+
+            // If diff_scale is in range [Self::DIGITS+1, Self::DIGITS*2], we
+            // could do division twice (with exp[DIGITS] and exp[diff_scale-DIGITS])
+            // to avoid returning `None` directly, but that's not enough.
+            // Because `MAX * MAX / exp[DIGITS]` still overflows. For
+            // simplicity's sake, we do not handle this case which is rare.
             let exp = Self::get_exp(diff_scale as usize)?;
             self.calc_mul_div(rhs, exp, rounding, cum_error)
         } else if diff_scale < 0 {
@@ -39,6 +46,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         }
     }
 
+    // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
     fn checked_div_ext(
         self,
         rhs: Self,
@@ -53,6 +61,11 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             checked_divide(q, exp, rounding, cum_error)
         } else if diff_scale < 0 {
             // self * diff_exp / rhs
+
+            // If diff_scale is in range [-Self::DIGITS*2, -Self::DIGITS-1], we
+            // could do multiplication twice (with exp[DIGITS] and exp[-diff_scale-DIGITS])
+            // to avoid returning `None` directly. But keep same with
+            // `checked_mul()`, we do not handle this case which is rare.
             let exp = Self::get_exp(-diff_scale as usize)?;
             self.calc_mul_div(exp, rhs, rounding, cum_error)
         } else {

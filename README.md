@@ -190,12 +190,4 @@ assert_eq!(total_fee, fpdec!(0.03)); // 0.03 is right
 
 - `serde` enables serde traits integration (`Serialize`/`Deserialize`).
 
-
-## Status
-
-More tests are need before ready for production.
-
-Note: Some types and functions names have changed in v0.7.0 and are
-not compatible with the previous versions.
-
 License: MIT
