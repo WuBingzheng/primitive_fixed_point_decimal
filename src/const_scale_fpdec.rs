@@ -515,6 +515,16 @@ mod tests {
         let zero_p6 = ConstScaleFpdec::<i32, 6>::ZERO;
         let zero_n6 = ConstScaleFpdec::<i32, -6>::ZERO;
 
+        assert_eq!(one_p12.mantissa(), 1);
+        assert_eq!(one_n12.mantissa(), 1);
+        assert_eq!(one_p6.mantissa(), 1);
+        assert_eq!(one_n6.mantissa(), 1);
+        assert_eq!(one_p3.mantissa(), 1);
+        assert_eq!(one_n3.mantissa(), 1);
+        assert_eq!(one_0.mantissa(), 1);
+        assert_eq!(zero_p6.mantissa(), 0);
+        assert_eq!(zero_n6.mantissa(), 0);
+
         // S + S2 = SR
         assert_eq!(one_p3.checked_mul(one_p3), Some(one_p6));
         assert_eq!(one_n3.checked_mul(one_n3), Some(one_n6));
@@ -659,5 +669,59 @@ mod tests {
         assert_eq!(cent_p6.checked_div::<_, 6, 10>(cent_p6), None);
         assert_eq!(max_p6.checked_div::<_, 6, -10>(max_p6), None);
         assert_eq!(cent_p6.checked_div::<_, 6, -10>(cent_p6), None);
+    }
+
+    type Dec32p2 = ConstScaleFpdec<i32, 2>;
+    type Dec32n2 = ConstScaleFpdec<i32, -2>;
+    #[test]
+    fn test_from_int() {
+        assert_eq!(Dec32p2::try_from(1_i16).unwrap().mantissa(), 100);
+        assert_eq!(Dec32p2::try_from(i32::MAX), Err(ParseError::Overflow));
+
+        // avoid overflow for: i16::MAX * 100
+        assert_eq!(
+            Dec32p2::try_from(i16::MAX).unwrap().mantissa(),
+            i16::MAX as i32 * 100
+        );
+
+        // avoid overflow for: i32::MAX * 100
+        assert_eq!(
+            Dec32n2::try_from(i32::MAX as i64 * 100).unwrap().mantissa(),
+            i32::MAX
+        );
+
+        // overflow
+        assert_eq!(Dec32p2::try_from(i32::MAX), Err(ParseError::Overflow));
+        assert_eq!(
+            Dec32n2::try_from(i32::MAX as i64 * 1000),
+            Err(ParseError::Overflow)
+        );
+    }
+
+    #[test]
+    fn test_from_float() {
+        assert_eq!(Dec32p2::try_from(3.1415).unwrap().mantissa(), 314);
+        assert_eq!(Dec32n2::try_from(31415.16).unwrap().mantissa(), 314);
+
+        assert_eq!(Dec32p2::try_from(3.14e10), Err(ParseError::Overflow));
+        assert_eq!(Dec32n2::try_from(3.14e16), Err(ParseError::Overflow));
+    }
+
+    #[test]
+    fn test_fmt() {
+        // FromStr
+        assert_eq!(Dec32p2::from_str("0"), Ok(fpdec!(0)));
+        assert_eq!(Dec32p2::from_str("1000"), Ok(fpdec!(1000)));
+        assert_eq!(Dec32p2::from_str("-1000"), Ok(fpdec!(-1000)));
+        assert_eq!(Dec32p2::from_str("0.12"), Ok(fpdec!(0.12)));
+        assert_eq!(Dec32p2::from_str("-0.12"), Ok(fpdec!(-0.12)));
+        assert_eq!(Dec32p2::from_str("3.14"), Ok(fpdec!(3.14)));
+        assert_eq!(Dec32p2::from_str("-3.14"), Ok(fpdec!(-3.14)));
+        assert_eq!(Dec32p2::from_str("3.1415"), Err(ParseError::Precision));
+
+        assert_eq!(Dec32n2::from_str("1000"), Ok(fpdec!(1000)));
+        assert_eq!(Dec32n2::from_str("-1000"), Ok(fpdec!(-1000)));
+        assert_eq!(Dec32n2::from_str("1000.00"), Err(ParseError::Precision));
+        assert_eq!(Dec32n2::from_str("1001"), Err(ParseError::Precision));
     }
 }

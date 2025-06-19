@@ -569,3 +569,170 @@ where
         deserializer.deserialize_str(OobFmtVistor(PhantomData))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate as primitive_fixed_point_decimal;
+    use crate::fpdec;
+
+    type Dec32 = OobScaleFpdec<i32>;
+    type Fmt32 = OobFmt<i32>;
+    #[allow(non_snake_case)]
+    fn Fmt32(d: Dec32, s: i32) -> Fmt32 {
+        OobFmt::<i32>(d, s)
+    }
+
+    #[test]
+    fn test_mul_ones() {
+        let one = Dec32::from_mantissa(1);
+        let zero = Dec32::ZERO;
+
+        // S + S2 = SR
+        assert_eq!(one.checked_mul(one, 0), Some(one));
+
+        // S + S2 > SR
+        assert_eq!(one.checked_mul(one, 3), Some(zero));
+
+        // S + S2 < SR
+        assert_eq!(one.checked_mul(one, -3), one.checked_mul_int(1000));
+
+        // S + S2 - SR > 9
+        assert_eq!(one.checked_mul(one, 10), None);
+
+        // S + S2 - SR < -9
+        assert_eq!(one.checked_mul(one, -10), None);
+    }
+
+    #[test]
+    fn test_mul_overflow() {
+        let max = Dec32::MAX;
+        let min = Dec32::MIN;
+        let ten_p6: Dec32 = fpdec!(10, 6);
+        let half_min = Dec32::MIN.checked_div_int(2).unwrap();
+        let half_max = Dec32::MAX
+            .checked_div_int_ext(2, Rounding::Floor, None)
+            .unwrap();
+
+        assert_eq!(max.checked_mul_int(2), None);
+        assert_eq!(min.checked_mul_int(2), None);
+        assert_eq!(half_min.checked_mul_int(2), Some(min));
+        assert_eq!(half_max.checked_mul_int(2), max.checked_sub(fpdec!(1, 0)));
+
+        assert_eq!(max.checked_mul(ten_p6, 7), Some(max));
+        assert_eq!(min.checked_mul(ten_p6, 7), Some(min));
+
+        // mantissa overflow
+        assert_eq!(max.checked_mul(max, 6), None);
+        assert_eq!(max.checked_mul(ten_p6, 6), None);
+        assert_eq!(half_max.checked_mul(ten_p6, 6), None);
+        assert_eq!(min.checked_mul(min, 6), None);
+        assert_eq!(min.checked_mul(ten_p6, 6), None);
+        assert_eq!(half_min.checked_mul(ten_p6, 6), None);
+
+        // diff_scale out of range [-9, 9]
+        assert_eq!(max.checked_mul(max, 10), None);
+        assert_eq!(max.checked_mul(ten_p6, 10), None);
+        assert_eq!(max.checked_mul(max, -10), None);
+        assert_eq!(max.checked_mul(ten_p6, -10), None);
+    }
+
+    #[test]
+    fn test_div_ones() {
+        let one = Dec32::from_mantissa(1);
+        let zero = Dec32::ZERO;
+
+        // S - S2 = SR
+        assert_eq!(one.checked_div(one, 0), Some(one));
+
+        // S - S2 > SR
+        assert_eq!(one.checked_div(one, 3), Some(zero));
+
+        // S - S2 < SR
+        assert_eq!(one.checked_div(one, -3), one.checked_mul_int(1000));
+
+        // S - S2 - SR > 9
+        assert_eq!(one.checked_div(one, 10), None);
+
+        // S - S2 - SR < -9
+        assert_eq!(one.checked_div(one, -10), None);
+    }
+
+    #[test]
+    fn test_div_overflow() {
+        let max = Dec32::MAX;
+        let min = Dec32::MIN;
+        let cent_p6: Dec32 = fpdec!(0.1, 6);
+        let half_min = Dec32::MIN.checked_div_int(2).unwrap();
+        let half_max = Dec32::MAX
+            .checked_div_int_ext(2, Rounding::Floor, None)
+            .unwrap();
+
+        assert_eq!(max.checked_div(cent_p6, -5), Some(max));
+        assert_eq!(min.checked_div(cent_p6, -5), Some(min));
+
+        // mantissa overflow
+        assert_eq!(max.checked_div(cent_p6, -6), None);
+        assert_eq!(half_max.checked_div(cent_p6, -6), None);
+        assert_eq!(min.checked_div(cent_p6, -6), None);
+        assert_eq!(half_min.checked_div(cent_p6, -6), None);
+
+        // diff_scale out of range [-9, 9]
+        assert_eq!(max.checked_div(max, 10), None);
+        assert_eq!(max.checked_div(cent_p6, 10), None);
+        assert_eq!(max.checked_div(max, -10), None);
+        assert_eq!(max.checked_div(cent_p6, -10), None);
+    }
+
+    #[test]
+    fn test_from_int() {
+        assert_eq!(Dec32::try_from((1_i16, 2)).unwrap().mantissa(), 100);
+        assert_eq!(Dec32::try_from((i32::MAX, 2)), Err(ParseError::Overflow));
+
+        // avoid overflow for: i16::MAX * 100
+        assert_eq!(
+            Dec32::try_from((i16::MAX, 2)).unwrap().mantissa(),
+            i16::MAX as i32 * 100
+        );
+
+        // avoid overflow for: i32::MAX * 100
+        assert_eq!(
+            Dec32::try_from((i32::MAX as i64 * 100, -2))
+                .unwrap()
+                .mantissa(),
+            i32::MAX
+        );
+
+        // overflow
+        assert_eq!(Dec32::try_from((i32::MAX, 2)), Err(ParseError::Overflow));
+        assert_eq!(
+            Dec32::try_from((i32::MAX as i64 * 1000, -2)),
+            Err(ParseError::Overflow)
+        );
+    }
+
+    #[test]
+    fn test_from_float() {
+        assert_eq!(Dec32::try_from((3.1415, 2)).unwrap().mantissa(), 314);
+        assert_eq!(Dec32::try_from((31415.16, -2)).unwrap().mantissa(), 314);
+
+        assert_eq!(Dec32::try_from((3.14e10, 2)), Err(ParseError::Overflow));
+        assert_eq!(Dec32::try_from((3.14e16, -2)), Err(ParseError::Overflow));
+    }
+
+    #[test]
+    fn test_fmt() {
+        // FromStr
+        assert_eq!(Fmt32::from_str("0"), Ok(Fmt32(Dec32::ZERO, 0)));
+        assert_eq!(Fmt32::from_str("1000"), Ok(Fmt32(fpdec!(1000, -3), -3)));
+        assert_eq!(Fmt32::from_str("-1000"), Ok(Fmt32(fpdec!(-1000, -3), -3)));
+        assert_eq!(Fmt32::from_str("0.12"), Ok(Fmt32(fpdec!(0.12, 2), 2)));
+        assert_eq!(Fmt32::from_str("-0.12"), Ok(Fmt32(fpdec!(-0.12, 2), 2)));
+        assert_eq!(Fmt32::from_str("3.14"), Ok(Fmt32(fpdec!(3.14, 2), 2)));
+        assert_eq!(Fmt32::from_str("-3.14"), Ok(Fmt32(fpdec!(-3.14, 2), 2)));
+        assert_eq!(
+            Fmt32::from_str("3.14159265359879"),
+            Err(ParseError::Overflow)
+        );
+    }
+}
