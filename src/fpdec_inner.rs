@@ -1,5 +1,5 @@
 use crate::ParseError;
-use core::fmt;
+use core::{fmt, num::ParseIntError};
 use int_div_cum_error::{checked_divide, checked_divide_with_rounding, PrimSignedInt, Rounding};
 use num_traits::Num;
 
@@ -96,8 +96,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
 
     fn try_from_str(s: &str, scale: i32) -> Result<Self, ParseError>
     where
-        Self: Num,
-        ParseError: From<<Self as Num>::FromStrRadixErr>,
+        Self: Num<FromStrRadixErr = ParseIntError>,
     {
         // sign
         let (s, is_neg) = match s.as_bytes().first() {
@@ -174,8 +173,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
 
     fn try_from_str_only(s: &str) -> Result<(Self, i32), ParseError>
     where
-        Self: Num,
-        ParseError: From<<Self as Num>::FromStrRadixErr>,
+        Self: Num<FromStrRadixErr = ParseIntError>,
     {
         // sign
         let (s, is_neg) = match s.as_bytes().first() {

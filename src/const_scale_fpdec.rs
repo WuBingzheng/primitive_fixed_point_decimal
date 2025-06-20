@@ -1,7 +1,7 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::oob_scale_fpdec::OobScaleFpdec;
 use crate::ParseError;
-use core::{fmt, ops, str::FromStr};
+use core::{fmt, num::ParseIntError, ops, str::FromStr};
 use int_div_cum_error::{checked_divide, Rounding};
 #[allow(unused_imports)]
 use num_traits::float::FloatCore; // used only for `no_std`
@@ -239,8 +239,7 @@ where
 /// ```
 impl<I, const S: i32> FromStr for ConstScaleFpdec<I, S>
 where
-    I: FpdecInner,
-    ParseError: From<<I as Num>::FromStrRadixErr>,
+    I: FpdecInner + Num<FromStrRadixErr = ParseIntError>,
 {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, ParseError> {
@@ -448,8 +447,7 @@ where
 #[cfg(feature = "serde")]
 impl<'de, I, const S: i32> Deserialize<'de> for ConstScaleFpdec<I, S>
 where
-    I: FromPrimitive + FpdecInner,
-    ParseError: From<<I as Num>::FromStrRadixErr>,
+    I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -471,8 +469,7 @@ where
 
         impl<'de, I, const S: i32> Visitor<'de> for ConstScaleFpdecVistor<I, S>
         where
-            I: FromPrimitive + FpdecInner,
-            ParseError: From<<I as Num>::FromStrRadixErr>,
+            I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
         {
             type Value = ConstScaleFpdec<I, S>;
 

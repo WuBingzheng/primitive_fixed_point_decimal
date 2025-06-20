@@ -1,7 +1,7 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
-use core::{fmt, ops, str::FromStr};
+use core::{fmt, num::ParseIntError, ops, str::FromStr};
 use int_div_cum_error::{checked_divide, Rounding};
 use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
 
@@ -210,7 +210,7 @@ where
     /// ```
     pub fn try_from_str(s: &str, scale: i32) -> Result<Self, ParseError>
     where
-        ParseError: From<<I as Num>::FromStrRadixErr>,
+        I: Num<FromStrRadixErr = ParseIntError>,
     {
         I::try_from_str(s, scale).map(Self)
     }
@@ -459,8 +459,7 @@ where
 /// ```
 impl<I> FromStr for OobFmt<I>
 where
-    I: FpdecInner,
-    ParseError: From<<I as Num>::FromStrRadixErr>,
+    I: FpdecInner + Num<FromStrRadixErr = ParseIntError>,
 {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -533,8 +532,7 @@ where
 #[cfg(feature = "serde")]
 impl<'de, I> Deserialize<'de> for OobFmt<I>
 where
-    I: FromPrimitive + FpdecInner,
-    ParseError: From<<I as Num>::FromStrRadixErr>,
+    I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -548,8 +546,7 @@ where
 
         impl<'de, I> Visitor<'de> for OobFmtVistor<I>
         where
-            I: FromPrimitive + FpdecInner,
-            ParseError: From<<I as Num>::FromStrRadixErr>,
+            I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
         {
             type Value = OobFmt<I>;
 
