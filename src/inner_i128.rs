@@ -4,8 +4,8 @@ use int_div_cum_error::{checked_divide, Rounding};
 impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;
     const MIN: Self = i128::MIN;
-    const MAX_POWERS: Self = 10_i128.pow(38);
-    const DIGITS: u32 = 38;
+    const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
+    const DIGITS: u32 = i128::MAX.ilog10();
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i128; 39] = [
