@@ -3,14 +3,19 @@ use core::{fmt, num::ParseIntError};
 use int_div_cum_error::{checked_divide, checked_divide_with_rounding, PrimSignedInt, Rounding};
 use num_traits::Num;
 
+/// The trait for underlying representation.
+///
+/// Normal users don't need to use this trait.
 pub trait FpdecInner: Sized + PrimSignedInt {
     const MAX: Self;
     const MIN: Self;
     const MAX_POWERS: Self;
     const DIGITS: u32;
 
+    /// Return 10 to the power of `i`.
     fn get_exp(i: usize) -> Option<Self>;
 
+    /// Calculate `self * b / c`.
     fn calc_mul_div(
         self,
         b: Self,
