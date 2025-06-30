@@ -74,7 +74,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             let exp = Self::get_exp(-diff_scale as usize)?;
             self.calc_mul_div(exp, rhs, rounding, cum_error)
         } else {
-            self.checked_mul(&rhs)
+            self.checked_div(&rhs)
         }
     }
 
