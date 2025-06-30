@@ -581,24 +581,25 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_ones() {
-        let one = Dec32::from_mantissa(1);
+    fn test_mul() {
+        let two = Dec32::from_mantissa(2);
+        let four = Dec32::from_mantissa(4);
         let zero = Dec32::ZERO;
 
         // S + S2 = SR
-        assert_eq!(one.checked_mul(one, 0), Some(one));
+        assert_eq!(two.checked_mul(two, 0), Some(four));
 
         // S + S2 > SR
-        assert_eq!(one.checked_mul(one, 3), Some(zero));
+        assert_eq!(two.checked_mul(two, 3), Some(zero));
 
         // S + S2 < SR
-        assert_eq!(one.checked_mul(one, -3), one.checked_mul_int(1000));
+        assert_eq!(two.checked_mul(two, -3), four.checked_mul_int(1000));
 
         // S + S2 - SR > 9
-        assert_eq!(one.checked_mul(one, 10), None);
+        assert_eq!(two.checked_mul(two, 10), None);
 
         // S + S2 - SR < -9
-        assert_eq!(one.checked_mul(one, -10), None);
+        assert_eq!(two.checked_mul(two, -10), None);
     }
 
     #[test]
@@ -635,24 +636,25 @@ mod tests {
     }
 
     #[test]
-    fn test_div_ones() {
-        let one = Dec32::from_mantissa(1);
+    fn test_div() {
+        let two = Dec32::from_mantissa(2);
+        let four = Dec32::from_mantissa(4);
         let zero = Dec32::ZERO;
 
         // S - S2 = SR
-        assert_eq!(one.checked_div(one, 0), Some(one));
+        assert_eq!(four.checked_div(two, 0), Some(two));
 
         // S - S2 > SR
-        assert_eq!(one.checked_div(one, 3), Some(zero));
+        assert_eq!(four.checked_div(two, 3), Some(zero));
 
         // S - S2 < SR
-        assert_eq!(one.checked_div(one, -3), one.checked_mul_int(1000));
+        assert_eq!(four.checked_div(two, -3), two.checked_mul_int(1000));
 
         // S - S2 - SR > 9
-        assert_eq!(one.checked_div(one, 10), None);
+        assert_eq!(four.checked_div(two, 10), None);
 
         // S - S2 - SR < -9
-        assert_eq!(one.checked_div(one, -10), None);
+        assert_eq!(four.checked_div(two, -10), None);
     }
 
     #[test]

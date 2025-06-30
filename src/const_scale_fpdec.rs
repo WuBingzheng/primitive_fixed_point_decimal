@@ -501,59 +501,68 @@ mod tests {
     use crate::fpdec;
 
     #[test]
-    fn test_mul_ones() {
-        let one_p12: ConstScaleFpdec<i32, 12> = fpdec!(1e-12);
-        let one_n12: ConstScaleFpdec<i32, -12> = fpdec!(1e+12);
-        let one_p6: ConstScaleFpdec<i32, 6> = fpdec!(1e-6);
-        let one_n6: ConstScaleFpdec<i32, -6> = fpdec!(1e+6);
-        let one_p3: ConstScaleFpdec<i32, 3> = fpdec!(1e-3);
-        let one_n3: ConstScaleFpdec<i32, -3> = fpdec!(1e+3);
-        let one_0: ConstScaleFpdec<i32, 0> = fpdec!(1);
+    fn test_mul() {
+        let two_p12: ConstScaleFpdec<i32, 12> = fpdec!(2e-12);
+        let two_n12: ConstScaleFpdec<i32, -12> = fpdec!(2e+12);
+        let two_p6: ConstScaleFpdec<i32, 6> = fpdec!(2e-6);
+        let two_n6: ConstScaleFpdec<i32, -6> = fpdec!(2e+6);
+        let two_p3: ConstScaleFpdec<i32, 3> = fpdec!(2e-3);
+        let two_n3: ConstScaleFpdec<i32, -3> = fpdec!(2e+3);
+        let two_0: ConstScaleFpdec<i32, 0> = fpdec!(2);
+
         let zero_p6 = ConstScaleFpdec::<i32, 6>::ZERO;
         let zero_n6 = ConstScaleFpdec::<i32, -6>::ZERO;
 
-        assert_eq!(one_p12.mantissa(), 1);
-        assert_eq!(one_n12.mantissa(), 1);
-        assert_eq!(one_p6.mantissa(), 1);
-        assert_eq!(one_n6.mantissa(), 1);
-        assert_eq!(one_p3.mantissa(), 1);
-        assert_eq!(one_n3.mantissa(), 1);
-        assert_eq!(one_0.mantissa(), 1);
+        let four_p12: ConstScaleFpdec<i32, 12> = fpdec!(4e-12);
+        let four_n12: ConstScaleFpdec<i32, -12> = fpdec!(4e+12);
+        let four_p6: ConstScaleFpdec<i32, 6> = fpdec!(4e-6);
+        let four_n6: ConstScaleFpdec<i32, -6> = fpdec!(4e+6);
+        let four_p3: ConstScaleFpdec<i32, 3> = fpdec!(4e-3);
+        let four_n3: ConstScaleFpdec<i32, -3> = fpdec!(4e+3);
+        let four_0: ConstScaleFpdec<i32, 0> = fpdec!(4);
+
+        assert_eq!(two_p12.mantissa(), 2);
+        assert_eq!(two_n12.mantissa(), 2);
+        assert_eq!(two_p6.mantissa(), 2);
+        assert_eq!(two_n6.mantissa(), 2);
+        assert_eq!(two_p3.mantissa(), 2);
+        assert_eq!(two_n3.mantissa(), 2);
+        assert_eq!(two_0.mantissa(), 2);
         assert_eq!(zero_p6.mantissa(), 0);
         assert_eq!(zero_n6.mantissa(), 0);
 
         // S + S2 = SR
-        assert_eq!(one_p3.checked_mul(one_p3), Some(one_p6));
-        assert_eq!(one_n3.checked_mul(one_n3), Some(one_n6));
-        assert_eq!(one_p6.checked_mul(one_p6), Some(one_p12));
-        assert_eq!(one_n6.checked_mul(one_n6), Some(one_n12));
-        assert_eq!(one_0.checked_mul(one_p6), Some(one_p6));
-        assert_eq!(one_0.checked_mul(one_n6), Some(one_n6));
-        assert_eq!(one_n6.checked_mul(one_p6), Some(one_0));
+        assert_eq!(two_p3.checked_mul(two_p3), Some(four_p6));
+        assert_eq!(two_n3.checked_mul(two_n3), Some(four_n6));
+        assert_eq!(two_p6.checked_mul(two_p6), Some(four_p12));
+        assert_eq!(two_n6.checked_mul(two_n6), Some(four_n12));
+        assert_eq!(two_0.checked_mul(two_p6), Some(four_p6));
+        assert_eq!(two_0.checked_mul(two_n6), Some(four_n6));
+        assert_eq!(two_n6.checked_mul(two_p6), Some(four_0));
 
         // S + S2 > SR
-        assert_eq!(one_p6.checked_mul(one_p6), Some(zero_p6));
-        assert_eq!(one_p6.checked_mul(one_p3), Some(zero_p6));
-        assert_eq!(one_n6.checked_mul(one_p3), Some(zero_n6));
-        assert_eq!(one_n12.checked_mul(one_p12), Some(zero_n6));
+        assert_eq!(two_p6.checked_mul(two_p6), Some(zero_p6));
+        assert_eq!(two_p6.checked_mul(two_p3), Some(zero_p6));
+        assert_eq!(two_n6.checked_mul(two_p3), Some(zero_n6));
+        assert_eq!(two_n12.checked_mul(two_p12), Some(zero_n6));
 
         // S + S2 < SR
-        assert_eq!(one_p6.checked_mul(one_p3), one_p12.checked_mul_int(1000));
-        assert_eq!(one_p6.checked_mul(one_0), one_p12.checked_mul_int(1000_000));
-        assert_eq!(one_n6.checked_mul(one_n3), one_n3.checked_mul_int(1000_000));
-        assert_eq!(one_n6.checked_mul(one_p3), one_p3.checked_mul_int(1000_000));
-        assert_eq!(one_p6.checked_mul(one_n3), one_p6.checked_mul_int(1000));
-        assert_eq!(one_n12.checked_mul(one_p12), one_p3.checked_mul_int(1000));
+        assert_eq!(two_p6.checked_mul(two_p3), four_p12.checked_mul_int(1000));
+        assert_eq!(two_p6.checked_mul(two_0), four_p12.checked_mul_int(1000000));
+        assert_eq!(two_n6.checked_mul(two_n3), four_n3.checked_mul_int(1000000));
+        assert_eq!(two_n6.checked_mul(two_p3), four_p3.checked_mul_int(1000000));
+        assert_eq!(two_p6.checked_mul(two_n3), four_p6.checked_mul_int(1000));
+        assert_eq!(two_n12.checked_mul(two_p12), four_p3.checked_mul_int(1000));
 
         // S + S2 - SR > 9
-        assert_eq!(one_p6.checked_mul::<_, 6, 0>(one_p6), None);
-        assert_eq!(one_p12.checked_mul::<_, 6, 6>(one_p6), None);
-        assert_eq!(one_p6.checked_mul::<_, -6, -10>(one_n6), None);
+        assert_eq!(two_p6.checked_mul::<_, 6, 0>(two_p6), None);
+        assert_eq!(two_p12.checked_mul::<_, 6, 6>(two_p6), None);
+        assert_eq!(two_p6.checked_mul::<_, -6, -10>(two_n6), None);
 
         // S + S2 - SR < -9
-        assert_eq!(one_n6.checked_mul::<_, -6, 0>(one_n6), None);
-        assert_eq!(one_n12.checked_mul::<_, -6, -6>(one_n6), None);
-        assert_eq!(one_n6.checked_mul::<_, 6, 10>(one_p6), None);
+        assert_eq!(two_n6.checked_mul::<_, -6, 0>(two_n6), None);
+        assert_eq!(two_n12.checked_mul::<_, -6, -6>(two_n6), None);
+        assert_eq!(two_n6.checked_mul::<_, 6, 10>(two_p6), None);
     }
 
     #[test]
@@ -596,47 +605,56 @@ mod tests {
     }
 
     #[test]
-    fn test_div_ones() {
-        let one_p12: ConstScaleFpdec<i32, 12> = fpdec!(1e-12);
-        let one_n12: ConstScaleFpdec<i32, -12> = fpdec!(1e+12);
-        let one_p6: ConstScaleFpdec<i32, 6> = fpdec!(1e-6);
-        let one_n6: ConstScaleFpdec<i32, -6> = fpdec!(1e+6);
-        let one_p3: ConstScaleFpdec<i32, 3> = fpdec!(1e-3);
-        let one_n3: ConstScaleFpdec<i32, -3> = fpdec!(1e+3);
-        let one_0: ConstScaleFpdec<i32, 0> = fpdec!(1);
+    fn test_div() {
+        let two_p12: ConstScaleFpdec<i32, 12> = fpdec!(2e-12);
+        let two_n12: ConstScaleFpdec<i32, -12> = fpdec!(2e+12);
+        let two_p6: ConstScaleFpdec<i32, 6> = fpdec!(2e-6);
+        let two_n6: ConstScaleFpdec<i32, -6> = fpdec!(2e+6);
+        let two_p3: ConstScaleFpdec<i32, 3> = fpdec!(2e-3);
+        let two_n3: ConstScaleFpdec<i32, -3> = fpdec!(2e+3);
+        let two_0: ConstScaleFpdec<i32, 0> = fpdec!(2);
+
         let zero_p6 = ConstScaleFpdec::<i32, 6>::ZERO;
         let zero_n6 = ConstScaleFpdec::<i32, -6>::ZERO;
 
+        let four_p12: ConstScaleFpdec<i32, 12> = fpdec!(4e-12);
+        let four_n12: ConstScaleFpdec<i32, -12> = fpdec!(4e+12);
+        let four_p6: ConstScaleFpdec<i32, 6> = fpdec!(4e-6);
+        let four_n6: ConstScaleFpdec<i32, -6> = fpdec!(4e+6);
+        let four_p3: ConstScaleFpdec<i32, 3> = fpdec!(4e-3);
+        let four_n3: ConstScaleFpdec<i32, -3> = fpdec!(4e+3);
+        let four_0: ConstScaleFpdec<i32, 0> = fpdec!(4);
+
         // S - S2 = SR
-        assert_eq!(one_p3.checked_div(one_p3), Some(one_0));
-        assert_eq!(one_n3.checked_div(one_n3), Some(one_0));
-        assert_eq!(one_p12.checked_div(one_p6), Some(one_p6));
-        assert_eq!(one_n6.checked_div(one_n12), Some(one_p6));
-        assert_eq!(one_0.checked_div(one_p6), Some(one_n6));
-        assert_eq!(one_0.checked_div(one_n6), Some(one_p6));
-        assert_eq!(one_n6.checked_div(one_p6), Some(one_n12));
+        assert_eq!(four_p3.checked_div(two_p3), Some(two_0));
+        assert_eq!(four_n3.checked_div(two_n3), Some(two_0));
+        assert_eq!(four_p12.checked_div(two_p6), Some(two_p6));
+        assert_eq!(four_n6.checked_div(two_n12), Some(two_p6));
+        assert_eq!(four_0.checked_div(two_p6), Some(two_n6));
+        assert_eq!(four_0.checked_div(two_n6), Some(two_p6));
+        assert_eq!(four_n6.checked_div(two_p6), Some(two_n12));
 
         // S - S2 > SR
-        assert_eq!(one_p6.checked_div(one_p6), Some(zero_n6));
-        assert_eq!(one_p12.checked_div(one_p3), Some(zero_p6));
-        assert_eq!(one_p6.checked_div(one_n3), Some(zero_p6));
+        assert_eq!(four_p6.checked_div(two_p6), Some(zero_n6));
+        assert_eq!(four_p12.checked_div(two_p3), Some(zero_p6));
+        assert_eq!(four_p6.checked_div(two_n3), Some(zero_p6));
 
         // S - S2 < SR
-        assert_eq!(one_p6.checked_div(one_p3), one_p6.checked_mul_int(1000));
-        assert_eq!(one_p6.checked_div(one_0), one_p12.checked_mul_int(1000_000));
-        assert_eq!(one_n6.checked_div(one_n3), one_0.checked_mul_int(1000));
-        assert_eq!(one_n6.checked_div(one_p3), one_n6.checked_mul_int(1000));
-        assert_eq!(one_p6.checked_div(one_n3), one_p12.checked_mul_int(1000));
+        assert_eq!(four_p6.checked_div(two_p3), two_p6.checked_mul_int(1000));
+        assert_eq!(four_p6.checked_div(two_0), two_p12.checked_mul_int(1000000));
+        assert_eq!(four_n6.checked_div(two_n3), two_0.checked_mul_int(1000));
+        assert_eq!(four_n6.checked_div(two_p3), two_n6.checked_mul_int(1000));
+        assert_eq!(four_p6.checked_div(two_n3), two_p12.checked_mul_int(1000));
 
         // S - S2 - SR > 9
-        assert_eq!(one_p6.checked_div::<_, 6, -10>(one_p6), None);
-        assert_eq!(one_p12.checked_div::<_, 6, -6>(one_p6), None);
-        assert_eq!(one_p6.checked_div::<_, -6, 0>(one_n6), None);
+        assert_eq!(four_p6.checked_div::<_, 6, -10>(two_p6), None);
+        assert_eq!(four_p12.checked_div::<_, 6, -6>(two_p6), None);
+        assert_eq!(four_p6.checked_div::<_, -6, 0>(two_n6), None);
 
         // S - S2 - SR < -9
-        assert_eq!(one_n6.checked_div::<_, -6, 10>(one_n6), None);
-        assert_eq!(one_n12.checked_div::<_, -6, 6>(one_n6), None);
-        assert_eq!(one_n6.checked_div::<_, 6, 0>(one_p6), None);
+        assert_eq!(four_n6.checked_div::<_, -6, 10>(two_n6), None);
+        assert_eq!(four_n12.checked_div::<_, -6, 6>(two_n6), None);
+        assert_eq!(four_n6.checked_div::<_, 6, 0>(two_p6), None);
     }
 
     #[test]
