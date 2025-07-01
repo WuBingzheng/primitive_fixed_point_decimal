@@ -65,11 +65,11 @@
 //!
 //! There are 2 ways to specify the scale: *const* and *out-of-band*:
 //!
-//! - For the *const* type, [`ConstScaleFpdec`], we use Rust's *const generics*
+//! - For the *const* type [`ConstScaleFpdec`], we use Rust's *const generics*
 //!   to specify the scale. For example, `ConstScaleFpdec<i64, 4>` means
 //!   scale is 4.
 //!
-//! - For the *out-of-band* type, [`OobScaleFpdec`], we do NOT save the
+//! - For the *out-of-band* type [`OobScaleFpdec`], we do NOT save the
 //!   scale with decimal types, so it's your job to save it somewhere
 //!   and apply it in the following operations later. For example,
 //!   `OobScaleFpdec<i64>` takes no scale information.
@@ -130,9 +130,12 @@
 //!
 //! Obviously it's verbose to use, but offers greater flexibility.
 //!
-//! Another example that fits `OobScaleFpdec` is the `decimal` data type in SQL.
-//! The scale of each column is fixed on created, but different columns
-//! have different scales.
+//! Another example is the SQL `Decimal` data type.
+//! In the server end, the scale of each decimal column is fixed on created
+//! (at runtime), so it fits `OobScaleFpdec`.
+//! While in the client end, the application knows the business logical and
+//! the scale of each decimal column ahead (at compilation time), so it fits
+//! `ConstScaleFpdec`.
 //!
 //!
 //! # Cumulative Error
