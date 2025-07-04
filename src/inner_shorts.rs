@@ -157,6 +157,13 @@ impl FpdecInner for i64 {
         rounding: Rounding,
         cum_error: Option<&mut Self>,
     ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_error, i64, i128)
+        // try to avoid casting to i128 which is slower
+        match self.checked_mul(b) {
+            Some(m) => match cum_error {
+                Some(cum_error) => checked_divide_with_cum_error(m, c, rounding, cum_error),
+                None => checked_divide_with_rounding(m, c, rounding),
+            },
+            None => calc_mul_div_higher!(self, b, c, rounding, cum_error, i64, i128),
+        }
     }
 }
