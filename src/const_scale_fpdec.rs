@@ -339,8 +339,13 @@ macro_rules! convert_from_float {
             /// assert_eq!(Decimal::try_from(1.23456789).unwrap(), Decimal::from_str("1.2346").unwrap());
             /// ```
             fn try_from(f: $float_type) -> Result<Self, Self::Error> {
-                let base: $float_type = 10.0;
-                let inner_f = f * base.powi(S) as $float_type;
+                let inner_f = if S > 0 {
+                    f * 10.0.powi(S)
+                } else if S < 0 {
+                    f / 10.0.powi(-S)
+                } else {
+                    f
+                };
                 I::$from_fn(inner_f.round())
                     .map(Self)
                     .ok_or(ParseError::Overflow)
@@ -363,10 +368,21 @@ macro_rules! convert_from_float {
             /// let dec: Decimal = fpdec!(1.23);
             /// let f: f32 = dec.into();
             /// assert_eq!(f, 1.23);
+            ///
+            /// type Decimal2 = ConstScaleFpdec<i32, -3>;
+            /// let dec: Decimal2 = fpdec!(123000);
+            /// let f: f32 = dec.into();
+            /// assert_eq!(f, 123000.0);
             /// ```
             fn from(dec: ConstScaleFpdec<I, S>) -> Self {
-                let base: $float_type = 10.0;
-                dec.0.$to_fn().unwrap() / base.powi(S)
+                let f = dec.0.$to_fn().unwrap();
+                if S > 0 {
+                    f / 10.0.powi(S)
+                } else if S < 0 {
+                    f * 10.0.powi(-S)
+                } else {
+                    f
+                }
             }
         }
     };

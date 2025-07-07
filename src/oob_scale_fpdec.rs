@@ -245,9 +245,19 @@ where
     ///
     /// let dec: Decimal = fpdec!(1.234, 4);
     /// assert_eq!(dec.to_f32(4), 1.234);
+    ///
+    /// let dec: Decimal = fpdec!(1234000, -3);
+    /// assert_eq!(dec.to_f32(-3), 1234000.0);
     /// ```
     pub fn to_f32(self, scale: i32) -> f32 {
-        self.0.to_f32().unwrap() / 10.0.powi(scale)
+        let f = self.0.to_f32().unwrap();
+        if scale > 0 {
+            f / 10.0.powi(scale)
+        } else if scale < 0 {
+            f * 10.0.powi(-scale)
+        } else {
+            f
+        }
     }
 
     /// Convert into `f64`.
@@ -260,9 +270,19 @@ where
     ///
     /// let dec: Decimal = fpdec!(1.234, 4);
     /// assert_eq!(dec.to_f64(4), 1.234);
+    ///
+    /// let dec: Decimal = fpdec!(1234000, -3);
+    /// assert_eq!(dec.to_f64(-3), 1234000.0);
     /// ```
     pub fn to_f64(self, scale: i32) -> f64 {
-        self.0.to_f64().unwrap() / 10.0.powi(scale)
+        let f = self.0.to_f64().unwrap();
+        if scale > 0 {
+            f / 10.0.powi(scale)
+        } else if scale < 0 {
+            f * 10.0.powi(-scale)
+        } else {
+            f
+        }
     }
 }
 
@@ -356,9 +376,15 @@ macro_rules! convert_from_float {
             /// assert_eq!(Decimal::try_from((1.23, 4)).unwrap(), Decimal::try_from_str("1.23", 4).unwrap());
             /// assert_eq!(Decimal::try_from((1.23456789, 4)).unwrap(), Decimal::try_from_str("1.2346", 4).unwrap());
             /// ```
-            fn try_from(f: ($float_type, i32)) -> Result<Self, Self::Error> {
-                let base: $float_type = 10.0;
-                let inner_f = f.0 * base.powi(f.1) as $float_type;
+            fn try_from(t: ($float_type, i32)) -> Result<Self, Self::Error> {
+                let (f, scale) = t;
+                let inner_f = if scale > 0 {
+                    f * 10.0.powi(scale)
+                } else if scale < 0 {
+                    f / 10.0.powi(-scale)
+                } else {
+                    f
+                };
                 I::$from_fn(inner_f.round())
                     .map(Self)
                     .ok_or(ParseError::Overflow)
