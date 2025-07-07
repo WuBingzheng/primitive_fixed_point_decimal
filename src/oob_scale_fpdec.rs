@@ -302,7 +302,7 @@ convert_from_int!(i64);
 convert_from_int!(i128);
 
 macro_rules! convert_from_float {
-    ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
+    ($float_type:ty, $from_fn:ident) => {
         impl<I> TryFrom<($float_type, i32)> for OobScaleFpdec<I>
         where
             I: FromPrimitive + FpdecInner,
@@ -336,8 +336,8 @@ macro_rules! convert_from_float {
     };
 }
 
-convert_from_float!(f32, from_f32, to_f32);
-convert_from_float!(f64, from_f64, to_f64);
+convert_from_float!(f32, from_f32);
+convert_from_float!(f64, from_f64);
 
 impl<I> ops::Neg for OobScaleFpdec<I>
 where
