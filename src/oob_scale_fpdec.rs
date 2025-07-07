@@ -21,7 +21,7 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
 /// - extra `diff_scale` argument for most operations such as `*` and `/`, but no need for `+` and `-`,
 /// - use `try_from_str()` to convert from string with scale set,
 /// - use `(*, i32)` tuple for converting from integers or floats,
-/// - use `to_float()` to convert to floats,
+/// - use `to_f32()` or `to_f64()` to convert to floats,
 /// - use [`OobFmt`] for `Display` and `FromStr`,
 /// - no associate const `SCALE`,
 /// - and others.
@@ -226,12 +226,43 @@ where
     /// let dec: Decimal = fpdec!(1.234, 4);
     /// assert_eq!(dec.to_float::<f32>(4), 1.234);
     /// ```
+    #[deprecated(note = "Use `to_f32()` or `to_f64()`.")]
     pub fn to_float<F>(self, scale: i32) -> F
     where
         F: FloatCore,
     {
         let base = F::from(10.0).unwrap();
         F::from(self.0).unwrap() / base.powi(scale)
+    }
+
+    /// Convert into `f32`.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{OobScaleFpdec, fpdec};
+    /// type Decimal = OobScaleFpdec<i32>;
+    ///
+    /// let dec: Decimal = fpdec!(1.234, 4);
+    /// assert_eq!(dec.to_f32(4), 1.234);
+    /// ```
+    pub fn to_f32(self, scale: i32) -> f32 {
+        self.0.to_f32().unwrap() / 10.0.powi(scale)
+    }
+
+    /// Convert into `f64`.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{OobScaleFpdec, fpdec};
+    /// type Decimal = OobScaleFpdec<i32>;
+    ///
+    /// let dec: Decimal = fpdec!(1.234, 4);
+    /// assert_eq!(dec.to_f64(4), 1.234);
+    /// ```
+    pub fn to_f64(self, scale: i32) -> f64 {
+        self.0.to_f64().unwrap() / 10.0.powi(scale)
     }
 }
 
