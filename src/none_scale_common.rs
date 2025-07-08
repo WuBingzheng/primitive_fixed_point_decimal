@@ -57,14 +57,14 @@ macro_rules! define_none_scale_common {
 
         /// Checked multiplication with integer. Computes `self * n`, returning
         /// `None` if overflow occurred.
-        pub fn checked_mul_int(self, n: I) -> Option<Self> {
-            self.0.checked_mul(&n).map(Self)
+        pub fn checked_mul_int(self, n: impl Into<I>) -> Option<Self> {
+            self.0.checked_mul(&n.into()).map(Self)
         }
 
         /// Checked division by integer, with `Rounding::Round`.
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
-        pub fn checked_div_int(self, n: I) -> Option<Self> {
+        pub fn checked_div_int(self, n: impl Into<I>) -> Option<Self> {
             self.checked_div_int_ext(n, Rounding::Round, None)
         }
 
@@ -76,11 +76,11 @@ macro_rules! define_none_scale_common {
         /// for more information and examples.
         pub fn checked_div_int_ext(
             self,
-            n: I,
+            n: impl Into<I>,
             rounding: Rounding,
             cum_error: Option<&mut I>,
         ) -> Option<Self> {
-            checked_divide(self.0, n, rounding, cum_error).map(Self)
+            checked_divide(self.0, n.into(), rounding, cum_error).map(Self)
         }
 
         /// Return if negative.

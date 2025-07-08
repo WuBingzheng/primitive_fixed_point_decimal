@@ -460,12 +460,13 @@ where
 /// # Panics
 ///
 /// If [`Self::checked_mul_int`] returns `None`.
-impl<I, const S: i32> ops::Mul<I> for ConstScaleFpdec<I, S>
+impl<I, J, const S: i32> ops::Mul<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
+    J: Into<I> + Num, // the `Num` to avoid conflicting implementations only
 {
     type Output = Self;
-    fn mul(self, rhs: I) -> Self::Output {
+    fn mul(self, rhs: J) -> Self::Output {
         self.checked_mul_int(rhs)
             .expect("overflow in decimal multiplication")
     }
@@ -509,12 +510,13 @@ where
 /// # Panics
 ///
 /// If [`Self::checked_div_int`] returns `None`.
-impl<I, const S: i32> ops::Div<I> for ConstScaleFpdec<I, S>
+impl<I, J, const S: i32> ops::Div<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
+    J: Into<I> + Num,
 {
     type Output = Self;
-    fn div(self, rhs: I) -> Self::Output {
+    fn div(self, rhs: J) -> Self::Output {
         self.checked_div_int(rhs).expect("fail in decimal division")
     }
 }
@@ -548,11 +550,12 @@ where
     }
 }
 
-impl<I, const S: i32> ops::MulAssign<I> for ConstScaleFpdec<I, S>
+impl<I, J, const S: i32> ops::MulAssign<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
+    J: Into<I> + Num,
 {
-    fn mul_assign(&mut self, rhs: I) {
+    fn mul_assign(&mut self, rhs: J) {
         *self = *self * rhs;
     }
 }
@@ -568,11 +571,12 @@ where
     }
 }
 
-impl<I, const S: i32> ops::DivAssign<I> for ConstScaleFpdec<I, S>
+impl<I, J, const S: i32> ops::DivAssign<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
+    J: Into<I> + Num,
 {
-    fn div_assign(&mut self, rhs: I) {
+    fn div_assign(&mut self, rhs: J) {
         *self = *self / rhs;
     }
 }
