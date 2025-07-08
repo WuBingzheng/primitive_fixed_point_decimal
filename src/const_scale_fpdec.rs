@@ -421,6 +421,104 @@ where
     }
 }
 
+/// Performs the `*` operation bewteen 2 decimals.
+///
+/// The right operand may have different types (both underlying integer
+/// and scale), but the result inherits the left operand's type. If you
+/// want specify result's scale, please use [`Self::checked_mul`] directly.
+///
+/// # Panics
+///
+/// If [`Self::checked_mul`] returns `None`.
+///
+/// # Examples
+///
+/// ```
+/// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+/// type Balance = ConstScaleFpdec<i64, 4>;
+/// type FeeRate = ConstScaleFpdec<i16, 6>; // different types
+///
+/// let balance: Balance = fpdec!(12.60);
+/// let rate: FeeRate = fpdec!(0.01);
+///
+/// assert_eq!(balance * rate, fpdec!(0.126));
+/// ```
+impl<I, J, const S: i32, const S2: i32> ops::Mul<ConstScaleFpdec<J, S2>> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    type Output = Self;
+    fn mul(self, rhs: ConstScaleFpdec<J, S2>) -> Self::Output {
+        self.checked_mul(rhs)
+            .expect("overflow in decimal multiplication")
+    }
+}
+
+/// Performs the `*` operation with an integer.
+///
+/// # Panics
+///
+/// If [`Self::checked_mul_int`] returns `None`.
+impl<I, const S: i32> ops::Mul<I> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    type Output = Self;
+    fn mul(self, rhs: I) -> Self::Output {
+        self.checked_mul_int(rhs)
+            .expect("overflow in decimal multiplication")
+    }
+}
+
+/// Performs the `/` operation bewteen 2 decimals.
+///
+/// The right operand may have different types (both underlying integer
+/// and scale), but the result inherits the left operand's type. If you
+/// want specify result's scale, please use [`Self::checked_div`] directly.
+///
+/// # Panics
+///
+/// If [`Self::checked_div`] returns `None`.
+///
+/// # Examples
+///
+/// ```
+/// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+/// type Balance = ConstScaleFpdec<i64, 4>;
+/// type FeeRate = ConstScaleFpdec<i16, 6>; // different types
+///
+/// let fee: Balance = fpdec!(0.1260);
+/// let rate: FeeRate = fpdec!(0.01);
+///
+/// assert_eq!(fee / rate, fpdec!(12.6));
+/// ```
+impl<I, J, const S: i32, const S2: i32> ops::Div<ConstScaleFpdec<J, S2>> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    type Output = Self;
+    fn div(self, rhs: ConstScaleFpdec<J, S2>) -> Self::Output {
+        self.checked_div(rhs).expect("fail in decimal division")
+    }
+}
+
+/// Performs the `/` operation with an integer.
+///
+/// # Panics
+///
+/// If [`Self::checked_div_int`] returns `None`.
+impl<I, const S: i32> ops::Div<I> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    type Output = Self;
+    fn div(self, rhs: I) -> Self::Output {
+        self.checked_div_int(rhs).expect("fail in decimal division")
+    }
+}
+
 impl<I, const S: i32> ops::AddAssign for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
@@ -436,6 +534,46 @@ where
 {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
+    }
+}
+
+impl<I, J, const S: i32, const S2: i32> ops::MulAssign<ConstScaleFpdec<J, S2>>
+    for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    fn mul_assign(&mut self, rhs: ConstScaleFpdec<J, S2>) {
+        *self = *self * rhs;
+    }
+}
+
+impl<I, const S: i32> ops::MulAssign<I> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    fn mul_assign(&mut self, rhs: I) {
+        *self = *self * rhs;
+    }
+}
+
+impl<I, J, const S: i32, const S2: i32> ops::DivAssign<ConstScaleFpdec<J, S2>>
+    for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    fn div_assign(&mut self, rhs: ConstScaleFpdec<J, S2>) {
+        *self = *self / rhs;
+    }
+}
+
+impl<I, const S: i32> ops::DivAssign<I> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    fn div_assign(&mut self, rhs: I) {
+        *self = *self / rhs;
     }
 }
 

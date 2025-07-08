@@ -426,6 +426,37 @@ where
     }
 }
 
+/// Performs the `*` operation with an integer.
+///
+/// # Panics
+///
+/// If [`Self::checked_mul_int`] returns `None`.
+impl<I> ops::Mul<I> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+{
+    type Output = Self;
+    fn mul(self, rhs: I) -> Self::Output {
+        self.checked_mul_int(rhs)
+            .expect("overflow in decimal multiplication")
+    }
+}
+
+/// Performs the `/` operation with an integer.
+///
+/// # Panics
+///
+/// If [`Self::checked_div_int`] returns `None`.
+impl<I> ops::Div<I> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+{
+    type Output = Self;
+    fn div(self, rhs: I) -> Self::Output {
+        self.checked_div_int(rhs).expect("fail in decimal division")
+    }
+}
+
 impl<I> ops::AddAssign for OobScaleFpdec<I>
 where
     I: FpdecInner,
@@ -441,6 +472,24 @@ where
 {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
+    }
+}
+
+impl<I> ops::MulAssign<I> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+{
+    fn mul_assign(&mut self, rhs: I) {
+        *self = *self * rhs;
+    }
+}
+
+impl<I> ops::DivAssign<I> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+{
+    fn div_assign(&mut self, rhs: I) {
+        *self = *self / rhs;
     }
 }
 
