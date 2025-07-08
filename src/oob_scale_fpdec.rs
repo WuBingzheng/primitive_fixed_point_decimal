@@ -179,10 +179,10 @@ where
     ///
     /// let price: Price = fpdec!(12.12345678, 8); // scale=8
     ///
-    /// assert_eq!(price.round_diff(2), // reduce 2 scale
+    /// assert_eq!(price.round_diff(8 - 6), // reduce 2 scale
     ///     fpdec!(12.123457, 8)); // `Rounding::Round` as default
     ///
-    /// assert_eq!(price.round_diff_with_rounding(2, Rounding::Floor),
+    /// assert_eq!(price.round_diff_with_rounding(8 - 6, Rounding::Floor),
     ///     fpdec!(12.123456, 8));
     /// ```
     pub fn round_diff_with_rounding(self, diff_scale: i32, rounding: Rounding) -> Self {

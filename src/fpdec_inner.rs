@@ -91,10 +91,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             None => Self::ZERO,
             Some(exp) => {
                 // self / exp * exp
-                let ret = self / exp * exp;
-                let remain = self - ret;
-                let carry = checked_divide_with_rounding(remain, exp, rounding).unwrap();
-                ret + carry * exp
+                checked_divide_with_rounding(self, exp, rounding).unwrap() * exp
             }
         }
     }
