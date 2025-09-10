@@ -1,11 +1,13 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::oob_scale_fpdec::OobScaleFpdec;
 use crate::ParseError;
+
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
-use int_div_cum_error::{checked_divide, Rounding};
+
+use int_div_cum_error::{CumErr, Rounding};
 #[allow(unused_imports)]
 use num_traits::float::FloatCore; // used only for `no_std`
-use num_traits::{cast::FromPrimitive, Num};
+use num_traits::{cast::FromPrimitive, Num, Signed};
 
 /// Const-scale fixed-point decimal.
 ///
@@ -87,7 +89,7 @@ where
         self,
         rhs: ConstScaleFpdec<J, S2>,
         rounding: Rounding,
-        cum_error: Option<&mut I>,
+        cum_error: Option<&mut CumErr<I>>,
     ) -> Option<ConstScaleFpdec<I, SR>>
     where
         J: FpdecInner,
@@ -139,7 +141,7 @@ where
         self,
         rhs: ConstScaleFpdec<J, S2>,
         rounding: Rounding,
-        cum_error: Option<&mut I>,
+        cum_error: Option<&mut CumErr<I>>,
     ) -> Option<ConstScaleFpdec<I, SR>>
     where
         J: FpdecInner,
@@ -175,6 +177,13 @@ where
     pub fn round_with_rounding(self, scale: i32, rounding: Rounding) -> Self {
         Self(self.0.round_diff_with_rounding(S - scale, rounding))
     }
+}
+
+impl<I, const S: i32> ConstScaleFpdec<I, S>
+where
+    I: FpdecInner + Signed,
+{
+    crate::none_scale_common::define_none_scale_common_signed!();
 }
 
 impl<I, const S: i32> fmt::Debug for ConstScaleFpdec<I, S>
@@ -393,7 +402,7 @@ convert_from_float!(f64, from_f64, to_f64);
 
 impl<I, const S: i32> ops::Neg for ConstScaleFpdec<I, S>
 where
-    I: FpdecInner,
+    I: FpdecInner + Signed,
 {
     type Output = Self;
     fn neg(self) -> Self::Output {

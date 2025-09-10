@@ -19,28 +19,6 @@ macro_rules! define_none_scale_common {
 
         /// Approximate number of significant digits in base 10.
         pub const DIGITS: u32 = I::DIGITS;
-
-        /// Computes the absolute value of self.
-        ///
-        /// # Overflow behavior
-        ///
-        /// The absolute value of `MIN` cannot be represented as this type,
-        /// and attempting to calculate it will cause an overflow. This means that
-        /// code in debug mode will trigger a panic on this case and optimized code
-        /// will return `MIN` without a panic.
-        pub fn abs(self) -> Self {
-            Self(self.0.abs())
-        }
-
-        /// Checked absolute value. Computes `self.abs()`, returning `None` if `self == MIN`.
-        pub fn checked_abs(self) -> Option<Self> {
-            if self == Self::MIN {
-                None
-            } else {
-                Some(self.abs())
-            }
-        }
-
         /// Checked addition. Computes `self + rhs`, returning `None` if overflow occurred.
         ///
         /// The right operand must have the same scale with self.
@@ -78,19 +56,11 @@ macro_rules! define_none_scale_common {
             self,
             n: impl Into<I>,
             rounding: Rounding,
-            cum_error: Option<&mut I>,
+            cum_error: Option<&mut CumErr<I>>,
         ) -> Option<Self> {
-            checked_divide(self.0, n.into(), rounding, cum_error).map(Self)
-        }
-
-        /// Return if negative.
-        pub fn is_neg(&self) -> bool {
-            self.0.is_negative()
-        }
-
-        /// Return if positive.
-        pub fn is_pos(&self) -> bool {
-            self.0.is_positive()
+            self.0
+                .checked_div_with_opt_cum_err(n.into(), rounding, cum_error)
+                .map(Self)
         }
 
         /// Return if zero.
@@ -114,4 +84,40 @@ macro_rules! define_none_scale_common {
     };
 }
 
+macro_rules! define_none_scale_common_signed {
+    () => {
+        /// Computes the absolute value of self.
+        ///
+        /// # Overflow behavior
+        ///
+        /// The absolute value of `MIN` cannot be represented as this type,
+        /// and attempting to calculate it will cause an overflow. This means that
+        /// code in debug mode will trigger a panic on this case and optimized code
+        /// will return `MIN` without a panic.
+        pub fn abs(self) -> Self {
+            Self(self.0.abs())
+        }
+
+        /// Checked absolute value. Computes `self.abs()`, returning `None` if `self == MIN`.
+        pub fn checked_abs(self) -> Option<Self> {
+            if self == Self::MIN {
+                None
+            } else {
+                Some(self.abs())
+            }
+        }
+
+        /// Return if negative.
+        pub fn is_neg(&self) -> bool {
+            self.0.is_negative()
+        }
+
+        /// Return if positive.
+        pub fn is_pos(&self) -> bool {
+            self.0.is_positive()
+        }
+    };
+}
+
 pub(crate) use define_none_scale_common;
+pub(crate) use define_none_scale_common_signed;

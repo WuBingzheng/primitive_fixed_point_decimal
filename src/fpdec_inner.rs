@@ -1,14 +1,22 @@
 use crate::ParseError;
+
+use core::ops::{AddAssign, SubAssign};
 use core::{fmt, num::ParseIntError};
-use int_div_cum_error::{checked_divide, checked_divide_with_rounding, PrimSignedInt, Rounding};
-use num_traits::Num;
+
+use int_div_cum_error::{CumErr, DivCumErr, Rounding};
+use num_traits::{
+    identities::{ConstOne, ConstZero},
+    int::PrimInt,
+    Num,
+};
 
 /// The trait for underlying representation.
 ///
 /// Normal users don't need to use this trait.
-pub trait FpdecInner: Sized + PrimSignedInt {
+pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + DivCumErr {
     const MAX: Self;
     const MIN: Self;
+    const TEN: Self;
     const MAX_POWERS: Self;
     const DIGITS: u32;
 
@@ -21,7 +29,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         b: Self,
         c: Self,
         rounding: Rounding,
-        cum_error: Option<&mut Self>,
+        cum_error: Option<&mut CumErr<Self>>,
     ) -> Option<Self>;
 
     // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
@@ -30,7 +38,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         rhs: Self,
         diff_scale: i32, // = scale (self + rhs - result)
         rounding: Rounding,
-        cum_error: Option<&mut Self>,
+        cum_error: Option<&mut CumErr<Self>>,
     ) -> Option<Self> {
         if diff_scale > 0 {
             // self * rhs / diff_exp
@@ -57,13 +65,13 @@ pub trait FpdecInner: Sized + PrimSignedInt {
         rhs: Self,
         diff_scale: i32, // = scale (self - rhs - result)
         rounding: Rounding,
-        cum_error: Option<&mut Self>,
+        cum_error: Option<&mut CumErr<Self>>,
     ) -> Option<Self> {
         if diff_scale > 0 {
             // self / rhs / diff_exp
             let exp = Self::get_exp(diff_scale as usize)?;
-            let q = checked_divide(self, rhs, rounding, None)?;
-            checked_divide(q, exp, rounding, cum_error)
+            let q = self.checked_div_with_rounding(rhs, rounding)?;
+            q.checked_div_with_opt_cum_err(exp, rounding, cum_error)
         } else if diff_scale < 0 {
             // self * diff_exp / rhs
 
@@ -74,7 +82,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             let exp = Self::get_exp(-diff_scale as usize)?;
             self.calc_mul_div(exp, rhs, rounding, cum_error)
         } else {
-            checked_divide(self, rhs, rounding, cum_error)
+            self.checked_div_with_opt_cum_err(rhs, rounding, cum_error)
         }
     }
 
@@ -91,7 +99,7 @@ pub trait FpdecInner: Sized + PrimSignedInt {
             None => Self::ZERO,
             Some(exp) => {
                 // self / exp * exp
-                checked_divide_with_rounding(self, exp, rounding).unwrap() * exp
+                self.checked_div_with_rounding(exp, rounding).unwrap() * exp
             }
         }
     }
@@ -239,13 +247,12 @@ pub trait FpdecInner: Sized + PrimSignedInt {
 
         fn strip_zeros<I>(mut n: I) -> (I, usize)
         where
-            I: PrimSignedInt + Sized,
+            I: FpdecInner,
         {
             let mut zeros = 0;
-            let ten = I::from(10).unwrap();
-            while (n % ten).is_zero() {
+            while (n % I::TEN).is_zero() {
                 // TODO optimize?
-                n = n / ten;
+                n = n / I::TEN;
                 zeros += 1;
             }
             (n, zeros)
@@ -274,9 +281,8 @@ pub trait FpdecInner: Sized + PrimSignedInt {
                     let (n, zeros) = strip_zeros(-self);
                     write!(f, "-0.{:0>width$}", n, width = scale - zeros)
                 } else {
-                    let ten = Self::from(10).unwrap();
-                    let front = self / ten;
-                    let last = self % ten;
+                    let front = self / Self::TEN;
+                    let last = self % Self::TEN;
                     write!(f, "-0.{:0>width$}{}", -front, -last, width = scale - 1)
                 }
             }

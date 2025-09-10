@@ -1,9 +1,11 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
 use crate::ParseError;
+
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
-use int_div_cum_error::{checked_divide, Rounding};
-use num_traits::{cast::FromPrimitive, float::FloatCore, Num};
+
+use int_div_cum_error::{CumErr, Rounding};
+use num_traits::{cast::FromPrimitive, float::FloatCore, Num, Signed};
 
 /// Out-of-band-scale fixed-point decimal.
 ///
@@ -94,7 +96,7 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self + rhs - result)
         rounding: Rounding,
-        cum_error: Option<&mut I>,
+        cum_error: Option<&mut CumErr<I>>,
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
@@ -149,7 +151,7 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self - rhs - result)
         rounding: Rounding,
-        cum_error: Option<&mut I>,
+        cum_error: Option<&mut CumErr<I>>,
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
@@ -286,6 +288,13 @@ where
     }
 }
 
+impl<I> OobScaleFpdec<I>
+where
+    I: FpdecInner + Signed,
+{
+    crate::none_scale_common::define_none_scale_common_signed!();
+}
+
 impl<I, const S: i32> From<ConstScaleFpdec<I, S>> for OobScaleFpdec<I>
 where
     I: FpdecInner,
@@ -398,7 +407,7 @@ convert_from_float!(f64, from_f64);
 
 impl<I> ops::Neg for OobScaleFpdec<I>
 where
-    I: FpdecInner,
+    I: FpdecInner + Signed,
 {
     type Output = Self;
     fn neg(self) -> Self::Output {

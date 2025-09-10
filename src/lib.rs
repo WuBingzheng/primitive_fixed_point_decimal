@@ -218,7 +218,7 @@ mod oob_scale_fpdec;
 pub use crate::const_scale_fpdec::ConstScaleFpdec;
 pub use crate::fpdec_inner::FpdecInner;
 pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
-pub use int_div_cum_error::Rounding;
+pub use int_div_cum_error::{CumErr, Rounding};
 
 /// Error in converting from string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
