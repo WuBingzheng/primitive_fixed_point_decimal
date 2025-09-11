@@ -71,24 +71,24 @@ where
     /// # Examples
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{OobScaleFpdec, Rounding, fpdec};
+    /// use primitive_fixed_point_decimal::{OobScaleFpdec, CumErr, Rounding, fpdec};
     /// type Balance = OobScaleFpdec<i64>;
     /// type FeeRate = OobScaleFpdec<i16>; // different types
     ///
     /// let balance: Balance = fpdec!(12.60, 2); // scale=2
     /// let rate: FeeRate = fpdec!(0.01, 4); // scale=4
     ///
-    /// // calculate fee 3 times with same arguments, with `cum_error`.
+    /// // calculate fee 3 times with same arguments, with `cum_err`.
     /// // but have different results: 0.13, 0.13 and 0.12
-    /// let mut cum_error: i64 = 0;
+    /// let mut cum_err = CumErr::new();
     ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_error)).unwrap();
+    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
     /// assert_eq!(fee, fpdec!(0.13, 2));
     ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_error)).unwrap();
+    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
     /// assert_eq!(fee, fpdec!(0.13, 2));
     ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_error)).unwrap();
+    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
     /// assert_eq!(fee, fpdec!(0.12, 2)); // here different
     /// ```
     pub fn checked_mul_ext<J>(
@@ -96,13 +96,13 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self + rhs - result)
         rounding: Rounding,
-        cum_error: Option<&mut CumErr<I>>,
+        cum_err: Option<&mut CumErr<I>>,
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
     {
         self.0
-            .checked_mul_ext(I::from(rhs.0)?, diff_scale, rounding, cum_error)
+            .checked_mul_ext(I::from(rhs.0)?, diff_scale, rounding, cum_err)
             .map(Self)
     }
 
@@ -151,13 +151,13 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self - rhs - result)
         rounding: Rounding,
-        cum_error: Option<&mut CumErr<I>>,
+        cum_err: Option<&mut CumErr<I>>,
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
     {
         self.0
-            .checked_div_ext(I::from(rhs.0)?, diff_scale, rounding, cum_error)
+            .checked_div_ext(I::from(rhs.0)?, diff_scale, rounding, cum_err)
             .map(Self)
     }
 

@@ -10,16 +10,13 @@ macro_rules! calc_mul_div_higher {
         let dividend = $a as $higher_type * $b as $higher_type;
         let divisor = $c as $higher_type;
         match $cum_error {
-            Some(_cum_error) => {
-                todo!()
-                /*
-                let mut higher_cum_error = *cum_error as $higher_type;
+            Some(cum_error) => {
+                let mut higher_cum_error = CumErr(cum_error.0 as $higher_type);
                 let q =
                     dividend.checked_div_with_cum_err(divisor, $rounding, &mut higher_cum_error)?;
 
-                *cum_error = higher_cum_error as $origin_type;
+                cum_error.0 = higher_cum_error.0 as $origin_type;
                 <$origin_type>::try_from(q).ok()
-                */
             }
             None => {
                 let q = dividend.checked_div_with_rounding(divisor, $rounding)?;
