@@ -7,18 +7,22 @@ use int_div_cum_error::{CumErr, DivCumErr, Rounding};
 use num_traits::{
     identities::{ConstOne, ConstZero},
     int::PrimInt,
+    ops::wrapping::WrappingAdd,
     Num,
 };
 
 /// The trait for underlying representation.
 ///
 /// Normal users don't need to use this trait.
-pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + DivCumErr {
+pub trait FpdecInner:
+    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + DivCumErr
+{
     const MAX: Self;
     const MIN: Self;
     const TEN: Self;
     const MAX_POWERS: Self;
     const DIGITS: u32;
+    const NEG_MIN_STR: &'static str;
 
     /// Return 10 to the power of `i`.
     fn get_exp(i: usize) -> Option<Self>;
@@ -104,105 +108,73 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + D
         }
     }
 
+    // INTERNAL
+    // The FpdecInner works for both signed and unsigned types.
+    // Sometimes we need to calculate negative value of signed type,
+    // for example calculating the aboslute value for a negative
+    // value. But unsigned type does not support negative operation.
+    // So we use Two's Complement to calculate negative for signed
+    // type. The caller must ensure that the input is signed type.
+    fn calc_negative(self) -> Self {
+        (!self).wrapping_add(&Self::ONE)
+    }
+
+    // INTERNAL
+    // Parse an string as negative.
+    // We try to parse it as positive first. If fail for overflow,
+    // then it maybe the MIN value.
+    fn parse_int_as_negative(s: &str) -> Result<Self, ParseIntError>
+    where
+        Self: Num<FromStrRadixErr = ParseIntError>,
+    {
+        match Self::from_str_radix(s, 10) {
+            Ok(num) => Ok(num.calc_negative()),
+            Err(err) => {
+                if s.trim_start_matches('0') == Self::NEG_MIN_STR {
+                    Ok(Self::MIN)
+                } else {
+                    Err(err)
+                }
+            }
+        }
+    }
+
     fn try_from_str(s: &str, scale: i32) -> Result<Self, ParseError>
     where
         Self: Num<FromStrRadixErr = ParseIntError>,
     {
-        // sign
-        let (s, is_neg) = match s.as_bytes().first() {
-            None => return Err(ParseError::Empty),
-            Some(b'-') => (&s[1..], true),
-            Some(b'+') => (&s[1..], false),
-            _ => (s, false),
-        };
-
-        if s == "0" || s == "0." {
-            return Ok(Self::ZERO);
-        }
-        if s.is_empty() {
-            return Err(ParseError::Empty);
-        }
-
-        // fraction part
-        let (int_str, frac_num) = if let Some((int_str, frac_str)) = s.split_once('.') {
-            let frac_len = frac_str.len();
-            if frac_len as i32 > scale {
-                return Err(ParseError::Precision);
-            }
-
-            // here scale > 0
-            let scale = scale as usize;
-
-            let mut frac_num = Self::from_str_radix(frac_str, 10)?;
-
-            if frac_len < scale {
-                let diff_exp = Self::get_exp(scale - frac_len).ok_or(ParseError::Overflow)?;
-                frac_num = frac_num
-                    .checked_mul(&diff_exp)
-                    .ok_or(ParseError::Overflow)?;
-            }
-
-            (int_str, frac_num)
+        let (num, raw_scale) = Self::try_from_str_only(s)?;
+        if num.is_zero() {
+            Ok(num)
+        } else if raw_scale == scale {
+            Ok(num)
+        } else if raw_scale > scale {
+            Err(ParseError::Precision)
         } else {
-            (s, Self::ZERO)
-        };
-
-        // integer part
-        let inner = if scale > 0 {
-            match Self::get_exp(scale as usize) {
-                Some(exp) => Self::from_str_radix(int_str, 10)?
-                    .checked_mul(&exp)
-                    .ok_or(ParseError::Overflow)?
-                    .checked_add(&frac_num)
-                    .ok_or(ParseError::Overflow)?,
-                None => {
-                    if int_str != "0" {
-                        return Err(ParseError::Overflow);
-                    }
-                    frac_num
-                }
-            }
-        } else {
-            if s.len() <= -scale as usize {
-                return Err(ParseError::Precision);
-            }
-            let end = s.len() - (-scale) as usize;
-            if !int_str[end..].chars().all(|ch| ch == '0') {
-                return Err(ParseError::Precision);
-            }
-
-            Self::from_str_radix(&int_str[..end], 10)?
-        };
-
-        if is_neg {
-            Ok(-inner)
-        } else {
-            Ok(inner)
+            Self::get_exp((scale - raw_scale) as usize)
+                .ok_or(ParseError::Precision)?
+                .checked_mul(&num)
+                .ok_or(ParseError::Overflow)
         }
     }
 
+    // Guess and return the scale by the input string.
     fn try_from_str_only(s: &str) -> Result<(Self, i32), ParseError>
     where
         Self: Num<FromStrRadixErr = ParseIntError>,
     {
-        // sign
-        let (s, is_neg) = match s.as_bytes().first() {
-            None => return Err(ParseError::Empty),
-            Some(b'-') => (&s[1..], true),
-            Some(b'+') => (&s[1..], false),
-            _ => (s, false),
-        };
-
-        if s == "0" || s == "0." {
-            return Ok((Self::ZERO, 0));
-        }
         if s.is_empty() {
             return Err(ParseError::Empty);
         }
 
-        let (inner, scale) = if let Some((int_str, frac_str)) = s.split_once('.') {
+        if let Some((int_str, frac_str)) = s.split_once('.') {
             let int_num = Self::from_str_radix(int_str, 10)?;
-            let frac_num = Self::from_str_radix(frac_str, 10)?;
+
+            let frac_num = if s.as_bytes()[0] == b'-' {
+                Self::parse_int_as_negative(frac_str)?
+            } else {
+                Self::from_str_radix(frac_str, 10)?
+            };
 
             let inner = if int_num.is_zero() {
                 // only fraction part
@@ -216,16 +188,16 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + D
                     .checked_add(&frac_num)
                     .ok_or(ParseError::Overflow)?
             };
-            (inner, frac_str.len() as i32)
+            Ok((inner, frac_str.len() as i32))
         } else {
             // only integer part
+            if s == "0" || s == "-0" || s == "+0" {
+                return Ok((Self::ZERO, 0));
+            }
             let new_int_str = s.trim_end_matches('0');
             let diff = s.len() - new_int_str.len();
-            (Self::from_str_radix(new_int_str, 10)?, -(diff as i32))
-        };
-
-        let inner = if is_neg { -inner } else { inner };
-        Ok((inner, scale))
+            Ok((Self::from_str_radix(new_int_str, 10)?, -(diff as i32)))
+        }
     }
 
     fn display_fmt(self, scale: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
@@ -245,10 +217,14 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + D
         // scale > 0
         let scale = scale as usize;
 
-        fn strip_zeros<I>(mut n: I) -> (I, usize)
+        fn abs_strip_zeros<I>(mut n: I) -> (I, usize)
         where
             I: FpdecInner,
         {
+            if n < I::ZERO {
+                n = n.calc_negative();
+            }
+
             let mut zeros = 0;
             while (n % I::TEN).is_zero() {
                 // TODO optimize?
@@ -265,8 +241,8 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + D
                 if frac.is_zero() {
                     write!(f, "{}", i)
                 } else {
-                    let (frac, zeros) = strip_zeros(frac.abs());
-                    if i.is_zero() && (self ^ exp).is_negative() {
+                    let (frac, zeros) = abs_strip_zeros(frac);
+                    if i.is_zero() && (self ^ exp) < Self::ZERO {
                         write!(f, "-0.{:0>width$}", frac, width = scale - zeros)
                     } else {
                         write!(f, "{}.{:0>width$}", i, frac, width = scale - zeros)
@@ -274,16 +250,16 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + D
                 }
             }
             None => {
-                if !self.is_negative() {
-                    let (n, zeros) = strip_zeros(self);
+                if self >= Self::ZERO {
+                    let (n, zeros) = abs_strip_zeros(self);
                     write!(f, "0.{:0>width$}", n, width = scale - zeros)
                 } else if self != Self::MIN {
-                    let (n, zeros) = strip_zeros(-self);
+                    let (n, zeros) = abs_strip_zeros(self);
                     write!(f, "-0.{:0>width$}", n, width = scale - zeros)
                 } else {
-                    let front = self / Self::TEN;
-                    let last = self % Self::TEN;
-                    write!(f, "-0.{:0>width$}{}", -front, -last, width = scale - 1)
+                    let front = (self / Self::TEN).calc_negative();
+                    let last = (self % Self::TEN).calc_negative();
+                    write!(f, "-0.{:0>width$}{}", front, last, width = scale - 1)
                 }
             }
         }
@@ -302,5 +278,127 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + D
         } else {
             Ok(self)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    extern crate std;
+    use std::fmt;
+
+    struct TestFmt<I> {
+        n: I,
+        scale: i32,
+    }
+    impl<I: FpdecInner + fmt::Display> fmt::Display for TestFmt<I> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            self.n.display_fmt(self.scale, f)
+        }
+    }
+    fn do_test_format(s: &str, scale: i32, n: i8) {
+        assert_eq!(i8::try_from_str(s, scale), Ok(n));
+
+        //println!("test: {s} {scale} {n}");
+        let (n1, scale1) = i8::try_from_str_only(s).unwrap();
+        let n2 = n1 * 10_i8.pow((scale - scale1) as u32);
+        assert_eq!(n2, n);
+
+        let ts = TestFmt { n, scale };
+        assert_eq!(std::format!("{}", &ts), s);
+    }
+
+    fn do_test_format_num_only<I>(n: I)
+    where
+        I: FpdecInner + fmt::Display + fmt::Debug + Num<FromStrRadixErr = ParseIntError>,
+    {
+        for scale in -100..100 {
+            let ts = TestFmt { n, scale };
+            let out = std::format!("{}", ts);
+
+            println!("scale:{scale}, n:{n}, out:{out}");
+            assert_eq!(I::try_from_str(&out, scale), Ok(n));
+        }
+    }
+
+    #[test]
+    fn test_format() {
+        // empty
+        assert_eq!(i8::try_from_str("", 2), Err(ParseError::Empty));
+
+        // zero
+        assert_eq!(i8::try_from_str("0", 2), Ok(0));
+        assert_eq!(i8::try_from_str("0.0", 2), Ok(0));
+        assert_eq!(i8::try_from_str("-0", 2), Ok(0));
+        assert_eq!(i8::try_from_str("-0.0", 2), Ok(0));
+        assert_eq!(i8::try_from_str("+0", 2), Ok(0));
+        assert_eq!(i8::try_from_str("+0.0", 2), Ok(0));
+
+        // positive
+        do_test_format("12300", -2, 123);
+        do_test_format("1230", -1, 123);
+        do_test_format("123", 0, 123);
+        do_test_format("12.3", 1, 123);
+        do_test_format("1.23", 2, 123);
+        do_test_format("0.123", 3, 123);
+        do_test_format("0.0123", 4, 123);
+        do_test_format("0.00123", 5, 123);
+        do_test_format("0.000123", 6, 123);
+
+        do_test_format("12000", -2, 120);
+        do_test_format("1200", -1, 120);
+        do_test_format("120", 0, 120);
+        do_test_format("12", 1, 120);
+        do_test_format("1.2", 2, 120);
+        do_test_format("0.12", 3, 120);
+        do_test_format("0.012", 4, 120);
+        do_test_format("0.0012", 5, 120);
+        do_test_format("0.00012", 6, 120);
+
+        // negative with i8::MIN
+        do_test_format("-12800", -2, -128);
+        do_test_format("-1280", -1, -128);
+        do_test_format("-128", 0, -128);
+        do_test_format("-12.8", 1, -128);
+        do_test_format("-1.28", 2, -128);
+        do_test_format("-0.128", 3, -128);
+        do_test_format("-0.0128", 4, -128);
+        do_test_format("-0.00128", 5, -128);
+        do_test_format("-0.000128", 6, -128);
+    }
+    #[test]
+    fn test_format_num_only() {
+        do_test_format_num_only(0);
+        // do_test_format_num_only(1_u8);
+        // do_test_format_num_only(12_u8);
+        // do_test_format_num_only(123_u8);
+        // do_test_format_num_only(255_u8);
+        do_test_format_num_only(1_i8);
+        do_test_format_num_only(12_i8);
+        do_test_format_num_only(123_i8);
+        do_test_format_num_only(-1_i8);
+        do_test_format_num_only(-12_i8);
+        do_test_format_num_only(-123_i8);
+        do_test_format_num_only(-128_i8);
+
+        do_test_format_num_only(1_i128);
+        do_test_format_num_only(12_i128);
+        do_test_format_num_only(123_i128);
+        do_test_format_num_only(-1_i128);
+        do_test_format_num_only(-12_i128);
+        do_test_format_num_only(-123_i128);
+
+        do_test_format_num_only(i32::MAX);
+        do_test_format_num_only(i32::MIN);
+        do_test_format_num_only(i64::MAX);
+        do_test_format_num_only(i64::MIN);
+        do_test_format_num_only(i128::MAX);
+        do_test_format_num_only(i128::MIN);
+        do_test_format_num_only(i32::MAX / 2);
+        do_test_format_num_only(i32::MIN / 2);
+        do_test_format_num_only(i64::MAX / 2);
+        do_test_format_num_only(i64::MIN / 2);
+        do_test_format_num_only(i128::MAX / 2);
+        do_test_format_num_only(i128::MIN / 2);
     }
 }

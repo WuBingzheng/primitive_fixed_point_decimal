@@ -35,6 +35,7 @@ impl FpdecInner for i8 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_i8.pow(Self::DIGITS);
     const DIGITS: u32 = i8::MAX.ilog10();
+    const NEG_MIN_STR: &'static str = "128";
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i8; 3] = [1, 10_i8.pow(1), 10_i8.pow(2)];
@@ -59,6 +60,7 @@ impl FpdecInner for i16 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_i16.pow(Self::DIGITS);
     const DIGITS: u32 = i16::MAX.ilog10();
+    const NEG_MIN_STR: &'static str = "32768";
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i16; 5] = [
@@ -89,6 +91,7 @@ impl FpdecInner for i32 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_i32.pow(Self::DIGITS);
     const DIGITS: u32 = i32::MAX.ilog10();
+    const NEG_MIN_STR: &'static str = "2147483648";
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i32; 10] = [
@@ -124,6 +127,7 @@ impl FpdecInner for i64 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_i64.pow(Self::DIGITS);
     const DIGITS: u32 = i64::MAX.ilog10();
+    const NEG_MIN_STR: &'static str = "9223372036854775808";
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i64; 19] = [

@@ -7,6 +7,7 @@ impl FpdecInner for i128 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
     const DIGITS: u32 = i128::MAX.ilog10();
+    const NEG_MIN_STR: &'static str = "170141183460469231731687303715884105728";
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i128; 39] = [
