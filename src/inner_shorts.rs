@@ -175,6 +175,8 @@ impl FpdecInner for u8 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_u8.pow(Self::DIGITS);
     const DIGITS: u32 = u8::MAX.ilog10();
+
+    #[doc(hidden)]
     const NEG_MIN_STR: &'static str = unreachable!();
 
     fn get_exp(i: usize) -> Option<Self> {
@@ -200,6 +202,8 @@ impl FpdecInner for u16 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_u16.pow(Self::DIGITS);
     const DIGITS: u32 = u16::MAX.ilog10();
+
+    #[doc(hidden)]
     const NEG_MIN_STR: &'static str = unreachable!();
 
     fn get_exp(i: usize) -> Option<Self> {
@@ -231,6 +235,8 @@ impl FpdecInner for u32 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_u32.pow(Self::DIGITS);
     const DIGITS: u32 = u32::MAX.ilog10();
+
+    #[doc(hidden)]
     const NEG_MIN_STR: &'static str = unreachable!();
 
     fn get_exp(i: usize) -> Option<Self> {
@@ -267,6 +273,8 @@ impl FpdecInner for u64 {
     const TEN: Self = 10;
     const MAX_POWERS: Self = 10_u64.pow(Self::DIGITS);
     const DIGITS: u32 = u64::MAX.ilog10();
+
+    #[doc(hidden)]
     const NEG_MIN_STR: &'static str = unreachable!();
 
     fn get_exp(i: usize) -> Option<Self> {
