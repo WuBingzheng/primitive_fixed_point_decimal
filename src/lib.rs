@@ -26,6 +26,8 @@
 //! compact memory layout, high performance, and clean APIs, just like Rust's
 //! primitive number types.
 //!
+//! This crate supports signed and unsigned types both.
+//!
 //! This crate is `no_std`.
 //!
 //!

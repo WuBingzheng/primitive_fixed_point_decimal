@@ -68,7 +68,7 @@ impl FpdecInner for i128 {
             return r.checked_div_with_opt_cum_err(c, rounding, cum_err);
         }
 
-        // unhappy path
+        // normal path
 
         // (mhigh, mlow) = a * b
         let (mhigh, mlow) = mul2(self.unsigned_abs(), b.unsigned_abs());
@@ -172,13 +172,13 @@ impl FpdecInner for u128 {
             return r.checked_div_with_opt_cum_err(c, rounding, cum_err);
         }
 
-        // unhappy path
+        // normal path
 
         // (mhigh, mlow) = a * b
         let (mhigh, mlow) = mul2(self, b);
 
         // (last_dividend, q) = (mhigh, mlow) / c
-        let (last_dividend, q) = if c.leading_zeros() != 0 {
+        let (last_dividend, q) = if c < (1_u128 << 127) {
             reduce2(mhigh, mlow, c, 1)?
         } else {
             reduce2_big(mhigh, mlow, c)?
@@ -311,7 +311,7 @@ mod tests {
             }
         }
 
-        // unhappy path
+        // normal path
         let is_ab_neg = (a ^ b) < 0;
         let is_add_neg = (a ^ b ^ e) < 0;
         let a = a.unsigned_abs();
@@ -477,7 +477,7 @@ mod tests {
             }
         }
 
-        // unhappy path
+        // normal path
 
         // (mhigh, mlow) = a * b
         let (mut mhigh, mut mlow) = mul2(a, b);
