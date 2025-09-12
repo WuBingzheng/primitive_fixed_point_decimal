@@ -60,11 +60,11 @@ impl FpdecInner for i128 {
         b: Self,
         c: Self,
         rounding: Rounding,
-        cum_error: Option<&mut CumErr<Self>>,
+        cum_err: Option<&mut CumErr<Self>>,
     ) -> Option<Self> {
         // happy path, no overflow
         if let Some(r) = self.checked_mul(b) {
-            return r.checked_div_with_opt_cum_err(c, rounding, cum_error);
+            return r.checked_div_with_opt_cum_err(c, rounding, cum_err);
         }
 
         // unhappy path
@@ -74,7 +74,7 @@ impl FpdecInner for i128 {
         let (mhigh, mlow) = mul2(self.unsigned_abs(), b.unsigned_abs());
 
         // q = (mhigh, mlow) /  c
-        div2(mhigh, mlow, is_ab_neg, c, rounding, cum_error)
+        div2(mhigh, mlow, is_ab_neg, c, rounding, cum_err)
     }
 }
 
@@ -96,7 +96,7 @@ fn div2(
     is_dividend_neg: bool,
     divisor: i128,
     rounding: Rounding,
-    cum_error: Option<&mut CumErr<i128>>,
+    cum_err: Option<&mut CumErr<i128>>,
 ) -> Option<i128> {
     let is_divisor_neg = divisor < 0;
     let divisor = divisor.unsigned_abs();
@@ -156,7 +156,7 @@ fn div2(
     }
 
     // final division
-    let last_q = dividend.checked_div_with_opt_cum_err(divisor, rounding, cum_error)?;
+    let last_q = dividend.checked_div_with_opt_cum_err(divisor, rounding, cum_err)?;
 
     q.checked_add(last_q)
 }
@@ -166,15 +166,15 @@ mod tests {
     use super::*;
 
     fn calc_mul_add_div(a: i128, b: i128, e: i128, c: i128) -> i128 {
-        let mut cum_error = CumErr::new();
+        let mut cum_err = CumErr::new();
 
         // happy path, no overflow
         if let Some(r) = a.checked_mul(b) {
             if let Some(r) = r.checked_add(e) {
                 let r = r
-                    .checked_div_with_cum_err(c, Rounding::Round, &mut cum_error)
+                    .checked_div_with_cum_err(c, Rounding::Round, &mut cum_err)
                     .unwrap();
-                assert_eq!(cum_error, Default::default());
+                assert_eq!(cum_err, Default::default());
                 return r;
             }
         }
@@ -209,34 +209,31 @@ mod tests {
             is_ab_neg,
             c,
             Rounding::Round,
-            Some(&mut cum_error),
+            Some(&mut cum_err),
         )
         .unwrap()
     }
 
     fn check_calc_mul_div(a: i128, b: i128, c: i128) {
         // calc
-        let mut cum_error = CumErr::new();
-        let Some(q) = a.calc_mul_div(b, c, Rounding::Round, Some(&mut cum_error)) else {
+        let mut cum_err = CumErr::new();
+        let Some(q) = a.calc_mul_div(b, c, Rounding::Round, Some(&mut cum_err)) else {
             return;
         };
 
-        /*
-            // check
-            if b != 0 {
-                assert_eq!(calc_mul_add_div(q, c, cum_error, b), a);
-            } else {
-                assert_eq!(q, 0);
-                assert_eq!(cum_error, 0);
-            }
+        if b != 0 {
+            assert_eq!(calc_mul_add_div(q, c, cum_err.0, b), a);
+        } else {
+            assert_eq!(q, 0);
+            assert_eq!(cum_err.0, 0);
+        }
 
-            if a != 0 {
-                assert_eq!(calc_mul_add_div(q, c, cum_error, a), b);
-            } else {
-                assert_eq!(q, 0);
-                assert_eq!(cum_error, 0);
-            }
-        */
+        if a != 0 {
+            assert_eq!(calc_mul_add_div(q, c, cum_err.0, a), b);
+        } else {
+            assert_eq!(q, 0);
+            assert_eq!(cum_err.0, 0);
+        }
         //TODO
     }
 

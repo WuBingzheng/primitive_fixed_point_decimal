@@ -316,7 +316,7 @@ mod tests {
             let ts = TestFmt { n, scale };
             let out = std::format!("{}", ts);
 
-            println!("scale:{scale}, n:{n}, out:{out}");
+            //println!("scale:{scale}, n:{n}, out:{out}");
             assert_eq!(I::try_from_str(&out, scale), Ok(n));
         }
     }

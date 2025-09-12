@@ -77,14 +77,14 @@
 //! Generally, the *const* type is more convenient and suitable for most
 //! scenarios. For example, in traditional currency exchange, you can use
 //! `ConstScaleFpdec<i64, 2>` to represent balance, e.g. `1234.56` USD and
-//! `8888800.00` JPY. And use `ConstScaleFpdec<i32, 6>` to represent all
+//! `8888800.00` JPY. And use `ConstScaleFpdec<u32, 6>` to represent all
 //! market prices since 6-digit-scale is big enough for all currency
 //! pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 //!
 //! ```
 //! use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
 //! type Balance = ConstScaleFpdec<i64, 2>; // 2 is enough for all currencies
-//! type Price = ConstScaleFpdec<i32, 6>; // 6 is enough for all markets
+//! type Price = ConstScaleFpdec<u32, 6>; // 6 is enough for all markets
 //!
 //! let usd: Balance = fpdec!(1234.56);
 //! let price: Price = fpdec!(146.4730);
@@ -102,7 +102,7 @@
 //! ```
 //! use primitive_fixed_point_decimal::{OobScaleFpdec, fpdec};
 //! type Balance = OobScaleFpdec<i64>; // no global scale set
-//! type Price = OobScaleFpdec<i32>; // no global scale set
+//! type Price = OobScaleFpdec<u32>; // no global scale set
 //!
 //! // each market has its own scale configuration
 //! struct Market {
