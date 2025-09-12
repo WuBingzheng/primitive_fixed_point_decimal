@@ -26,6 +26,8 @@ The "primitive" in the crate name means straightforward representation,
 compact memory layout, high performance, and clean APIs, just like Rust's
 primitive number types.
 
+This crate supports signed and unsigned types both.
+
 This crate is `no_std`.
 
 
@@ -77,14 +79,14 @@ There are 2 ways to specify the scale: *const* and *out-of-band*:
 Generally, the *const* type is more convenient and suitable for most
 scenarios. For example, in traditional currency exchange, you can use
 `ConstScaleFpdec<i64, 2>` to represent balance, e.g. `1234.56` USD and
-`8888800.00` JPY. And use `ConstScaleFpdec<i32, 6>` to represent all
+`8888800.00` JPY. And use `ConstScaleFpdec<u32, 6>` to represent all
 market prices since 6-digit-scale is big enough for all currency
 pairs, e.g. `146.4730` JPY/USD and `0.006802` USD/JPY:
 
 ```rust
 use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
 type Balance = ConstScaleFpdec<i64, 2>; // 2 is enough for all currencies
-type Price = ConstScaleFpdec<i32, 6>; // 6 is enough for all markets
+type Price = ConstScaleFpdec<u32, 6>; // 6 is enough for all markets
 
 let usd: Balance = fpdec!(1234.56);
 let price: Price = fpdec!(146.4730);
@@ -102,7 +104,7 @@ the *Out-of-band* type:
 ```rust
 use primitive_fixed_point_decimal::{OobScaleFpdec, fpdec};
 type Balance = OobScaleFpdec<i64>; // no global scale set
-type Price = OobScaleFpdec<i32>; // no global scale set
+type Price = OobScaleFpdec<u32>; // no global scale set
 
 // each market has its own scale configuration
 struct Market {
@@ -149,7 +151,7 @@ division may cause cumulative error, thereby exacerbating the issue of
 precision loss. See [`int-div-cum-error`](https://docs.rs/int-div-cum-error)
 for more information.
 
-In this crate, functions with the `cum_error` parameter provide control
+In this crate, functions with the `cum_err` parameter provide control
 over cumulative error based on `int-div-cum-error`.
 
 Take the transaction fees in an exchange as an example. An order may be
@@ -162,10 +164,10 @@ fee for each deal would be `2.00 × 0.003 = 0.006` USD, which rounds up
 to `0.01` USD. Then the total fee for the 5 deals would be `0.05` USD,
 which is significantly higher than the original `0.03` USD.
 
-However, this issue can be avoid if using the cum_error mechanism.
+However, this issue can be avoid if using the cum_err mechanism.
 
 ```rust
-use primitive_fixed_point_decimal::{ConstScaleFpdec, Rounding, fpdec};
+use primitive_fixed_point_decimal::{ConstScaleFpdec, CumErr, Rounding, fpdec};
 type Balance = ConstScaleFpdec<i64, 2>;
 type FeeRate = ConstScaleFpdec<i16, 6>;
 
@@ -179,11 +181,11 @@ for _ in 0..5 {
 }
 assert_eq!(total_fee, fpdec!(0.05)); // 0.05 is too big
 
-// use `cum_error`
-let mut cum_error = 0;
+// use `cum_err`
+let mut cum_err = CumErr::new();
 let mut total_fee = Balance::ZERO;
 for _ in 0..5 {
-    total_fee += deal.checked_mul_ext(fee_rate, Rounding::Round, Some(&mut cum_error)).unwrap();
+    total_fee += deal.checked_mul_ext(fee_rate, Rounding::Round, Some(&mut cum_err)).unwrap();
 }
 assert_eq!(total_fee, fpdec!(0.03)); // 0.03 is right
 ```
