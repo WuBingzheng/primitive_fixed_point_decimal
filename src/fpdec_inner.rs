@@ -1,7 +1,10 @@
 use crate::ParseError;
 
 use core::ops::{AddAssign, SubAssign};
-use core::{fmt, num::ParseIntError};
+use core::{
+    fmt,
+    num::{IntErrorKind, ParseIntError},
+};
 
 use int_div_cum_error::{CumErr, DivCumErr, Rounding};
 use num_traits::{
@@ -20,6 +23,7 @@ pub trait FpdecInner:
     const MAX: Self;
     const MIN: Self;
     const TEN: Self;
+    const HUNDRED: Self;
     const MAX_POWERS: Self;
     const DIGITS: u32;
     const NEG_MIN_STR: &'static str;
@@ -130,7 +134,9 @@ pub trait FpdecInner:
         match Self::from_str_radix(s, 10) {
             Ok(num) => Ok(num.calc_negative()),
             Err(err) => {
-                if s.trim_start_matches('0') == Self::NEG_MIN_STR {
+                if err.kind() == &IntErrorKind::PosOverflow
+                    && s.trim_start_matches('0') == Self::NEG_MIN_STR
+                {
                     Ok(Self::MIN)
                 } else {
                     Err(err)
@@ -226,8 +232,11 @@ pub trait FpdecInner:
             }
 
             let mut zeros = 0;
-            while (n % I::TEN).is_zero() {
-                // TODO optimize?
+            while (n % I::HUNDRED).is_zero() {
+                n = n / I::HUNDRED;
+                zeros += 2;
+            }
+            if (n % I::TEN).is_zero() {
                 n = n / I::TEN;
                 zeros += 1;
             }
@@ -296,12 +305,16 @@ mod tests {
             self.n.display_fmt(self.scale, f)
         }
     }
-    fn do_test_format(s: &str, scale: i32, n: i8) {
-        assert_eq!(i8::try_from_str(s, scale), Ok(n));
+    fn do_test_format<I>(s: &str, scale: i32, n: I)
+    where
+        I: FpdecInner + fmt::Display + fmt::Debug + Num<FromStrRadixErr = ParseIntError>,
+    {
+        //println!("test: {s}, {scale}, {n}");
+        assert_eq!(I::try_from_str(s, scale), Ok(n));
 
         //println!("test: {s} {scale} {n}");
-        let (n1, scale1) = i8::try_from_str_only(s).unwrap();
-        let n2 = n1 * 10_i8.pow((scale - scale1) as u32);
+        let (n1, scale1) = I::try_from_str_only(s).unwrap();
+        let n2 = n1 * I::TEN.pow((scale - scale1) as u32);
         assert_eq!(n2, n);
 
         let ts = TestFmt { n, scale };
@@ -335,44 +348,77 @@ mod tests {
         assert_eq!(i8::try_from_str("+0.0", 2), Ok(0));
 
         // positive
-        do_test_format("12300", -2, 123);
-        do_test_format("1230", -1, 123);
-        do_test_format("123", 0, 123);
-        do_test_format("12.3", 1, 123);
-        do_test_format("1.23", 2, 123);
-        do_test_format("0.123", 3, 123);
-        do_test_format("0.0123", 4, 123);
-        do_test_format("0.00123", 5, 123);
-        do_test_format("0.000123", 6, 123);
+        do_test_format("12300", -2, 123_i8);
+        do_test_format("1230", -1, 123_i8);
+        do_test_format("123", 0, 123_i8);
+        do_test_format("12.3", 1, 123_i8);
+        do_test_format("1.23", 2, 123_i8);
+        do_test_format("0.123", 3, 123_i8);
+        do_test_format("0.0123", 4, 123_i8);
+        do_test_format("0.00123", 5, 123_i8);
+        do_test_format("0.000123", 6, 123_i8);
 
-        do_test_format("12000", -2, 120);
-        do_test_format("1200", -1, 120);
-        do_test_format("120", 0, 120);
-        do_test_format("12", 1, 120);
-        do_test_format("1.2", 2, 120);
-        do_test_format("0.12", 3, 120);
-        do_test_format("0.012", 4, 120);
-        do_test_format("0.0012", 5, 120);
-        do_test_format("0.00012", 6, 120);
+        do_test_format("12000", -2, 120_i8);
+        do_test_format("1200", -1, 120_i8);
+        do_test_format("120", 0, 120_i8);
+        do_test_format("12", 1, 120_i8);
+        do_test_format("1.2", 2, 120_i8);
+        do_test_format("0.12", 3, 120_i8);
+        do_test_format("0.012", 4, 120_i8);
+        do_test_format("0.0012", 5, 120_i8);
+        do_test_format("0.00012", 6, 120_i8);
 
         // negative with i8::MIN
-        do_test_format("-12800", -2, -128);
-        do_test_format("-1280", -1, -128);
-        do_test_format("-128", 0, -128);
-        do_test_format("-12.8", 1, -128);
-        do_test_format("-1.28", 2, -128);
-        do_test_format("-0.128", 3, -128);
-        do_test_format("-0.0128", 4, -128);
-        do_test_format("-0.00128", 5, -128);
-        do_test_format("-0.000128", 6, -128);
+        do_test_format("-12800", -2, -128_i8);
+        do_test_format("-1280", -1, -128_i8);
+        do_test_format("-128", 0, -128_i8);
+        do_test_format("-12.8", 1, -128_i8);
+        do_test_format("-1.28", 2, -128_i8);
+        do_test_format("-0.128", 3, -128_i8);
+        do_test_format("-0.0128", 4, -128_i8);
+        do_test_format("-0.00128", 5, -128_i8);
+        do_test_format("-0.000128", 6, -128_i8);
+
+        // u8
+        // positive
+        do_test_format("12300", -2, 123_u8);
+        do_test_format("1230", -1, 123_u8);
+        do_test_format("123", 0, 123_u8);
+        do_test_format("12.3", 1, 123_u8);
+        do_test_format("1.23", 2, 123_u8);
+        do_test_format("0.123", 3, 123_u8);
+        do_test_format("0.0123", 4, 123_u8);
+        do_test_format("0.00123", 5, 123_u8);
+        do_test_format("0.000123", 6, 123_u8);
+
+        do_test_format("12000", -2, 120_u8);
+        do_test_format("1200", -1, 120_u8);
+        do_test_format("120", 0, 120_u8);
+        do_test_format("12", 1, 120_u8);
+        do_test_format("1.2", 2, 120_u8);
+        do_test_format("0.12", 3, 120_u8);
+        do_test_format("0.012", 4, 120_u8);
+        do_test_format("0.0012", 5, 120_u8);
+        do_test_format("0.00012", 6, 120_u8);
+
+        do_test_format("25500", -2, 255_u8);
+        do_test_format("2550", -1, 255_u8);
+        do_test_format("255", 0, 255_u8);
+        do_test_format("25.5", 1, 255_u8);
+        do_test_format("2.55", 2, 255_u8);
+        do_test_format("0.255", 3, 255_u8);
+        do_test_format("0.0255", 4, 255_u8);
+        do_test_format("0.00255", 5, 255_u8);
+        do_test_format("0.000255", 6, 255_u8);
     }
+
     #[test]
     fn test_format_num_only() {
         do_test_format_num_only(0);
-        // do_test_format_num_only(1_u8);
-        // do_test_format_num_only(12_u8);
-        // do_test_format_num_only(123_u8);
-        // do_test_format_num_only(255_u8);
+        do_test_format_num_only(1_u8);
+        do_test_format_num_only(12_u8);
+        do_test_format_num_only(123_u8);
+        do_test_format_num_only(255_u8);
         do_test_format_num_only(1_i8);
         do_test_format_num_only(12_i8);
         do_test_format_num_only(123_i8);
@@ -400,5 +446,16 @@ mod tests {
         do_test_format_num_only(i64::MIN / 2);
         do_test_format_num_only(i128::MAX / 2);
         do_test_format_num_only(i128::MIN / 2);
+
+        do_test_format_num_only(1_u128);
+        do_test_format_num_only(12_u128);
+        do_test_format_num_only(123_u128);
+
+        do_test_format_num_only(u32::MAX);
+        do_test_format_num_only(u64::MAX);
+        do_test_format_num_only(u128::MAX);
+        do_test_format_num_only(u32::MAX / 2);
+        do_test_format_num_only(u64::MAX / 2);
+        do_test_format_num_only(u128::MAX / 2);
     }
 }

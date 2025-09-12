@@ -5,6 +5,7 @@ impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;
     const MIN: Self = i128::MIN;
     const TEN: Self = 10;
+    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
     const DIGITS: u32 = i128::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "170141183460469231731687303715884105728";
@@ -106,11 +107,12 @@ impl FpdecInner for u128 {
     const MAX: Self = u128::MAX;
     const MIN: Self = u128::MIN;
     const TEN: Self = 10;
+    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_u128.pow(Self::DIGITS);
     const DIGITS: u32 = u128::MAX.ilog10();
 
     #[doc(hidden)]
-    const NEG_MIN_STR: &'static str = unreachable!();
+    const NEG_MIN_STR: &'static str = "unreachable";
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u128; 39] = [
@@ -504,10 +506,6 @@ mod tests {
 
     fn check_calc_mul_div_unsigned(a: u128, b: u128, c: u128) {
         // calc
-        use std::sync::atomic::*;
-        static CNT: AtomicUsize = AtomicUsize::new(0);
-        CNT.fetch_add(1, Ordering::Relaxed);
-
         let mut cum_err = CumErr::new();
         let Some(q) = a.calc_mul_div(b, c, Rounding::Floor, Some(&mut cum_err)) else {
             return;

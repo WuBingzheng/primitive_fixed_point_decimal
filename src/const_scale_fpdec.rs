@@ -11,8 +11,9 @@ use num_traits::{cast::FromPrimitive, Num, Signed};
 
 /// Const-scale fixed-point decimal.
 ///
-/// `I` is the inner integer type, could be `i8`, `i16`, `i32`, `i64`,
-/// or `i128`, with 2, 4, 9, 18 and 38 significant digits respectively.
+/// `I` is the inner integer type. It could be signed `i8`, `i16`, `i32`,
+/// `i64`, `i128`, or unsigned `u8`, `u16`, `u32`, `u64`, `u128`, with
+/// about 2, 4, 9, 18/19 and 38 significant digits respectively.
 ///
 /// `S` is the static scale. Positive means fraction precision. Negative
 /// means omitting the low-order digits of integer values.

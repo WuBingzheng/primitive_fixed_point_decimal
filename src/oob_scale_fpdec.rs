@@ -9,8 +9,9 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num, Signed};
 
 /// Out-of-band-scale fixed-point decimal.
 ///
-/// `I` is the inner integer type, could be `i8`, `i16`, `i32`, `i64`,
-/// or `i128`, with 2, 4, 9, 18 and 38 significant digits respectively.
+/// `I` is the inner integer type. It could be signed `i8`, `i16`, `i32`,
+/// `i64`, `i128`, or unsigned `u8`, `u16`, `u32`, `u64`, `u128`, with
+/// about 2, 4, 9, 18/19 and 38 significant digits respectively.
 ///
 /// For example, `OobScaleFpdec<i64>` means using `i64` as the underlying
 /// integer. It's your job to save the out-of-band scale somewhere else.
