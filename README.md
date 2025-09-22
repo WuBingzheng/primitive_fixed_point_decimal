@@ -2,65 +2,42 @@
 
 Primitive fixed-point decimal types.
 
-Rust built-in `f32` and `f64` types have two drawbacks:
-
-1. can not represent decimal numbers in base 10 accurately, because they are in base 2;
-
-2. can not guarantee the fraction precision, because they are floating-point.
-
-This crate provides fixed-point decimal types to address the issues by
-
-1. using integer types to represent numbers with a scaling factor (also
-   called as "scale") in base 10 to achieve the accuracy. This is a
-   [common idea](https://en.wikipedia.org/wiki/Fixed-point_arithmetic#Representation).
-   Many other decimal crates do the same thing;
-
-2. specifying the scale staticly to guarantee the fraction precision.
-   The scale is bound to the decimal type. It's fixed-point. Surprisingly,
-   it seems that [no crate has done this before](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md).
-
 For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
-representation, and `4` is the static scale.
-
-The "primitive" in the crate name means straightforward representation,
-compact memory layout, high performance, and clean APIs, just like Rust's
-primitive number types.
-
-This crate supports signed and unsigned types both.
-
-This crate is `no_std`.
+representation, and the static scale is `4`.
 
 
-## Distinctive
+## Features
 
-Although other decimal crates also claim to be fixed-point, they all
-bind the scale to each decimal *instance*, which changes during operations.
-They're more like
-[decimal floating point](https://en.wikipedia.org/wiki/Decimal_floating_point).
-See the [comparison documentation](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/COMPARISON.md)
-for details.
+- Fixed-point. The scale is bound to the *type* but not each *value*.
 
-While this crate binds the scale to decimal *type*.
-The decimal types keep their scale for their whole lifetime
-instead of changing their scale during operations.
+- Decimal. Using integer types to represent numbers with a scaling factor
+  (also called as "scale") in base 10 to achieve the accuracy. This is a
+  [common idea](https://en.wikipedia.org/wiki/Fixed-point_arithmetic#Representation).
 
-The `+`, `-` and comparison operations only perform between same types
-in same scale. There is no implicitly type or scale conversion.
-This makes sence, for we do not want to add balance type by
-fee-rate type. Even for two balance types we do not want to add
-USD currency by CNY. This also makes the operations very fast.
+- The `+` and `-` operations only perform between same types in same scale.
+  There is no implicitly type or scale conversion. This makes sense, for we
+  do not want to add `Balance` type by `Price` type.
 
-However, the `*` and `/` operations accept operand with different
-types and scales, and allow the result's scale specified.
-Certainly we need to multiply between balance type and fee-rate type
-and get balance type.
+- The `*` and `/` operations accept operand with different types and scales,
+  and allow the result's scale specified. Certainly we need to multiply
+  between `Balance` type and `Price` type.
 
-If each decimal type has a fixed scale in you application, which means
-all the decimal instances under each type have the same scale, it's
-suitable for this crate. Otherwise, you should use other floating-point
-decimal crates.
+- Supports 2 ways to specify the scale: *const* and *out-of-band*. See
+  the [Specify Scale](#specify-scale) section for details.
 
-See the examples below for more details.
+- Supports cumulative error. See the [Cumulative Error](#cumulative-error)
+  section for details.
+
+- Supports both signed and unsigned types.
+
+- Supports scale larger than the significant digits of the underlying integer
+  type. For example `ConstScaleFpdec<i8, 4>` represents numbers in range
+  [-0.0128, 0.0127].
+
+- Supports negative scale. For example `ConstScaleFpdec<i8, -2>` represents
+  numbers in range [-12800, 12700] with step 100.
+
+- `no_std`.
 
 
 ## Specify Scale
@@ -91,7 +68,7 @@ type Price = ConstScaleFpdec<u32, 6>; // 6 is enough for all markets
 let usd: Balance = fpdec!(1234.56);
 let price: Price = fpdec!(146.4730);
 
-let jpy: Balance = usd.checked_mul(price).unwrap();
+let jpy: Balance = usd * price;
 assert_eq!(jpy, fpdec!(180829.70688));
 ```
 
