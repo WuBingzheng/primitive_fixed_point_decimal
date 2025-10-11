@@ -1,6 +1,6 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
-use crate::ParseError;
+use crate::{ForRatio, ParseError};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
@@ -628,6 +628,15 @@ where
                 Err(ParseError::Precision)
             }
         }
+    }
+}
+
+impl<I, J> ForRatio<J> for OobScaleFpdec<I>
+where
+    I: FpdecInner + Into<J>,
+{
+    fn to_int(self) -> J {
+        self.mantissa().into()
     }
 }
 

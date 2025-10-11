@@ -268,3 +268,18 @@ macro_rules! fpdec {
         primitive_fixed_point_decimal::OobScaleFpdec::try_from(($n, $scale)).unwrap()
     };
 }
+
+/// Used by method `checked_mul_ratio()` only.
+pub trait ForRatio<T> {
+    fn to_int(self) -> T;
+}
+
+/// For primitive integer types.
+impl<I, T> ForRatio<T> for I
+where
+    I: Into<T> + num_traits::PrimInt,
+{
+    fn to_int(self) -> T {
+        self.into()
+    }
+}

@@ -11,8 +11,8 @@ macro_rules! define_none_scale_common {
         /// is the bits of `I`.
         pub const MIN: Self = Self(I::MIN);
 
-        /// The smallest positive value, 10<sup>-S</sup> .
-        pub const MIN_POSITIVE: Self = Self(I::ONE);
+        /// The smallest difference value, 10<sup>-S</sup> .
+        pub const EPSILON: Self = Self(I::ONE);
 
         /// The largest powers of 10.
         pub const MAX_POWERS: Self = Self(I::MAX_POWERS);
@@ -39,6 +39,53 @@ macro_rules! define_none_scale_common {
             self.0.checked_mul(&n.into()).map(Self)
         }
 
+        /// Computes `self * a/b`, returning `None` if overflow occurred.
+        ///
+        /// Equivalent to [`Self::checked_mul_ratio_ext`] with `Rounding::Round`.
+        pub fn checked_mul_ratio<R>(self, a: R, b: R) -> Option<Self>
+        where
+            R: ForRatio<I>,
+        {
+            self.checked_mul_ratio_ext(a, b, Rounding::Round, None)
+        }
+
+        /// Computes `self * a/b`, returning `None` if overflow occurred.
+        ///
+        /// The arguments `a` and `b` could be primitive integers,
+        /// `ConstScaleFpdec` or `OobScaleFpdec` with same scale.
+        ///
+        /// Compared to calling [`Self::checked_mul_int`] and [`Self::checked_div_int`]
+        /// separately, this can avoid some potential overflow.
+        ///
+        /// Examples:
+        ///
+        /// ```
+        /// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+        /// type Balance = ConstScaleFpdec<i64, 2>;
+        /// type Quantity = ConstScaleFpdec<i32, 4>; // type for `a` and `b`
+        ///
+        /// let margin: Balance = fpdec!(30000);
+        /// let deal: Quantity = fpdec!(0.2);
+        /// let total: Quantity = fpdec!(0.3);
+        ///
+        /// assert_eq!(margin.checked_mul_ratio(deal, total).unwrap(), fpdec!(20000));
+        /// assert_eq!(margin.checked_mul_ratio(200, 300).unwrap(), fpdec!(20000));
+        /// ```
+        pub fn checked_mul_ratio_ext<R>(
+            self,
+            a: R,
+            b: R,
+            rounding: Rounding,
+            cum_err: Option<&mut CumErr<I>>,
+        ) -> Option<Self>
+        where
+            R: ForRatio<I>,
+        {
+            self.0
+                .calc_mul_div(a.to_int(), b.to_int(), rounding, cum_err)
+                .map(Self)
+        }
+
         /// Checked division by integer, with `Rounding::Round`.
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
@@ -56,10 +103,10 @@ macro_rules! define_none_scale_common {
             self,
             n: impl Into<I>,
             rounding: Rounding,
-            cum_error: Option<&mut CumErr<I>>,
+            cum_err: Option<&mut CumErr<I>>,
         ) -> Option<Self> {
             self.0
-                .checked_div_with_opt_cum_err(n.into(), rounding, cum_error)
+                .checked_div_with_opt_cum_err(n.into(), rounding, cum_err)
                 .map(Self)
         }
 

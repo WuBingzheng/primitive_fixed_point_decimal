@@ -1,6 +1,6 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::oob_scale_fpdec::OobScaleFpdec;
-use crate::ParseError;
+use crate::{ForRatio, ParseError};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
@@ -588,6 +588,15 @@ where
 {
     fn div_assign(&mut self, rhs: J) {
         *self = *self / rhs;
+    }
+}
+
+impl<I, J, const S: i32> ForRatio<J> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner + Into<J>,
+{
+    fn to_int(self) -> J {
+        self.mantissa().into()
     }
 }
 
