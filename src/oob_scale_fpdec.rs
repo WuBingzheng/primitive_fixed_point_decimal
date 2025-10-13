@@ -218,26 +218,6 @@ where
         I::try_from_str(s, scale).map(Self)
     }
 
-    /// Convert into float types, `f32` or `f64`.
-    ///
-    /// Examples:
-    ///
-    /// ```
-    /// use primitive_fixed_point_decimal::{OobScaleFpdec, fpdec};
-    /// type Decimal = OobScaleFpdec<i32>;
-    ///
-    /// let dec: Decimal = fpdec!(1.234, 4);
-    /// assert_eq!(dec.to_float::<f32>(4), 1.234);
-    /// ```
-    #[deprecated(note = "Use `to_f32()` or `to_f64()`.")]
-    pub fn to_float<F>(self, scale: i32) -> F
-    where
-        F: FloatCore,
-    {
-        let base = F::from(10.0).unwrap();
-        F::from(self.0).unwrap() / base.powi(scale)
-    }
-
     /// Convert into `f32`.
     ///
     /// Examples:
