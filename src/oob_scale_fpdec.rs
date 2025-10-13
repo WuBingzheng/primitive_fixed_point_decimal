@@ -1,6 +1,6 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
-use crate::{ForRatio, ParseError};
+use crate::{IntoRatioInt, ParseError};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
@@ -631,7 +631,7 @@ where
     }
 }
 
-impl<I, J> ForRatio<J> for OobScaleFpdec<I>
+impl<I, J> IntoRatioInt<J> for OobScaleFpdec<I>
 where
     I: FpdecInner + Into<J>,
 {

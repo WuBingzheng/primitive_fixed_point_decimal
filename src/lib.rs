@@ -270,12 +270,12 @@ macro_rules! fpdec {
 }
 
 /// Used by method `checked_mul_ratio()` only.
-pub trait ForRatio<T> {
+pub trait IntoRatioInt<T> {
     fn to_int(self) -> T;
 }
 
 /// For primitive integer types.
-impl<I, T> ForRatio<T> for I
+impl<I, T> IntoRatioInt<T> for I
 where
     I: Into<T> + num_traits::PrimInt,
 {

@@ -44,7 +44,7 @@ macro_rules! define_none_scale_common {
         /// Equivalent to [`Self::checked_mul_ratio_ext`] with `Rounding::Round`.
         pub fn checked_mul_ratio<R>(self, a: R, b: R) -> Option<Self>
         where
-            R: ForRatio<I>,
+            R: IntoRatioInt<I>,
         {
             self.checked_mul_ratio_ext(a, b, Rounding::Round, None)
         }
@@ -67,8 +67,9 @@ macro_rules! define_none_scale_common {
         /// let margin: Balance = fpdec!(30000);
         /// let deal: Quantity = fpdec!(0.2);
         /// let total: Quantity = fpdec!(0.3);
-        ///
         /// assert_eq!(margin.checked_mul_ratio(deal, total).unwrap(), fpdec!(20000));
+        ///
+        /// // integer
         /// assert_eq!(margin.checked_mul_ratio(200, 300).unwrap(), fpdec!(20000));
         /// ```
         pub fn checked_mul_ratio_ext<R>(
@@ -79,7 +80,7 @@ macro_rules! define_none_scale_common {
             cum_err: Option<&mut CumErr<I>>,
         ) -> Option<Self>
         where
-            R: ForRatio<I>,
+            R: IntoRatioInt<I>,
         {
             self.0
                 .calc_mul_div(a.to_int(), b.to_int(), rounding, cum_err)
