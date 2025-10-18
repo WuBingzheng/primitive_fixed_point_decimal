@@ -69,7 +69,7 @@ let usd: Balance = fpdec!(1234.56);
 let price: Price = fpdec!(146.4730);
 
 let jpy: Balance = usd * price;
-assert_eq!(jpy, fpdec!(180829.70688));
+assert_eq!(jpy, fpdec!(180829.71));
 ```
 
 However in some scenarios, such as in cryptocurrency exchange, the
