@@ -46,7 +46,7 @@ macro_rules! define_none_scale_common {
         where
             R: IntoRatioInt<I>,
         {
-            self.checked_mul_ratio_ext(a, b, Rounding::Round, None)
+            self.checked_mul_ratio_ext(a, b, Rounding::Round)
         }
 
         /// Computes `self * a/b`, returning `None` if overflow occurred.
@@ -72,18 +72,12 @@ macro_rules! define_none_scale_common {
         /// // integer
         /// assert_eq!(margin.checked_mul_ratio(200, 300).unwrap(), fpdec!(20000));
         /// ```
-        pub fn checked_mul_ratio_ext<R>(
-            self,
-            a: R,
-            b: R,
-            rounding: Rounding,
-            cum_err: Option<&mut CumErr<I>>,
-        ) -> Option<Self>
+        pub fn checked_mul_ratio_ext<R>(self, a: R, b: R, rounding: Rounding) -> Option<Self>
         where
             R: IntoRatioInt<I>,
         {
             self.0
-                .calc_mul_div(a.to_int(), b.to_int(), rounding, cum_err)
+                .calc_mul_div(a.to_int(), b.to_int(), rounding)
                 .map(Self)
         }
 
@@ -91,24 +85,14 @@ macro_rules! define_none_scale_common {
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
         pub fn checked_div_int(self, n: impl Into<I>) -> Option<Self> {
-            self.checked_div_int_ext(n, Rounding::Round, None)
+            self.checked_div_int_ext(n, Rounding::Round)
         }
 
-        /// Checked division by integer with rounding and cumulative-error.
+        /// Checked division by integer with rounding.
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
-        ///
-        /// See the [cumulative error section](index.html#cumulative-error)
-        /// for more information and examples.
-        pub fn checked_div_int_ext(
-            self,
-            n: impl Into<I>,
-            rounding: Rounding,
-            cum_err: Option<&mut CumErr<I>>,
-        ) -> Option<Self> {
-            self.0
-                .checked_div_with_opt_cum_err(n.into(), rounding, cum_err)
-                .map(Self)
+        pub fn checked_div_int_ext(self, n: impl Into<I>, rounding: Rounding) -> Option<Self> {
+            self.0.rounding_div(n.into(), rounding).map(Self)
         }
 
         /// Return if zero.

@@ -1,28 +1,15 @@
 use crate::fpdec_inner::FpdecInner;
-use int_div_cum_error::{CumErr, DivCumErr, Rounding};
+use crate::rounding_div::{Rounding, RoundingDiv};
 
 macro_rules! calc_mul_div_higher {
     (
-        $a:expr, $b:expr, $c:expr,
-        $rounding:expr, $cum_err:expr,
+        $a:expr, $b:expr, $c:expr, $rounding:expr,
         $origin_type:ty, $higher_type:ty
     ) => {{
         let dividend = $a as $higher_type * $b as $higher_type;
         let divisor = $c as $higher_type;
-        match $cum_err {
-            Some(cum_err) => {
-                let mut higher_cum_err = CumErr(cum_err.0 as $higher_type);
-                let q =
-                    dividend.checked_div_with_cum_err(divisor, $rounding, &mut higher_cum_err)?;
-
-                cum_err.0 = higher_cum_err.0 as $origin_type;
-                <$origin_type>::try_from(q).ok()
-            }
-            None => {
-                let q = dividend.checked_div_with_rounding(divisor, $rounding)?;
-                <$origin_type>::try_from(q).ok()
-            }
-        }
+        let q = dividend.rounding_div(divisor, $rounding)?;
+        <$origin_type>::try_from(q).ok()
     }};
 }
 
@@ -41,14 +28,8 @@ impl FpdecInner for i8 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_err, i8, i16)
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        calc_mul_div_higher!(self, b, c, rounding, i8, i16)
     }
 }
 
@@ -73,14 +54,8 @@ impl FpdecInner for i16 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_err, i16, i32)
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        calc_mul_div_higher!(self, b, c, rounding, i16, i32)
     }
 }
 
@@ -110,14 +85,8 @@ impl FpdecInner for i32 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_err, i32, i64)
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        calc_mul_div_higher!(self, b, c, rounding, i32, i64)
     }
 }
 
@@ -156,20 +125,11 @@ impl FpdecInner for i64 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
         // try to avoid casting to i128 which is slower
         match self.checked_mul(b) {
-            Some(m) => match cum_err {
-                Some(cum_err) => m.checked_div_with_cum_err(c, rounding, cum_err),
-                None => m.checked_div_with_rounding(c, rounding),
-            },
-            None => calc_mul_div_higher!(self, b, c, rounding, cum_err, i64, i128),
+            Some(m) => m.rounding_div(c, rounding),
+            None => calc_mul_div_higher!(self, b, c, rounding, i64, i128),
         }
     }
 }
@@ -190,14 +150,8 @@ impl FpdecInner for u8 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_err, u8, u16)
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        calc_mul_div_higher!(self, b, c, rounding, u8, u16)
     }
 }
 
@@ -224,14 +178,8 @@ impl FpdecInner for u16 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_err, u16, u32)
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        calc_mul_div_higher!(self, b, c, rounding, u16, u32)
     }
 }
 
@@ -263,14 +211,8 @@ impl FpdecInner for u32 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, cum_err, u32, u64)
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        calc_mul_div_higher!(self, b, c, rounding, u32, u64)
     }
 }
 
@@ -312,20 +254,11 @@ impl FpdecInner for u64 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
         // try to avoid casting to u128 which is slower
         match self.checked_mul(b) {
-            Some(m) => match cum_err {
-                Some(cum_err) => m.checked_div_with_cum_err(c, rounding, cum_err),
-                None => m.checked_div_with_rounding(c, rounding),
-            },
-            None => calc_mul_div_higher!(self, b, c, rounding, cum_err, u64, u128),
+            Some(m) => m.rounding_div(c, rounding),
+            None => calc_mul_div_higher!(self, b, c, rounding, u64, u128),
         }
     }
 }

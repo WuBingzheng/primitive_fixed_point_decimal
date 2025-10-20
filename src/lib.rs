@@ -25,9 +25,6 @@
 //! - Supports 2 ways to specify the scale: *const* and *out-of-band*. See
 //!   the [Specify Scale](#specify-scale) section for details.
 //!
-//! - Supports cumulative error. See the [Cumulative Error](#cumulative-error)
-//!   section for details.
-//!
 //! - Supports both signed and unsigned types.
 //!
 //! - Supports scale larger than the significant digits of the underlying integer
@@ -37,7 +34,7 @@
 //! - Supports negative scale. For example `ConstScaleFpdec<i8, -2>` represents
 //!   numbers in range [-12800, 12700] with step 100.
 //!
-//! - `no_std`.
+//! - `no-std` and `no-alloc`.
 //!
 //!
 //! # Specify Scale
@@ -117,57 +114,6 @@
 //! `ConstScaleFpdec`.
 //!
 //!
-//! # Cumulative Error
-//!
-//! As is well known, integer division can lead to precision loss; multiplication
-//! of decimals can also create higher precision and may potentially cause
-//! precision loss.
-//!
-//! What we are discussing here is another issue: multiple multiplication and
-//! division may cause cumulative error, thereby exacerbating the issue of
-//! precision loss. See [`int-div-cum-error`](https://docs.rs/int-div-cum-error)
-//! for more information.
-//!
-//! In this crate, functions with the `cum_err` parameter provide control
-//! over cumulative error based on `int-div-cum-error`.
-//!
-//! Take the transaction fees in an exchange as an example. An order may be
-//! executed in multiple deals, with each deal independently charged a fee.
-//! For instance, the funds scale is 2 decimal places, one order quantity
-//! is `10.00` USD, and the fee rate is `0.003`. If the order is executed all
-//! at once, the fee would be `10.00 × 0.003 = 0.03` USD. However, if the
-//! order is executed in five separate deals, each worth 2.00 USD, then the
-//! fee for each deal would be `2.00 × 0.003 = 0.006` USD, which rounds up
-//! to `0.01` USD. Then the total fee for the 5 deals would be `0.05` USD,
-//! which is significantly higher than the original `0.03` USD.
-//!
-//! However, this issue can be avoid if using the cum_err mechanism.
-//!
-//! ```
-//! use primitive_fixed_point_decimal::{ConstScaleFpdec, CumErr, Rounding, fpdec};
-//! type Balance = ConstScaleFpdec<i64, 2>;
-//! type FeeRate = ConstScaleFpdec<i16, 6>;
-//!
-//! let deal: Balance = fpdec!(2.00); // 2.00 for each deal
-//! let fee_rate: FeeRate = fpdec!(0.003);
-//!
-//! // normal case
-//! let mut total_fee = Balance::ZERO;
-//! for _ in 0..5 {
-//!     total_fee += deal.checked_mul(fee_rate).unwrap(); // 2.00*0.003=0.006 ~> 0.01
-//! }
-//! assert_eq!(total_fee, fpdec!(0.05)); // 0.05 is too big
-//!
-//! // use `cum_err`
-//! let mut cum_err = CumErr::new();
-//! let mut total_fee = Balance::ZERO;
-//! for _ in 0..5 {
-//!     total_fee += deal.checked_mul_ext(fee_rate, Rounding::Round, Some(&mut cum_err)).unwrap();
-//! }
-//! assert_eq!(total_fee, fpdec!(0.03)); // 0.03 is right
-//! ```
-//!
-//!
 //! # Features
 //!
 //! - `serde` enables serde traits integration (`Serialize`/`Deserialize`).
@@ -194,11 +140,12 @@ mod inner_i128;
 mod inner_shorts;
 mod none_scale_common;
 mod oob_scale_fpdec;
+mod rounding_div;
 
 pub use crate::const_scale_fpdec::ConstScaleFpdec;
 pub use crate::fpdec_inner::FpdecInner;
 pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
-pub use int_div_cum_error::{CumErr, Rounding};
+pub use crate::rounding_div::Rounding;
 
 /// Error in converting from string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

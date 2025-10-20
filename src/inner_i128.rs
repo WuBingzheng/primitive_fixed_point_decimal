@@ -1,5 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
-use int_div_cum_error::{CumErr, DivCumErr, Rounding};
+use crate::rounding_div::{Rounding, RoundingDiv};
 
 impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;
@@ -56,16 +56,10 @@ impl FpdecInner for i128 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
         // happy path, no overflow
         if let Some(r) = self.checked_mul(b) {
-            return r.checked_div_with_opt_cum_err(c, rounding, cum_err);
+            return r.rounding_div(c, rounding);
         }
 
         // normal path
@@ -97,7 +91,7 @@ impl FpdecInner for i128 {
         }
 
         // final division
-        let last_q = last_dividend.checked_div_with_opt_cum_err(c, rounding, cum_err)?;
+        let last_q = last_dividend.rounding_div(c, rounding)?;
 
         q.checked_add(last_q)
     }
@@ -160,16 +154,10 @@ impl FpdecInner for u128 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_err: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
         // happy path, no overflow
         if let Some(r) = self.checked_mul(b) {
-            return r.checked_div_with_opt_cum_err(c, rounding, cum_err);
+            return r.rounding_div(c, rounding);
         }
 
         // normal path
@@ -185,7 +173,7 @@ impl FpdecInner for u128 {
         };
 
         // final division
-        let last_q = last_dividend.checked_div_with_opt_cum_err(c, rounding, cum_err)?;
+        let last_q = last_dividend.rounding_div(c, rounding)?;
 
         q.checked_add(last_q)
     }
@@ -297,95 +285,29 @@ fn reduce2_big(mhigh: u128, mlow: u128, divisor: u128) -> Option<(u128, u128)> {
 mod tests {
     use super::*;
 
-    fn calc_mul_add_div(a: i128, b: i128, e: i128, c: i128) -> i128 {
-        let mut cum_err = CumErr::new();
-
-        // happy path, no overflow
-        if let Some(r) = a.checked_mul(b) {
-            if let Some(r) = r.checked_add(e) {
-                let r = r
-                    .checked_div_with_cum_err(c, Rounding::Round, &mut cum_err)
-                    .unwrap();
-                assert_eq!(cum_err, Default::default());
-                return r;
-            }
-        }
-
-        // normal path
-        let is_ab_neg = (a ^ b) < 0;
-        let is_add_neg = (a ^ b ^ e) < 0;
-        let a = a.unsigned_abs();
-        let b = b.unsigned_abs();
-
-        // (mhigh, mlow) = a * b
-        let (mut mhigh, mut mlow) = mul2(a, b);
-
-        if !is_add_neg {
-            let (tmp, carry) = mlow.overflowing_add(e.unsigned_abs());
-            mlow = tmp;
-            if carry {
-                mhigh += 1;
-            }
-        } else {
-            let (tmp, carry) = mlow.overflowing_sub(e.unsigned_abs());
-            mlow = tmp;
-            if carry {
-                mhigh -= 1;
-            }
-        }
-
-        // q = (mhigh, mlow) /  c
-        let unsigned_c = c.unsigned_abs();
-        let (last_dividend, mut q) = reduce2(mhigh, mlow, unsigned_c, 2).unwrap();
-
-        // back to signed i128: last_dividend
-        let mut last_dividend = match i128::try_from(last_dividend) {
-            Ok(dividend) => dividend,
-            Err(_) => {
-                // one more division
-                q = q.checked_add(last_dividend / unsigned_c).unwrap();
-                (last_dividend % unsigned_c) as i128
-            }
-        };
-        if is_ab_neg {
-            last_dividend = -last_dividend;
-        }
-
-        // back to signed i128: quotient
-        let mut q = i128::try_from(q).unwrap();
-        if is_ab_neg != (c < 0) {
-            q = -q;
-        }
-
-        // final division
-        let last_q = last_dividend
-            .checked_div_with_cum_err(c, Rounding::Round, &mut cum_err)
-            .unwrap();
-
-        q.checked_add(last_q).unwrap()
-    }
-
     fn check_calc_mul_div(a: i128, b: i128, c: i128) {
         // calc
-        let mut cum_err = CumErr::new();
-        let Some(q) = a.calc_mul_div(b, c, Rounding::Round, Some(&mut cum_err)) else {
+        let Some(q) = a.calc_mul_div(b, c, Rounding::TowardsZero) else {
             return;
         };
 
-        if b != 0 {
-            assert_eq!(calc_mul_add_div(q, c, cum_err.0, b), a);
-        } else {
-            assert_eq!(q, 0);
-            assert_eq!(cum_err.0, 0);
+        if q != 0 {
+            assert_eq!(q >= 0, (a ^ b ^ c) >= 0);
         }
 
-        if a != 0 {
-            assert_eq!(calc_mul_add_div(q, c, cum_err.0, a), b);
+        let (x1, x2) = mul2(a.unsigned_abs(), b.unsigned_abs());
+        let (y1, y2) = mul2(c.unsigned_abs(), q.unsigned_abs());
+
+        let remain = if x1 == y1 {
+            assert!(x2 >= y2);
+            x2 - y2
         } else {
-            assert_eq!(q, 0);
-            assert_eq!(cum_err.0, 0);
-        }
-        //TODO
+            assert!(x1 - 1 == y1);
+            assert!(x2 < y2);
+            u128::MAX - y2 + x2 + 1
+        };
+
+        assert!(remain < c.unsigned_abs());
     }
 
     fn check_calc_mul_div_signs(a: i128, b: i128, c: i128) {
@@ -463,68 +385,24 @@ mod tests {
 
     // --- unsigned
 
-    fn calc_mul_add_div_unsigned(a: u128, b: u128, e: u128, c: u128) -> u128 {
-        let mut cum_err = CumErr::new();
-
-        // happy path, no overflow
-        if let Some(r) = a.checked_mul(b) {
-            if let Some(r) = r.checked_add(e) {
-                let r = r
-                    .checked_div_with_cum_err(c, Rounding::Floor, &mut cum_err)
-                    .unwrap();
-                assert_eq!(cum_err, Default::default());
-                return r;
-            }
-        }
-
-        // normal path
-
-        // (mhigh, mlow) = a * b
-        let (mut mhigh, mut mlow) = mul2(a, b);
-
-        // add cum_err
-        let (tmp, carry) = mlow.overflowing_add(e);
-        mlow = tmp;
-        if carry {
-            mhigh += 1;
-        }
-
-        // q = (mhigh, mlow) /  c
-        let (last_dividend, q) = if c.leading_zeros() != 0 {
-            reduce2(mhigh, mlow, c, 1).unwrap()
-        } else {
-            reduce2_big(mhigh, mlow, c).unwrap()
-        };
-
-        // final division
-        let last_q = last_dividend
-            .checked_div_with_cum_err(c, Rounding::Floor, &mut cum_err)
-            .unwrap();
-
-        q.checked_add(last_q).unwrap()
-    }
-
     fn check_calc_mul_div_unsigned(a: u128, b: u128, c: u128) {
         // calc
-        let mut cum_err = CumErr::new();
-        let Some(q) = a.calc_mul_div(b, c, Rounding::Floor, Some(&mut cum_err)) else {
+        let Some(q) = a.calc_mul_div(b, c, Rounding::Floor) else {
             return;
         };
 
-        if b != 0 {
-            assert_eq!(calc_mul_add_div_unsigned(q, c, cum_err.0, b), a);
-        } else {
-            assert_eq!(q, 0);
-            assert_eq!(cum_err.0, 0);
-        }
+        let (x1, x2) = mul2(a, b);
+        let (y1, y2) = mul2(c, q);
 
-        if a != 0 {
-            assert_eq!(calc_mul_add_div_unsigned(q, c, cum_err.0, a), b);
+        let remain = if x1 == y1 {
+            assert!(x2 >= y2);
+            x2 - y2
         } else {
-            assert_eq!(q, 0);
-            assert_eq!(cum_err.0, 0);
-        }
-        //TODO
+            assert!(x1 - 1 == y1);
+            assert!(x2 < y2);
+            u128::MAX - y2 + x2 + 1
+        };
+        assert!(remain < c);
     }
 
     #[test]

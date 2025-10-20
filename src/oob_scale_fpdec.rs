@@ -1,10 +1,10 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
+use crate::rounding_div::Rounding;
 use crate::{IntoRatioInt, ParseError};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
-use int_div_cum_error::{CumErr, Rounding};
 use num_traits::{cast::FromPrimitive, float::FloatCore, Num, Signed};
 
 /// Out-of-band-scale fixed-point decimal.
@@ -50,7 +50,7 @@ where
     where
         J: FpdecInner,
     {
-        self.checked_mul_ext(rhs, diff_scale, Rounding::Round, None)
+        self.checked_mul_ext(rhs, diff_scale, Rounding::Round)
     }
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
@@ -64,46 +64,35 @@ where
     ///
     /// If the diff_scale < 0, then rounding operations are required and
     /// precision may be lost.
-    /// You can specify the rounding type and cumulative error.
-    ///
-    /// See the [cumulative error section](index.html#cumulative-error)
-    /// for more information and examples.
+    /// You can specify the rounding type.
     ///
     /// # Examples
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{OobScaleFpdec, CumErr, Rounding, fpdec};
+    /// use primitive_fixed_point_decimal::{OobScaleFpdec, Rounding, fpdec};
     /// type Balance = OobScaleFpdec<i64>;
     /// type FeeRate = OobScaleFpdec<i16>; // different types
     ///
-    /// let balance: Balance = fpdec!(12.60, 2); // scale=2
+    /// let balance: Balance = fpdec!(12.30, 2); // scale=2
     /// let rate: FeeRate = fpdec!(0.01, 4); // scale=4
     ///
-    /// // calculate fee 3 times with same arguments, with `cum_err`.
-    /// // but have different results: 0.13, 0.13 and 0.12
-    /// let mut cum_err = CumErr::new();
+    /// let fee: Balance = balance.checked_mul(rate, 4).unwrap();
+    /// assert_eq!(fee, fpdec!(0.12, 2));
     ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
+    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling).unwrap();
     /// assert_eq!(fee, fpdec!(0.13, 2));
-    ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
-    /// assert_eq!(fee, fpdec!(0.13, 2));
-    ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
-    /// assert_eq!(fee, fpdec!(0.12, 2)); // here different
     /// ```
     pub fn checked_mul_ext<J>(
         self,
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self + rhs - result)
         rounding: Rounding,
-        cum_err: Option<&mut CumErr<I>>,
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
     {
         self.0
-            .checked_mul_ext(I::from(rhs.0)?, diff_scale, rounding, cum_err)
+            .checked_mul_ext(I::from(rhs.0)?, diff_scale, rounding)
             .map(Self)
     }
 
@@ -118,7 +107,7 @@ where
     where
         J: FpdecInner,
     {
-        self.checked_div_ext(rhs, diff_scale, Rounding::Round, None)
+        self.checked_div_ext(rhs, diff_scale, Rounding::Round)
     }
 
     /// Checked division. Computes `self / rhs`, returning `None` if
@@ -130,9 +119,7 @@ where
     ///
     /// Argument: `diff_scale = scale(self) - scale(rhs) - scale(result)`.
     ///
-    /// You can specify the rounding type and cumulative error.
-    /// See the [cumulative error section](index.html#cumulative-error)
-    /// for more information and examples.
+    /// You can specify the rounding type.
     ///
     /// # Examples
     ///
@@ -144,7 +131,7 @@ where
     /// let fee: Balance = fpdec!(0.13, 2); // scale=2
     /// let rate: FeeRate = fpdec!(0.03, 4); // scale=4
     ///
-    /// let balance: Balance = fee.checked_div_ext(rate, -4, Rounding::Ceiling, None).unwrap();
+    /// let balance: Balance = fee.checked_div_ext(rate, -4, Rounding::Ceiling).unwrap();
     /// assert_eq!(balance, fpdec!(4.34, 2));
     /// ```
     pub fn checked_div_ext<J>(
@@ -152,21 +139,20 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self - rhs - result)
         rounding: Rounding,
-        cum_err: Option<&mut CumErr<I>>,
     ) -> Option<OobScaleFpdec<I>>
     where
         J: FpdecInner,
     {
         self.0
-            .checked_div_ext(I::from(rhs.0)?, diff_scale, rounding, cum_err)
+            .checked_div_ext(I::from(rhs.0)?, diff_scale, rounding)
             .map(Self)
     }
 
     /// Round the decimal.
     ///
-    /// Equivalent to [`Self::round_diff_with_rounding`] with `Rounding::Round`.
+    /// Equivalent to [`Self::round_diff_ext`] with `Rounding::Round`.
     pub fn round_diff(self, diff_scale: i32) -> Self {
-        self.round_diff_with_rounding(diff_scale, Rounding::Round)
+        self.round_diff_ext(diff_scale, Rounding::Round)
     }
 
     /// Round the decimal with rounding type.
@@ -185,10 +171,10 @@ where
     /// assert_eq!(price.round_diff(8 - 6), // reduce 2 scale
     ///     fpdec!(12.123457, 8)); // `Rounding::Round` as default
     ///
-    /// assert_eq!(price.round_diff_with_rounding(8 - 6, Rounding::Floor),
+    /// assert_eq!(price.round_diff_ext(8 - 6, Rounding::Floor),
     ///     fpdec!(12.123456, 8));
     /// ```
-    pub fn round_diff_with_rounding(self, diff_scale: i32, rounding: Rounding) -> Self {
+    pub fn round_diff_ext(self, diff_scale: i32, rounding: Rounding) -> Self {
         Self(self.0.round_diff_with_rounding(diff_scale, rounding))
     }
 
@@ -717,9 +703,7 @@ mod tests {
         let min = Dec32::MIN;
         let ten_p6: Dec32 = fpdec!(10, 6);
         let half_min = Dec32::MIN.checked_div_int(2).unwrap();
-        let half_max = Dec32::MAX
-            .checked_div_int_ext(2, Rounding::Floor, None)
-            .unwrap();
+        let half_max = Dec32::MAX.checked_div_int_ext(2, Rounding::Floor).unwrap();
 
         assert_eq!(max.checked_mul_int(2), None);
         assert_eq!(min.checked_mul_int(2), None);
@@ -772,9 +756,7 @@ mod tests {
         let min = Dec32::MIN;
         let cent_p6: Dec32 = fpdec!(0.1, 6);
         let half_min = Dec32::MIN.checked_div_int(2).unwrap();
-        let half_max = Dec32::MAX
-            .checked_div_int_ext(2, Rounding::Floor, None)
-            .unwrap();
+        let half_max = Dec32::MAX.checked_div_int_ext(2, Rounding::Floor).unwrap();
 
         assert_eq!(max.checked_div(cent_p6, -5), Some(max));
         assert_eq!(min.checked_div(cent_p6, -5), Some(min));

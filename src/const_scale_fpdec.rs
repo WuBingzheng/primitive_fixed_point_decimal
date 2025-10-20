@@ -1,10 +1,10 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::oob_scale_fpdec::OobScaleFpdec;
+use crate::rounding_div::Rounding;
 use crate::{IntoRatioInt, ParseError};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
-use int_div_cum_error::{CumErr, Rounding};
 #[allow(unused_imports)]
 use num_traits::float::FloatCore; // used only for `no_std`
 use num_traits::{cast::FromPrimitive, Num, Signed};
@@ -44,7 +44,7 @@ where
     where
         J: FpdecInner,
     {
-        self.checked_mul_ext(rhs, Rounding::Round, None)
+        self.checked_mul_ext(rhs, Rounding::Round)
     }
 
     /// Checked multiplication. Computes `self * rhs`, returning `None` if
@@ -58,45 +58,34 @@ where
     /// If the scale of the result's type `SR` is less than the sum of
     /// scales of the two multiplicands `S + S2`, then rounding operations
     /// are required and precision may be lost.
-    /// You can specify the rounding type and cumulative error.
-    ///
-    /// See the [cumulative error section](index.html#cumulative-error)
-    /// for more information and examples.
+    /// You can specify the rounding type.
     ///
     /// # Examples
     ///
     /// ```
-    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, CumErr, Rounding, fpdec};
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, Rounding, fpdec};
     /// type Balance = ConstScaleFpdec<i64, 2>;
     /// type FeeRate = ConstScaleFpdec<i16, 4>; // different types
     ///
-    /// let balance: Balance = fpdec!(12.60);
+    /// let balance: Balance = fpdec!(12.30);
     /// let rate: FeeRate = fpdec!(0.01);
     ///
-    /// // calculate fee 3 times with same arguments, with `cum_err`.
-    /// // but have different results: 0.13, 0.13 and 0.12
-    /// let mut cum_err = CumErr::new();
+    /// let fee: Balance = balance.checked_mul(rate).unwrap();
+    /// assert_eq!(fee, fpdec!(0.12));
     ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
+    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling).unwrap();
     /// assert_eq!(fee, fpdec!(0.13));
-    ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
-    /// assert_eq!(fee, fpdec!(0.13));
-    ///
-    /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling, Some(&mut cum_err)).unwrap();
-    /// assert_eq!(fee, fpdec!(0.12)); // here, different
     /// ```
     pub fn checked_mul_ext<J, const S2: i32, const SR: i32>(
         self,
         rhs: ConstScaleFpdec<J, S2>,
         rounding: Rounding,
-        cum_err: Option<&mut CumErr<I>>,
     ) -> Option<ConstScaleFpdec<I, SR>>
     where
         J: FpdecInner,
     {
         self.0
-            .checked_mul_ext(I::from(rhs.0)?, S + S2 - SR, rounding, cum_err)
+            .checked_mul_ext(I::from(rhs.0)?, S + S2 - SR, rounding)
             .map(ConstScaleFpdec)
     }
 
@@ -110,7 +99,7 @@ where
     where
         J: FpdecInner,
     {
-        self.checked_div_ext(rhs, Rounding::Round, None)
+        self.checked_div_ext(rhs, Rounding::Round)
     }
 
     /// Checked division. Computes `self / rhs`, returning `None` if
@@ -121,9 +110,7 @@ where
     /// with `self`. The type of result must have the same inner integer `I`
     /// while have different scale `SR`.
     ///
-    /// You can specify the rounding type and cumulative error.
-    /// See the [cumulative error section](index.html#cumulative-error)
-    /// for more information and examples.
+    /// You can specify the rounding type.
     ///
     /// # Examples
     ///
@@ -135,28 +122,27 @@ where
     /// let rate: FeeRate = fpdec!(0.03);
     /// let fee: Balance = fpdec!(0.13);
     ///
-    /// let balance: Balance = fee.checked_div_ext(rate, Rounding::Ceiling, None).unwrap();
+    /// let balance: Balance = fee.checked_div_ext(rate, Rounding::Ceiling).unwrap();
     /// assert_eq!(balance, fpdec!(4.34));
     /// ```
     pub fn checked_div_ext<J, const S2: i32, const SR: i32>(
         self,
         rhs: ConstScaleFpdec<J, S2>,
         rounding: Rounding,
-        cum_err: Option<&mut CumErr<I>>,
     ) -> Option<ConstScaleFpdec<I, SR>>
     where
         J: FpdecInner,
     {
         self.0
-            .checked_div_ext(I::from(rhs.0)?, S - S2 - SR, rounding, cum_err)
+            .checked_div_ext(I::from(rhs.0)?, S - S2 - SR, rounding)
             .map(ConstScaleFpdec)
     }
 
     /// Round the decimal at the specified scale.
     ///
-    /// Equivalent to [`Self::round_with_rounding`] with `Rounding::Round`.
+    /// Equivalent to [`Self::round_ext`] with `Rounding::Round`.
     pub fn round(self, scale: i32) -> Self {
-        self.round_with_rounding(scale, Rounding::Round)
+        self.round_ext(scale, Rounding::Round)
     }
 
     /// Round the decimal at the specified scale with rounding type.
@@ -173,9 +159,9 @@ where
     ///
     /// assert_eq!(price.round(6), fpdec!(12.123457)); // `Rounding::Round` as default
     ///
-    /// assert_eq!(price.round_with_rounding(6, Rounding::Floor), fpdec!(12.123456));
+    /// assert_eq!(price.round_ext(6, Rounding::Floor), fpdec!(12.123456));
     /// ```
-    pub fn round_with_rounding(self, scale: i32, rounding: Rounding) -> Self {
+    pub fn round_ext(self, scale: i32, rounding: Rounding) -> Self {
         Self(self.0.round_diff_with_rounding(S - scale, rounding))
     }
 }
@@ -749,7 +735,7 @@ mod tests {
         let ten_p6: ConstScaleFpdec<i32, 6> = fpdec!(10);
         let half_min_p6 = ConstScaleFpdec::<i32, 6>::MIN.checked_div_int(2).unwrap();
         let half_max_p6 = ConstScaleFpdec::<i32, 6>::MAX
-            .checked_div_int_ext(2, Rounding::Floor, None)
+            .checked_div_int_ext(2, Rounding::Floor)
             .unwrap();
 
         let max_p5 = ConstScaleFpdec::<i32, 5>::MAX;
@@ -841,7 +827,7 @@ mod tests {
         let cent_p6: ConstScaleFpdec<i32, 6> = fpdec!(0.1);
         let half_min_p6 = ConstScaleFpdec::<i32, 6>::MIN.checked_div_int(2).unwrap();
         let half_max_p6 = ConstScaleFpdec::<i32, 6>::MAX
-            .checked_div_int_ext(2, Rounding::Floor, None)
+            .checked_div_int_ext(2, Rounding::Floor)
             .unwrap();
 
         let max_p5 = ConstScaleFpdec::<i32, 5>::MAX;

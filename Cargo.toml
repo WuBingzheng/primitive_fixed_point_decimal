@@ -14,7 +14,6 @@ categories = ["data-structures", "finance", "mathematics", "no-std", "no-std::no
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-int-div-cum-error = "0.4"
 num-traits = {version="0.2", default-features=false}
 
 [dependencies.serde]

@@ -1,3 +1,4 @@
+use crate::rounding_div::{Rounding, RoundingDiv};
 use crate::ParseError;
 
 use core::ops::{AddAssign, SubAssign};
@@ -6,7 +7,6 @@ use core::{
     num::{IntErrorKind, ParseIntError},
 };
 
-use int_div_cum_error::{CumErr, DivCumErr, Rounding};
 use num_traits::{
     identities::{ConstOne, ConstZero},
     int::PrimInt,
@@ -18,7 +18,7 @@ use num_traits::{
 ///
 /// Normal users don't need to use this trait.
 pub trait FpdecInner:
-    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + DivCumErr
+    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + RoundingDiv
 {
     const MAX: Self;
     const MIN: Self;
@@ -32,22 +32,11 @@ pub trait FpdecInner:
     fn get_exp(i: usize) -> Option<Self>;
 
     /// Calculate `self * b / c`.
-    fn calc_mul_div(
-        self,
-        b: Self,
-        c: Self,
-        rounding: Rounding,
-        cum_error: Option<&mut CumErr<Self>>,
-    ) -> Option<Self>;
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self>;
 
     // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
-    fn checked_mul_ext(
-        self,
-        rhs: Self,
-        diff_scale: i32, // = scale (self + rhs - result)
-        rounding: Rounding,
-        cum_error: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
+    // diff_scale = scale (self + rhs - result)
+    fn checked_mul_ext(self, rhs: Self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
         if diff_scale > 0 {
             // self * rhs / diff_exp
 
@@ -57,7 +46,7 @@ pub trait FpdecInner:
             // Because `MAX * MAX / exp[DIGITS]` still overflows. For
             // simplicity's sake, we do not handle this case which is rare.
             let exp = Self::get_exp(diff_scale as usize)?;
-            self.calc_mul_div(rhs, exp, rounding, cum_error)
+            self.calc_mul_div(rhs, exp, rounding)
         } else if diff_scale < 0 {
             // self * rhs * diff_exp
             let exp = Self::get_exp(-diff_scale as usize)?;
@@ -68,18 +57,13 @@ pub trait FpdecInner:
     }
 
     // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
-    fn checked_div_ext(
-        self,
-        rhs: Self,
-        diff_scale: i32, // = scale (self - rhs - result)
-        rounding: Rounding,
-        cum_error: Option<&mut CumErr<Self>>,
-    ) -> Option<Self> {
+    // diff_scale = scale (self + rhs - result)
+    fn checked_div_ext(self, rhs: Self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
         if diff_scale > 0 {
             // self / rhs / diff_exp
             let exp = Self::get_exp(diff_scale as usize)?;
-            let q = self.checked_div_with_rounding(rhs, rounding)?;
-            q.checked_div_with_opt_cum_err(exp, rounding, cum_error)
+            let q = self.rounding_div(rhs, rounding)?;
+            q.rounding_div(exp, rounding)
         } else if diff_scale < 0 {
             // self * diff_exp / rhs
 
@@ -88,17 +72,14 @@ pub trait FpdecInner:
             // to avoid returning `None` directly. But keep same with
             // `checked_mul()`, we do not handle this case which is rare.
             let exp = Self::get_exp(-diff_scale as usize)?;
-            self.calc_mul_div(exp, rhs, rounding, cum_error)
+            self.calc_mul_div(exp, rhs, rounding)
         } else {
-            self.checked_div_with_opt_cum_err(rhs, rounding, cum_error)
+            self.rounding_div(rhs, rounding)
         }
     }
 
-    fn round_diff_with_rounding(
-        self,
-        diff_scale: i32, // = src - dst
-        rounding: Rounding,
-    ) -> Self {
+    // diff_scale = scale (src - dst)
+    fn round_diff_with_rounding(self, diff_scale: i32, rounding: Rounding) -> Self {
         if diff_scale <= 0 {
             return self;
         }
@@ -107,7 +88,7 @@ pub trait FpdecInner:
             None => Self::ZERO,
             Some(exp) => {
                 // self / exp * exp
-                self.checked_div_with_rounding(exp, rounding).unwrap() * exp
+                self.rounding_div(exp, rounding).unwrap() * exp
             }
         }
     }
