@@ -60,6 +60,7 @@ macro_rules! define_none_scale_common {
         /// Examples:
         ///
         /// ```
+        /// // Here we use `ConstScaleFpdec` as example. It's same for `OobScaleFpdec`.
         /// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
         /// type Balance = ConstScaleFpdec<i64, 2>;
         /// type Quantity = ConstScaleFpdec<i32, 4>; // type for `a` and `b`
@@ -103,6 +104,26 @@ macro_rules! define_none_scale_common {
         /// Create a decimal from the underlying integer representation.
         ///
         /// You must take care of the scale yourself.
+        ///
+        /// This method is `const`, so it can be used to construct const values.
+        ///
+        /// Examples:
+        ///
+        /// ```
+        /// // Here we use `ConstScaleFpdec` as example. It's same for `OobScaleFpdec`.
+        /// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+        /// type Dec = ConstScaleFpdec<i32, 4>; // scale is 4
+        ///
+        /// assert_eq!(Dec::from_mantissa(123400), fpdec!(12.34));
+        ///
+        /// // const values
+        /// const ONE: Dec = Dec::from_mantissa(1 * 10000);
+        /// const TEN: Dec = Dec::from_mantissa(10 * 10000);
+        /// const PI: Dec = Dec::from_mantissa(31416);
+        /// assert_eq!(ONE, fpdec!(1));
+        /// assert_eq!(TEN, fpdec!(10));
+        /// assert_eq!(PI, fpdec!(3.1416));
+        /// ```
         pub const fn from_mantissa(i: I) -> Self {
             Self(i)
         }
@@ -110,6 +131,17 @@ macro_rules! define_none_scale_common {
         /// Return the underlying integer representation.
         ///
         /// You must take care of the scale yourself.
+        ///
+        /// Examples:
+        ///
+        /// ```
+        /// // Here we use `ConstScaleFpdec` as example. It's same for `OobScaleFpdec`.
+        /// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+        /// type Dec = ConstScaleFpdec<i32, 4>; // scale is 4
+        ///
+        /// let d: Dec = fpdec!(12.34);
+        /// assert_eq!(d.mantissa(), 123400);
+        /// ```
         pub const fn mantissa(self) -> I {
             self.0
         }
