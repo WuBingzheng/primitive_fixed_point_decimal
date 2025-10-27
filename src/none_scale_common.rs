@@ -119,10 +119,18 @@ macro_rules! define_none_scale_common {
         /// // const values
         /// const ONE: Dec = Dec::from_mantissa(1 * 10000);
         /// const TEN: Dec = Dec::from_mantissa(10 * 10000);
-        /// const PI: Dec = Dec::from_mantissa(31416);
+        /// const PI: Dec = Dec::from_mantissa(31400);
         /// assert_eq!(ONE, fpdec!(1));
         /// assert_eq!(TEN, fpdec!(10));
-        /// assert_eq!(PI, fpdec!(3.1416));
+        /// assert_eq!(PI, fpdec!(3.14));
+        ///
+        /// // you can use `Dec::SCALE` for better consistency
+        /// const ONE_1: Dec = Dec::from_mantissa(10_i32.pow(Dec::SCALE as u32));
+        /// const TEN_1: Dec = Dec::from_mantissa(10_i32.pow(Dec::SCALE as u32 + 1));
+        /// const PI_1: Dec = Dec::from_mantissa(314 * 10_i32.pow(Dec::SCALE as u32 - 2));
+        /// assert_eq!(ONE_1, fpdec!(1));
+        /// assert_eq!(TEN_1, fpdec!(10));
+        /// assert_eq!(PI_1, fpdec!(3.14));
         /// ```
         pub const fn from_mantissa(i: I) -> Self {
             Self(i)
