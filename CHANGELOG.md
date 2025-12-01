@@ -1,3 +1,7 @@
+# v1.0.0 (2025-12-01)
+
+- Just update to v1.0.0!
+
 # v0.11.0 (2025-10-20)
 
 - Remove the *Cumulative Error*.
