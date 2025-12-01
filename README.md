@@ -1,12 +1,10 @@
-# primitive_fixed_point_decimal
-
 Primitive fixed-point decimal types.
 
 For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
 representation, and the static scale is `4`.
 
 
-## Features
+# Features
 
 - Fixed-point. The scale is bound to the *type* but not each *value*.
 
@@ -34,10 +32,13 @@ representation, and the static scale is `4`.
 - Supports negative scale. For example `ConstScaleFpdec<i8, -2>` represents
   numbers in range [-12800, 12700] with step 100.
 
+- Supports serde traits integration (`Serialize`/`Deserialize`) by optional
+  `serde` feature flag.
+
 - `no-std` and `no-alloc`.
 
 
-## Specify Scale
+# Specify Scale
 
 There are 2 ways to specify the scale: *const* and *out-of-band*:
 
@@ -114,8 +115,6 @@ the scale of each decimal column ahead (at compilation time), so it fits
 `ConstScaleFpdec`.
 
 
-## Features
+# License
 
-- `serde` enables serde traits integration (`Serialize`/`Deserialize`).
-
-License: MIT
+MIT
