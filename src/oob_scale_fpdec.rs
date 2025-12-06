@@ -42,6 +42,7 @@ where
     /// Checked multiplication.
     ///
     /// Equivalent to [`Self::checked_mul_ext`] with `Rounding::Round`.
+    #[must_use]
     pub fn checked_mul<J>(
         self,
         rhs: OobScaleFpdec<J>,
@@ -82,6 +83,7 @@ where
     /// let fee: Balance = balance.checked_mul_ext(rate, 4, Rounding::Ceiling).unwrap();
     /// assert_eq!(fee, fpdec!(0.13, 2));
     /// ```
+    #[must_use]
     pub fn checked_mul_ext<J>(
         self,
         rhs: OobScaleFpdec<J>,
@@ -99,6 +101,7 @@ where
     /// Checked division.
     ///
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
+    #[must_use]
     pub fn checked_div<J>(
         self,
         rhs: OobScaleFpdec<J>,
@@ -134,6 +137,7 @@ where
     /// let balance: Balance = fee.checked_div_ext(rate, -4, Rounding::Ceiling).unwrap();
     /// assert_eq!(balance, fpdec!(4.34, 2));
     /// ```
+    #[must_use]
     pub fn checked_div_ext<J>(
         self,
         rhs: OobScaleFpdec<J>,
@@ -151,6 +155,7 @@ where
     /// Round the decimal.
     ///
     /// Equivalent to [`Self::round_diff_ext`] with `Rounding::Round`.
+    #[must_use]
     pub fn round_diff(self, diff_scale: i32) -> Self {
         self.round_diff_ext(diff_scale, Rounding::Round)
     }
@@ -174,6 +179,7 @@ where
     /// assert_eq!(price.round_diff_ext(8 - 6, Rounding::Floor),
     ///     fpdec!(12.123456, 8));
     /// ```
+    #[must_use]
     pub fn round_diff_ext(self, diff_scale: i32, rounding: Rounding) -> Self {
         Self(self.0.round_diff_with_rounding(diff_scale, rounding))
     }
@@ -197,6 +203,7 @@ where
     /// assert_eq!(Decimal::try_from_str("9999", 4), Err(ParseError::Overflow));
     /// assert_eq!(Decimal::try_from_str("1.23456", 4), Err(ParseError::Precision));
     /// ```
+    #[must_use]
     pub fn try_from_str(s: &str, scale: i32) -> Result<Self, ParseError>
     where
         I: Num<FromStrRadixErr = ParseIntError>,
@@ -218,6 +225,7 @@ where
     /// let dec: Decimal = fpdec!(1234000, -3);
     /// assert_eq!(dec.to_f32(-3), 1234000.0);
     /// ```
+    #[must_use]
     pub fn to_f32(self, scale: i32) -> f32 {
         let f = self.0.to_f32().unwrap();
         if scale > 0 {
@@ -243,6 +251,7 @@ where
     /// let dec: Decimal = fpdec!(1234000, -3);
     /// assert_eq!(dec.to_f64(-3), 1234000.0);
     /// ```
+    #[must_use]
     pub fn to_f64(self, scale: i32) -> f64 {
         let f = self.0.to_f64().unwrap();
         if scale > 0 {
@@ -574,6 +583,7 @@ where
     /// assert_eq!(df.rescale(1), Err(ParseError::Precision));
     /// assert_eq!(df.rescale(10), Err(ParseError::Overflow));
     /// ```
+    #[must_use]
     pub fn rescale(self, scale2: i32) -> Result<OobScaleFpdec<I>, ParseError> {
         let OobFmt(dec, scale0) = self;
 

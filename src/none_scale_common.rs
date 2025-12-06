@@ -22,6 +22,7 @@ macro_rules! define_none_scale_common {
         /// Checked addition. Computes `self + rhs`, returning `None` if overflow occurred.
         ///
         /// The right operand must have the same scale with self.
+        #[must_use]
         pub fn checked_add(self, rhs: Self) -> Option<Self> {
             self.0.checked_add(&rhs.0).map(Self)
         }
@@ -29,12 +30,14 @@ macro_rules! define_none_scale_common {
         /// Checked subtraction. Computes `self - rhs`, returning `None` if overflow occurred.
         ///
         /// The right operand must have the same scale with self.
+        #[must_use]
         pub fn checked_sub(self, rhs: Self) -> Option<Self> {
             self.0.checked_sub(&rhs.0).map(Self)
         }
 
         /// Checked multiplication with integer. Computes `self * n`, returning
         /// `None` if overflow occurred.
+        #[must_use]
         pub fn checked_mul_int(self, n: impl Into<I>) -> Option<Self> {
             self.0.checked_mul(&n.into()).map(Self)
         }
@@ -42,6 +45,7 @@ macro_rules! define_none_scale_common {
         /// Computes `self * a/b`, returning `None` if overflow occurred.
         ///
         /// Equivalent to [`Self::checked_mul_ratio_ext`] with `Rounding::Round`.
+        #[must_use]
         pub fn checked_mul_ratio<R>(self, a: R, b: R) -> Option<Self>
         where
             R: IntoRatioInt<I>,
@@ -73,6 +77,7 @@ macro_rules! define_none_scale_common {
         /// // integer
         /// assert_eq!(margin.checked_mul_ratio(200, 300).unwrap(), fpdec!(20000));
         /// ```
+        #[must_use]
         pub fn checked_mul_ratio_ext<R>(self, a: R, b: R, rounding: Rounding) -> Option<Self>
         where
             R: IntoRatioInt<I>,
@@ -85,6 +90,7 @@ macro_rules! define_none_scale_common {
         /// Checked division by integer, with `Rounding::Round`.
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
+        #[must_use]
         pub fn checked_div_int(self, n: impl Into<I>) -> Option<Self> {
             self.checked_div_int_ext(n, Rounding::Round)
         }
@@ -92,11 +98,13 @@ macro_rules! define_none_scale_common {
         /// Checked division by integer with rounding.
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
+        #[must_use]
         pub fn checked_div_int_ext(self, n: impl Into<I>, rounding: Rounding) -> Option<Self> {
             self.0.rounding_div(n.into(), rounding).map(Self)
         }
 
         /// Return if zero.
+        #[must_use]
         pub fn is_zero(&self) -> bool {
             self.0.is_zero()
         }
@@ -132,6 +140,7 @@ macro_rules! define_none_scale_common {
         /// assert_eq!(TEN_1, fpdec!(10));
         /// assert_eq!(PI_1, fpdec!(3.14));
         /// ```
+        #[must_use]
         pub const fn from_mantissa(i: I) -> Self {
             Self(i)
         }
@@ -150,6 +159,7 @@ macro_rules! define_none_scale_common {
         /// let d: Dec = fpdec!(12.34);
         /// assert_eq!(d.mantissa(), 123400);
         /// ```
+        #[must_use]
         pub const fn mantissa(self) -> I {
             self.0
         }
@@ -166,11 +176,13 @@ macro_rules! define_none_scale_common_signed {
         /// and attempting to calculate it will cause an overflow. This means that
         /// code in debug mode will trigger a panic on this case and optimized code
         /// will return `MIN` without a panic.
+        #[must_use]
         pub fn abs(self) -> Self {
             Self(self.0.abs())
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if `self == MIN`.
+        #[must_use]
         pub fn checked_abs(self) -> Option<Self> {
             if self == Self::MIN {
                 None
@@ -180,11 +192,13 @@ macro_rules! define_none_scale_common_signed {
         }
 
         /// Return if negative.
+        #[must_use]
         pub fn is_neg(&self) -> bool {
             self.0.is_negative()
         }
 
         /// Return if positive.
+        #[must_use]
         pub fn is_pos(&self) -> bool {
             self.0.is_positive()
         }

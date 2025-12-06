@@ -37,6 +37,7 @@ where
     /// Checked multiplication.
     ///
     /// Equivalent to [`Self::checked_mul_ext`] with `Rounding::Round`.
+    #[must_use]
     pub fn checked_mul<J, const S2: i32, const SR: i32>(
         self,
         rhs: ConstScaleFpdec<J, S2>,
@@ -76,6 +77,7 @@ where
     /// let fee: Balance = balance.checked_mul_ext(rate, Rounding::Ceiling).unwrap();
     /// assert_eq!(fee, fpdec!(0.13));
     /// ```
+    #[must_use]
     pub fn checked_mul_ext<J, const S2: i32, const SR: i32>(
         self,
         rhs: ConstScaleFpdec<J, S2>,
@@ -92,6 +94,7 @@ where
     /// Checked division.
     ///
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
+    #[must_use]
     pub fn checked_div<J, const S2: i32, const SR: i32>(
         self,
         rhs: ConstScaleFpdec<J, S2>,
@@ -125,6 +128,7 @@ where
     /// let balance: Balance = fee.checked_div_ext(rate, Rounding::Ceiling).unwrap();
     /// assert_eq!(balance, fpdec!(4.34));
     /// ```
+    #[must_use]
     pub fn checked_div_ext<J, const S2: i32, const SR: i32>(
         self,
         rhs: ConstScaleFpdec<J, S2>,
@@ -141,6 +145,7 @@ where
     /// Round the decimal at the specified scale.
     ///
     /// Equivalent to [`Self::round_ext`] with `Rounding::Round`.
+    #[must_use]
     pub fn round(self, scale: i32) -> Self {
         self.round_ext(scale, Rounding::Round)
     }
@@ -161,6 +166,7 @@ where
     ///
     /// assert_eq!(price.round_ext(6, Rounding::Floor), fpdec!(12.123456));
     /// ```
+    #[must_use]
     pub fn round_ext(self, scale: i32, rounding: Rounding) -> Self {
         Self(self.0.round_diff_with_rounding(S - scale, rounding))
     }
