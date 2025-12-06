@@ -23,6 +23,7 @@ use num_traits::{cast::FromPrimitive, Num, Signed};
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
+#[repr(transparent)]
 pub struct ConstScaleFpdec<I, const S: i32>(I);
 
 impl<I, const S: i32> ConstScaleFpdec<I, S>

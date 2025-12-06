@@ -31,6 +31,7 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num, Signed};
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
+#[repr(transparent)]
 pub struct OobScaleFpdec<I>(I);
 
 impl<I> OobScaleFpdec<I>
