@@ -139,7 +139,7 @@ If you know the decimal precision, use *Fixed-point*. If it is known at
 compile time, refer to the `ConstScaleFpdec` example above. If it is
 known at runtime, refer to the `OobScaleFpdec` example above.
 
-Generally speaking, use *Floating-point* for library and *Floating-point*
+Generally speaking, use *Floating-point* for library, and *Fixed-point*
 for application.
 
 Then make a choice:
