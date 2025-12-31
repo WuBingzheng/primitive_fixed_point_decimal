@@ -1,3 +1,9 @@
+# v1.0.1 (2025-12-31)
+
+- Add `#[must_use]` for many APIs.
+- Add `#[repr(transparent)]` for the type.
+- Add `TryFrom` for unsigned integers.
+
 # v1.0.0 (2025-12-01)
 
 - Just update to v1.0.0!
