@@ -316,6 +316,11 @@ convert_from_int!(i16);
 convert_from_int!(i32);
 convert_from_int!(i64);
 convert_from_int!(i128);
+convert_from_int!(u8);
+convert_from_int!(u16);
+convert_from_int!(u32);
+convert_from_int!(u64);
+convert_from_int!(u128);
 
 macro_rules! convert_from_float {
     ($float_type:ty, $from_fn:ident, $to_fn:ident) => {
@@ -658,6 +663,11 @@ where
             visit_num!(visit_i32, i32);
             visit_num!(visit_i64, i64);
             visit_num!(visit_i128, i128);
+            visit_num!(visit_u8, u8);
+            visit_num!(visit_u16, u16);
+            visit_num!(visit_u32, u32);
+            visit_num!(visit_u64, u64);
+            visit_num!(visit_u128, u128);
         }
 
         deserializer.deserialize_any(ConstScaleFpdecVistor(PhantomData))

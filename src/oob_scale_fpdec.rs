@@ -337,6 +337,11 @@ convert_from_int!(i16);
 convert_from_int!(i32);
 convert_from_int!(i64);
 convert_from_int!(i128);
+convert_from_int!(u8);
+convert_from_int!(u16);
+convert_from_int!(u32);
+convert_from_int!(u64);
+convert_from_int!(u128);
 
 macro_rules! convert_from_float {
     ($float_type:ty, $from_fn:ident) => {
