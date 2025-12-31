@@ -21,6 +21,9 @@ macro_rules! define_none_scale_common {
         pub const DIGITS: u32 = I::DIGITS;
         /// Checked addition. Computes `self + rhs`, returning `None` if overflow occurred.
         ///
+        /// If you make sure no overflow error, you can use `+` and `+=` instead
+        /// for convenience.
+        ///
         /// The right operand must have the same scale with self.
         #[must_use]
         pub fn checked_add(self, rhs: Self) -> Option<Self> {
@@ -28,6 +31,9 @@ macro_rules! define_none_scale_common {
         }
 
         /// Checked subtraction. Computes `self - rhs`, returning `None` if overflow occurred.
+        ///
+        /// If you make sure no overflow error, you can use `-` and `-=` instead
+        /// for convenience.
         ///
         /// The right operand must have the same scale with self.
         #[must_use]
@@ -37,6 +43,9 @@ macro_rules! define_none_scale_common {
 
         /// Checked multiplication with integer. Computes `self * n`, returning
         /// `None` if overflow occurred.
+        ///
+        /// If you make sure no overflow error, you can use `*` and `*=` instead
+        /// for convenience.
         #[must_use]
         pub fn checked_mul_int(self, n: impl Into<I>) -> Option<Self> {
             self.0.checked_mul(&n.into()).map(Self)
@@ -90,6 +99,9 @@ macro_rules! define_none_scale_common {
         /// Checked division by integer, with `Rounding::Round`.
         ///
         /// Computes `self / n`, returning `None` if `n == 0` or overflow occurres.
+        ///
+        /// If you make sure no overflow or 0-division error, you can use
+        /// `/` and `/=` instead for convenience.
         #[must_use]
         pub fn checked_div_int(self, n: impl Into<I>) -> Option<Self> {
             self.checked_div_int_ext(n, Rounding::Round)

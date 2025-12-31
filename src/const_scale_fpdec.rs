@@ -38,6 +38,9 @@ where
     /// Checked multiplication.
     ///
     /// Equivalent to [`Self::checked_mul_ext`] with `Rounding::Round`.
+    ///
+    /// If you make sure no overflow error, and the result type has the same
+    /// scale (`SR`=`S`), you can use `*` and `*=` instead for convenience.
     #[must_use]
     pub fn checked_mul<J, const S2: i32, const SR: i32>(
         self,
@@ -95,6 +98,10 @@ where
     /// Checked division.
     ///
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
+    ///
+    /// If you make sure no overflow or 0-division error, and the result type
+    /// has the same scale (`SR`=`S`), you can use `/` and `/=` instead for
+    /// convenience.
     #[must_use]
     pub fn checked_div<J, const S2: i32, const SR: i32>(
         self,
