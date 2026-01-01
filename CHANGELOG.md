@@ -1,3 +1,7 @@
+# v1.1.0 (2026-01-01)
+
+- Add `OobScaleFpdec::checked_mul_const_scale` and more.
+
 # v1.0.1 (2025-12-31)
 
 - Add `#[must_use]` for many APIs.
