@@ -99,6 +99,59 @@ where
             .map(Self)
     }
 
+    /// Checked multiplication with `ConstScaleFpdec`.
+    ///
+    /// Equivalent to [`Self::checked_mul_const_scale_ext`] with `Rounding::Round`.
+    ///
+    /// If you make sure no overflow error, you can use `*` and `*=` instead for convenience.
+    #[must_use]
+    pub fn checked_mul_const_scale<J, const S: i32>(
+        self,
+        rhs: ConstScaleFpdec<J, S>,
+    ) -> Option<OobScaleFpdec<I>>
+    where
+        J: FpdecInner,
+    {
+        self.checked_mul_const_scale_ext(rhs, Rounding::Round)
+    }
+
+    /// Checked multiplication with `ConstScaleFpdec`. Computes `self * rhs`,
+    /// returning `None` if overflow occurred.
+    ///
+    /// Compared to [`Self::checked_mul_ext`], the result of this method inherits
+    /// the scale of `self`. So the `diff_scale` (which is equal to `S`) is no
+    /// more need.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, OobScaleFpdec, Rounding, fpdec};
+    /// type Balance = OobScaleFpdec<i64>;
+    /// type FeeRate = ConstScaleFpdec<i16, 4>;
+    ///
+    /// let balance: Balance = fpdec!(12.30, 2); // scale=2
+    /// let rate: FeeRate = fpdec!(0.01);
+    ///
+    /// let fee: Balance = balance.checked_mul_const_scale(rate).unwrap();
+    /// assert_eq!(fee, fpdec!(0.12, 2));
+    ///
+    /// let fee: Balance = balance.checked_mul_const_scale_ext(rate, Rounding::Ceiling).unwrap();
+    /// assert_eq!(fee, fpdec!(0.13, 2));
+    /// ```
+    #[must_use]
+    pub fn checked_mul_const_scale_ext<J, const S: i32>(
+        self,
+        rhs: ConstScaleFpdec<J, S>,
+        rounding: Rounding,
+    ) -> Option<OobScaleFpdec<I>>
+    where
+        J: FpdecInner,
+    {
+        self.0
+            .checked_mul_ext(I::from(rhs.mantissa())?, S, rounding)
+            .map(Self)
+    }
+
     /// Checked division.
     ///
     /// Equivalent to [`Self::checked_div_ext`] with `Rounding::Round`.
@@ -150,6 +203,58 @@ where
     {
         self.0
             .checked_div_ext(I::from(rhs.0)?, diff_scale, rounding)
+            .map(Self)
+    }
+
+    /// Checked division with `ConstScaleFpdec`.
+    ///
+    /// Equivalent to [`Self::checked_div_const_scale_ext`] with `Rounding::Round`.
+    ///
+    /// If you make sure no overflow or 0-division error, you can use `/` and `/=`
+    /// instead for convenience.
+    #[must_use]
+    pub fn checked_div_const_scale<J, const S: i32>(
+        self,
+        rhs: ConstScaleFpdec<J, S>,
+    ) -> Option<OobScaleFpdec<I>>
+    where
+        J: FpdecInner,
+    {
+        self.checked_div_const_scale_ext(rhs, Rounding::Round)
+    }
+
+    /// Checked division with `ConstScaleFpdec`. Computes `self / rhs`,
+    /// returning `None` if division by 0 or overflow occurred.
+    ///
+    /// Compared to [`Self::checked_div_ext`], the result of this method inherits
+    /// the scale of `self`. So the `diff_scale` (which is equal to `-S`) is no
+    /// more need.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{ConstScaleFpdec, OobScaleFpdec, Rounding, fpdec};
+    /// type Balance = OobScaleFpdec<i64>;
+    /// type FeeRate = ConstScaleFpdec<i16, 4>;
+    ///
+    /// let fee: Balance = fpdec!(0.12, 2); // scale=2
+    /// let rate: FeeRate = fpdec!(0.01);
+    ///
+    /// let balance: Balance = fee.checked_div_const_scale(rate).unwrap();
+    /// assert_eq!(balance, fpdec!(12.0, 2));
+    /// ```
+    #[must_use]
+    pub fn checked_div_const_scale_ext<J, const S: i32>(
+        self,
+        rhs: ConstScaleFpdec<J, S>,
+        rounding: Rounding,
+    ) -> Option<OobScaleFpdec<I>>
+    where
+        J: FpdecInner,
+    {
+        self.0
+            .checked_div_ext(I::from(rhs.mantissa())?, -S, rounding)
             .map(Self)
     }
 
@@ -434,6 +539,23 @@ where
     }
 }
 
+/// Performs the `*` operation with `ConstScaleFpdec`.
+///
+/// # Panics
+///
+/// If [`Self::checked_mul_const_scale`] returns `None`.
+impl<I, J, const S: i32> ops::Mul<ConstScaleFpdec<J, S>> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    type Output = Self;
+    fn mul(self, rhs: ConstScaleFpdec<J, S>) -> Self::Output {
+        self.checked_mul_const_scale(rhs)
+            .expect("overflow in decimal multiplication")
+    }
+}
+
 /// Performs the `/` operation with an integer.
 ///
 /// # Panics
@@ -447,6 +569,23 @@ where
     type Output = Self;
     fn div(self, rhs: J) -> Self::Output {
         self.checked_div_int(rhs).expect("fail in decimal division")
+    }
+}
+
+/// Performs the `/` operation with `ConstScaleFpdec`.
+///
+/// # Panics
+///
+/// If [`Self::checked_div_const_scale`] returns `None`.
+impl<I, J, const S: i32> ops::Div<ConstScaleFpdec<J, S>> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    type Output = Self;
+    fn div(self, rhs: ConstScaleFpdec<J, S>) -> Self::Output {
+        self.checked_div_const_scale(rhs)
+            .expect("overflow in decimal multiplication")
     }
 }
 
@@ -478,12 +617,32 @@ where
     }
 }
 
+impl<I, J, const S: i32> ops::MulAssign<ConstScaleFpdec<J, S>> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    fn mul_assign(&mut self, rhs: ConstScaleFpdec<J, S>) {
+        *self = *self * rhs;
+    }
+}
+
 impl<I, J> ops::DivAssign<J> for OobScaleFpdec<I>
 where
     I: FpdecInner,
     J: Into<I> + Num,
 {
     fn div_assign(&mut self, rhs: J) {
+        *self = *self / rhs;
+    }
+}
+
+impl<I, J, const S: i32> ops::DivAssign<ConstScaleFpdec<J, S>> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+    J: FpdecInner,
+{
+    fn div_assign(&mut self, rhs: ConstScaleFpdec<J, S>) {
         *self = *self / rhs;
     }
 }
