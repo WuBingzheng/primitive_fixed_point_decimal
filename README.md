@@ -107,47 +107,17 @@ assert_eq!(usdt, fpdec!(27619.56, btc_usdt.quote_asset_scale));
 
 Obviously it's verbose to use, but offers greater flexibility.
 
-Another example is the SQL `Decimal` data type.
-In the server end, the scale of each decimal column is fixed on created
-(at runtime), so it fits `OobScaleFpdec`.
-While in the client end, the application knows the business logical and
-the scale of each decimal column ahead (at compilation time), so it fits
-`ConstScaleFpdec`.
+In summary,
 
+- if you know the scale (decimal precision) at compile time, choose [`ConstScaleFpdec`];
+- if you know it at runtime, choose [`OobScaleFpdec`];
+- if you have no idea about it (maybe because the scale is variable rather
+  than fixed, e.g. in a general-purpose decimal math library), you need a
+  *floating-point* decimal crate, such as `bigdecimal` or `rust_decimal`.
 
-# How to Choose Your Number Type
-
-Here are 2 questions:
-
-Q1: Do you want *Binary*(base-2) or *Decimal*(base-10)?
-
-*Binary* for machines, *Decimal* for humans.
-
-If you want to accurately represent decimal fractions from the real world,
-such as avoiding the issue where 0.1 + 0.2 != 0.3, then you should choose
-*Decimal*.
-
-Q2: Do you want *Floating-point* or *Fixed-point*?
-
-*Floating-point* for flexible, *Fixed-point* for performance.
-
-If you have no idea about the required decimal precision, use *Floating-point*.
-For example, if you are implementing a general-purpose decimal math library,
-the precision requirements of the end users are variable and unknown.
-
-If you know the decimal precision, use *Fixed-point*. If it is known at
-compile time, refer to the `ConstScaleFpdec` example above. If it is
-known at runtime, refer to the `OobScaleFpdec` example above.
-
-Generally speaking, use *Floating-point* for library, and *Fixed-point*
-for application.
-
-Then make a choice:
-
-- Floating-point Binary: primitive `f32`, `f64`
-- Fixed-point Binary: crate `fixed`
-- Floating-point Decimal: crate `bigdecimal` and `rust_decimal`
-- Fixed-point Decimal: __THIS__ crate `primitive_fixed_point_decimal` !!!
+You can also use these two types in combination.
+[For example](OobScaleFpdec::checked_mul_const_scale_ext),
+use `OobScaleFpdec` as Balance and `ConstScaleFpdec` as FeeRate.
 
 
 # License
