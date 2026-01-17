@@ -1,5 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
-use crate::rounding_div::{Rounding, RoundingDiv};
+use crate::Rounding;
 
 impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;
@@ -9,6 +9,11 @@ impl FpdecInner for i128 {
     const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
     const DIGITS: u32 = i128::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "170141183460469231731687303715884105728";
+
+    type Unsigned = u128;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i128; 39] = [
@@ -107,6 +112,11 @@ impl FpdecInner for u128 {
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    type Unsigned = u128;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u128; 39] = [

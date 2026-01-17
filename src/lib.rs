@@ -23,12 +23,10 @@ mod inner_i128;
 mod inner_shorts;
 mod none_scale_common;
 mod oob_scale_fpdec;
-mod rounding_div;
 
 pub use crate::const_scale_fpdec::ConstScaleFpdec;
 pub use crate::fpdec_inner::FpdecInner;
 pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
-pub use crate::rounding_div::Rounding;
 
 /// Error in converting from string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,6 +67,22 @@ impl fmt::Display for ParseError {
 }
 
 impl core::error::Error for ParseError {}
+
+/// Rounding kinds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Rounding {
+    /// towards the nearest integer
+    #[default]
+    Round,
+    /// towards negative infinity
+    Floor,
+    /// towards positive infinity
+    Ceiling,
+    /// towards zero
+    TowardsZero,
+    /// away from zero
+    AwayFromZero,
+}
 
 /// Build decimal from integer or float number easily.
 ///

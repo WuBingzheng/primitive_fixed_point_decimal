@@ -1,5 +1,5 @@
 use crate::fpdec_inner::FpdecInner;
-use crate::rounding_div::{Rounding, RoundingDiv};
+use crate::Rounding;
 
 macro_rules! calc_mul_div_higher {
     (
@@ -22,6 +22,11 @@ impl FpdecInner for i8 {
     const DIGITS: u32 = i8::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "128";
 
+    type Unsigned = u8;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i8; 3] = [1, 10_i8.pow(1), 10_i8.pow(2)];
 
@@ -41,6 +46,11 @@ impl FpdecInner for i16 {
     const MAX_POWERS: Self = 10_i16.pow(Self::DIGITS);
     const DIGITS: u32 = i16::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "32768";
+
+    type Unsigned = u16;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i16; 5] = [
@@ -67,6 +77,11 @@ impl FpdecInner for i32 {
     const MAX_POWERS: Self = 10_i32.pow(Self::DIGITS);
     const DIGITS: u32 = i32::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "2147483648";
+
+    type Unsigned = u32;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i32; 10] = [
@@ -98,6 +113,11 @@ impl FpdecInner for i64 {
     const MAX_POWERS: Self = 10_i64.pow(Self::DIGITS);
     const DIGITS: u32 = i64::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "9223372036854775808";
+
+    type Unsigned = u64;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i64; 19] = [
@@ -144,6 +164,11 @@ impl FpdecInner for u8 {
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
 
+    type Unsigned = u8;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self
+    }
+
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u8; 3] = [1, 10_u8.pow(1), 10_u8.pow(2)];
 
@@ -165,6 +190,11 @@ impl FpdecInner for u16 {
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    type Unsigned = u16;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u16; 5] = [
@@ -193,6 +223,11 @@ impl FpdecInner for u32 {
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    type Unsigned = u32;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u32; 10] = [
@@ -226,6 +261,11 @@ impl FpdecInner for u64 {
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    type Unsigned = u64;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self
+    }
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u64; 20] = [

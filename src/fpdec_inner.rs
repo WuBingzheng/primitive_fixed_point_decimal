@@ -1,5 +1,4 @@
-use crate::rounding_div::{Rounding, RoundingDiv};
-use crate::ParseError;
+use crate::{ParseError, Rounding};
 
 use core::ops::{AddAssign, SubAssign};
 use core::{
@@ -11,15 +10,13 @@ use num_traits::{
     identities::{ConstOne, ConstZero},
     int::PrimInt,
     ops::wrapping::WrappingAdd,
-    Num,
+    Num, SaturatingAdd,
 };
 
 /// The trait for underlying representation.
 ///
 /// Normal users don't need to use this trait.
-pub trait FpdecInner:
-    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + RoundingDiv
-{
+pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd {
     const MAX: Self;
     const MIN: Self;
     const TEN: Self;
@@ -27,6 +24,13 @@ pub trait FpdecInner:
     const MAX_POWERS: Self;
     const DIGITS: u32;
     const NEG_MIN_STR: &'static str;
+
+    /// Used by unsigned_abs() method.
+    type Unsigned: SaturatingAdd + PartialOrd;
+
+    /// For signed types, this should call their unsigned_abs();
+    /// for unsigned types, this should return self directly.
+    fn unsigned_abs(self) -> Self::Unsigned;
 
     /// Return 10 to the power of `i`.
     fn get_exp(i: usize) -> Option<Self>;
@@ -91,6 +95,59 @@ pub trait FpdecInner:
                 self.rounding_div(exp, rounding).unwrap() * exp
             }
         }
+    }
+
+    /// Calculate rounding division.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// use primitive_fixed_point_decimal::{FpdecInner, Rounding};
+    /// assert_eq!(8.rounding_div(3, Rounding::Floor), Some(2));
+    /// assert_eq!(8.rounding_div(3, Rounding::Round), Some(3));
+    /// assert_eq!(8.rounding_div(3, Rounding::Ceiling), Some(3));
+    /// assert_eq!(8.rounding_div(-3, Rounding::Floor), Some(-3));
+    /// assert_eq!(8.rounding_div(-3, Rounding::Round), Some(-3));
+    /// assert_eq!(8.rounding_div(-3, Rounding::Ceiling), Some(-2));
+    /// assert_eq!(120_i8.rounding_div(121_i8, Rounding::Round), Some(1));
+    /// assert_eq!(120_i8.rounding_div(-121_i8, Rounding::Round), Some(-1));
+    /// ```
+    fn rounding_div(self, b: Self, rounding: Rounding) -> Option<Self> {
+        let q = self.checked_div(&b)?;
+        let remain = self % b;
+        if remain == Self::ZERO {
+            return Some(q);
+        }
+
+        let ret = if (self ^ b) > Self::ZERO {
+            // unsigned types, or signed types and self and b have same sign
+            match rounding {
+                Rounding::Floor | Rounding::TowardsZero => q,
+                Rounding::Ceiling | Rounding::AwayFromZero => q + Self::ONE,
+                Rounding::Round => {
+                    if remain.saturating_add(remain) >= b {
+                        q + Self::ONE
+                    } else {
+                        q
+                    }
+                }
+            }
+        } else {
+            // signed types and self and b have different sign.
+            match rounding {
+                Rounding::Floor | Rounding::AwayFromZero => q - Self::ONE,
+                Rounding::Ceiling | Rounding::TowardsZero => q,
+                Rounding::Round => {
+                    let r = remain.unsigned_abs();
+                    if r.saturating_add(&r) >= b.unsigned_abs() {
+                        q - Self::ONE
+                    } else {
+                        q
+                    }
+                }
+            }
+        };
+        Some(ret)
     }
 
     // INTERNAL

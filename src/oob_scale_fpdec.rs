@@ -1,7 +1,6 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
-use crate::rounding_div::Rounding;
-use crate::{IntoRatioInt, ParseError};
+use crate::{IntoRatioInt, ParseError, Rounding};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
