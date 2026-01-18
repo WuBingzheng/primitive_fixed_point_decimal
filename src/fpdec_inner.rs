@@ -153,17 +153,6 @@ pub trait FpdecInner:
     }
 
     // INTERNAL
-    // The FpdecInner works for both signed and unsigned types.
-    // Sometimes we need to calculate negative value of signed type,
-    // for example calculating the aboslute value for a negative
-    // value. But unsigned type does not support negative operation.
-    // So we use Two's Complement to calculate negative for signed
-    // type. The caller must ensure that the input is signed type.
-    fn calc_negative(self) -> Self {
-        (!self).wrapping_add(&Self::ONE)
-    }
-
-    // INTERNAL
     // Parse an string as negative.
     // We try to parse it as positive first. If fail for overflow,
     // then it maybe the MIN value.
@@ -172,7 +161,13 @@ pub trait FpdecInner:
         Self: Num<FromStrRadixErr = ParseIntError>,
     {
         match Self::from_str_radix(s, 10) {
-            Ok(num) => Ok(num.calc_negative()),
+            Ok(num) => {
+                // Return -num.
+                // The FpdecInner works for both signed and unsigned types.
+                // But unsigned type does not support negative operation.
+                // So we use Two's Complement to calculate negative.
+                Ok((!num).wrapping_add(&Self::ONE))
+            }
             Err(err) => {
                 if err.kind() == &IntErrorKind::PosOverflow
                     && s.trim_start_matches('0') == Self::NEG_MIN_STR
