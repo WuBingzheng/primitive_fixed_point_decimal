@@ -1,13 +1,14 @@
 use crate::{ParseError, Rounding};
 
-use core::ops::{AddAssign, SubAssign};
 use core::{
     fmt,
+    mem::MaybeUninit,
     num::{IntErrorKind, ParseIntError},
+    ops::{AddAssign, SubAssign},
 };
 
 use num_traits::{
-    identities::{ConstOne, ConstZero},
+    identities::{ConstOne, ConstZero, Zero},
     int::PrimInt,
     ops::wrapping::WrappingAdd,
     Num, SaturatingAdd,
@@ -16,17 +17,20 @@ use num_traits::{
 /// The trait for underlying representation.
 ///
 /// Normal users don't need to use this trait.
-pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd {
+pub trait FpdecInner:
+    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + fmt::Display
+{
     const MAX: Self;
     const MIN: Self;
-    const TEN: Self;
-    const HUNDRED: Self;
     const MAX_POWERS: Self;
     const DIGITS: u32;
     const NEG_MIN_STR: &'static str;
 
+    const UNS_TEN: Self::Unsigned;
+    const UNS_HUNDRED: Self::Unsigned;
+
     /// Used by unsigned_abs() method.
-    type Unsigned: SaturatingAdd + PartialOrd;
+    type Unsigned: FpdecInner + Zero + SaturatingAdd;
 
     /// For signed types, this should call their unsigned_abs();
     /// for unsigned types, this should return self directly.
@@ -244,72 +248,125 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + W
         }
     }
 
-    fn display_fmt(self, scale: i32, f: &mut fmt::Formatter) -> Result<(), fmt::Error>
-    where
-        Self: fmt::Display,
-    {
-        if self.is_zero() {
-            return write!(f, "0");
+    fn display_fmt(self, scale: i32, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.width().is_some() {
+            // First, dump the number into this buffer, and then call
+            // pad_integral() for formatting options.
+            //
+            // If the number is too long (the scale out of [-950, 950]),
+            // this will return error, which will make Display panic.
+            let mut buf = ArrayWriter::<1000>::new();
+            self.display_num(scale, f.precision(), &mut buf)?;
+            f.pad_integral(self >= Self::ZERO, "", buf.ref_str())
+        } else {
+            // Dump the sign and the number directly. Hope this is faster.
+            if self < Self::ZERO {
+                write!(f, "-")?;
+            } else if f.sign_plus() {
+                write!(f, "+")?;
+            }
+            self.display_num(scale, f.precision(), f)
         }
-        if scale == 0 {
-            return write!(f, "{}", self);
-        }
-        if scale < 0 {
-            return write!(f, "{}{:0>width$}", self, 0, width = (-scale) as usize);
+    }
+
+    // TODO move out mod
+    fn display_num(
+        self,
+        scale: i32,
+        precision: Option<usize>,
+        w: &mut impl fmt::Write,
+    ) -> fmt::Result {
+        // this method dumps the abs number only. the caller should handle the sign.
+        let uns = self.unsigned_abs();
+
+        if scale <= 0 {
+            return uns.display_num_none_pos_scale(scale, precision, w);
         }
 
         // scale > 0
         let scale = scale as usize;
 
-        fn abs_strip_zeros<I>(mut n: I) -> (I, usize)
-        where
-            I: FpdecInner,
-        {
-            if n < I::ZERO {
-                n = n.calc_negative();
-            }
+        // calculate integer and fraction parts
+        let (int, frac, exp) = match Self::Unsigned::get_exp(scale) {
+            Some(exp) => (uns / exp, uns % exp, Some(exp)),
+            None => (Self::Unsigned::ZERO, uns, None),
+        };
 
-            let mut zeros = 0;
-            while (n % I::HUNDRED).is_zero() {
-                n = n / I::HUNDRED;
-                zeros += 2;
-            }
-            if (n % I::TEN).is_zero() {
-                n = n / I::TEN;
-                zeros += 1;
-            }
-            (n, zeros)
-        }
-
-        match Self::get_exp(scale) {
-            Some(exp) => {
-                let i = self / exp;
-                let frac = self % exp;
-                if frac.is_zero() {
-                    write!(f, "{}", i)
-                } else {
-                    let (frac, zeros) = abs_strip_zeros(frac);
-                    if i.is_zero() && (self ^ exp) < Self::ZERO {
-                        write!(f, "-0.{:0>width$}", frac, width = scale - zeros)
-                    } else {
-                        write!(f, "{}.{:0>width$}", i, frac, width = scale - zeros)
-                    }
-                }
-            }
+        match precision {
+            // no precition set, remove fraction tailing zeros
             None => {
-                if self >= Self::ZERO {
-                    let (n, zeros) = abs_strip_zeros(self);
-                    write!(f, "0.{:0>width$}", n, width = scale - zeros)
-                } else if self != Self::MIN {
-                    let (n, zeros) = abs_strip_zeros(self);
-                    write!(f, "-0.{:0>width$}", n, width = scale - zeros)
+                if frac.is_zero() {
+                    return write!(w, "{}", int);
+                }
+
+                // remove fraction tailing zeros
+                let (frac, zeros) = {
+                    let mut zeros = 0;
+                    let mut n = frac;
+                    while (n % Self::UNS_HUNDRED).is_zero() {
+                        n = n / Self::UNS_HUNDRED;
+                        zeros += 2;
+                    }
+                    if (n % Self::UNS_TEN).is_zero() {
+                        n = n / Self::UNS_TEN;
+                        zeros += 1;
+                    }
+                    (n, zeros)
+                };
+
+                write!(w, "{}.{:0>width$}", int, frac, width = scale - zeros)
+            }
+
+            // set precision = 0, do not show the '.' char
+            Some(precision) if precision == 0 => match exp {
+                Some(exp) => {
+                    let int = if frac.saturating_add(&frac) >= exp {
+                        int + Self::Unsigned::ONE
+                    } else {
+                        int
+                    };
+                    write!(w, "{}", int)
+                }
+                None => write!(w, "0"),
+            },
+
+            // set precision > 0
+            Some(precision) => {
+                if precision == scale {
+                    write!(w, "{}.{:0>scale$}", int, frac)
+                } else if precision > scale {
+                    let pad = precision - scale;
+                    write!(w, "{}.{:0>scale$}{:0>pad$}", int, frac, 0)
                 } else {
-                    let front = (self / Self::TEN).calc_negative();
-                    let last = (self % Self::TEN).calc_negative();
-                    write!(f, "-0.{:0>width$}{}", front, last, width = scale - 1)
+                    let frac = match Self::Unsigned::get_exp(scale - precision) {
+                        Some(exp) => frac.rounding_div(exp, Rounding::Round).unwrap(),
+                        None => Self::Unsigned::ZERO,
+                    };
+                    write!(w, "{}.{:0>precision$}", int, frac)
                 }
             }
         }
+    }
+
+    fn display_num_none_pos_scale(
+        self,
+        scale: i32,
+        precision: Option<usize>,
+        w: &mut impl fmt::Write,
+    ) -> fmt::Result {
+        write!(w, "{}", self)?;
+
+        if scale < 0 && !self.is_zero() {
+            let width = (-scale) as usize;
+            write!(w, "{:0>width$}", 0)?;
+        }
+
+        let precision = precision.unwrap_or(0);
+        if precision != 0 {
+            write!(w, ".{:0>precision$}", 0)?;
+        }
+
+        Ok(())
     }
 
     fn checked_from_int(self, scale: i32) -> Result<Self, ParseError> {
@@ -325,6 +382,40 @@ pub trait FpdecInner: PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + W
         } else {
             Ok(self)
         }
+    }
+}
+
+// A simple stack array writer.
+// Used for formatting display.
+// It returns error if writing too long, which will make the Display panic.
+struct ArrayWriter<const CAP: usize> {
+    pos: usize,
+    buf: MaybeUninit<[u8; CAP]>,
+}
+
+impl<const CAP: usize> ArrayWriter<CAP> {
+    fn new() -> Self {
+        Self {
+            pos: 0,
+            buf: MaybeUninit::uninit(),
+        }
+    }
+    fn ref_str(&self) -> &str {
+        unsafe { str::from_utf8_unchecked(&self.buf.assume_init_ref()[..self.pos]) }
+    }
+}
+
+impl<const CAP: usize> fmt::Write for ArrayWriter<CAP> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let len = s.len();
+        if self.pos + len > CAP {
+            return Err(fmt::Error);
+        }
+        unsafe {
+            self.buf.assume_init_mut()[self.pos..self.pos + len].copy_from_slice(s.as_bytes());
+        }
+        self.pos += len;
+        Ok(())
     }
 }
 
@@ -352,7 +443,8 @@ mod tests {
 
         //println!("test: {s} {scale} {n}");
         let (n1, scale1) = I::try_from_str_only(s).unwrap();
-        let n2 = n1 * I::TEN.pow((scale - scale1) as u32);
+        let ten = I::ONE << 3 | I::ONE << 1;
+        let n2 = n1 * ten.pow((scale - scale1) as u32);
         assert_eq!(n2, n);
 
         let ts = TestFmt { n, scale };

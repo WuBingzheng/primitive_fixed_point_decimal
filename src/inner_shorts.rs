@@ -16,11 +16,12 @@ macro_rules! calc_mul_div_higher {
 impl FpdecInner for i8 {
     const MAX: Self = i8::MAX;
     const MIN: Self = i8::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_i8.pow(Self::DIGITS);
     const DIGITS: u32 = i8::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "128";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u8;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -41,11 +42,12 @@ impl FpdecInner for i8 {
 impl FpdecInner for i16 {
     const MAX: Self = i16::MAX;
     const MIN: Self = i16::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_i16.pow(Self::DIGITS);
     const DIGITS: u32 = i16::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "32768";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u16;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -72,11 +74,12 @@ impl FpdecInner for i16 {
 impl FpdecInner for i32 {
     const MAX: Self = i32::MAX;
     const MIN: Self = i32::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_i32.pow(Self::DIGITS);
     const DIGITS: u32 = i32::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "2147483648";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u32;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -108,11 +111,12 @@ impl FpdecInner for i32 {
 impl FpdecInner for i64 {
     const MAX: Self = i64::MAX;
     const MIN: Self = i64::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_i64.pow(Self::DIGITS);
     const DIGITS: u32 = i64::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "9223372036854775808";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u64;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -156,13 +160,14 @@ impl FpdecInner for i64 {
 impl FpdecInner for u8 {
     const MAX: Self = u8::MAX;
     const MIN: Self = u8::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_u8.pow(Self::DIGITS);
     const DIGITS: u32 = u8::MAX.ilog10();
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u8;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -183,13 +188,14 @@ impl FpdecInner for u8 {
 impl FpdecInner for u16 {
     const MAX: Self = u16::MAX;
     const MIN: Self = u16::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_u16.pow(Self::DIGITS);
     const DIGITS: u32 = u16::MAX.ilog10();
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u16;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -216,13 +222,14 @@ impl FpdecInner for u16 {
 impl FpdecInner for u32 {
     const MAX: Self = u32::MAX;
     const MIN: Self = u32::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_u32.pow(Self::DIGITS);
     const DIGITS: u32 = u32::MAX.ilog10();
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u32;
     fn unsigned_abs(self) -> Self::Unsigned {
@@ -254,13 +261,14 @@ impl FpdecInner for u32 {
 impl FpdecInner for u64 {
     const MAX: Self = u64::MAX;
     const MIN: Self = u64::MIN;
-    const TEN: Self = 10;
-    const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_u64.pow(Self::DIGITS);
     const DIGITS: u32 = u64::MAX.ilog10();
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
+
+    const UNS_TEN: Self::Unsigned = 10;
+    const UNS_HUNDRED: Self::Unsigned = 100;
 
     type Unsigned = u64;
     fn unsigned_abs(self) -> Self::Unsigned {
