@@ -246,9 +246,9 @@ pub trait FpdecInner:
             // First, dump the number into this buffer, and then call
             // pad_integral() for formatting options.
             //
-            // If the number is too long (the scale out of [-950, 950]),
+            // If the number is too long (the scale out of [-1000, 1000]),
             // this will return error, which will make Display panic.
-            let mut buf = ArrayWriter::<1000>::new();
+            let mut buf = ArrayWriter::<1050>::new();
             display_num(self.unsigned_abs(), scale, f.precision(), &mut buf)?;
             f.pad_integral(self >= Self::ZERO, "", buf.ref_str())
         } else {

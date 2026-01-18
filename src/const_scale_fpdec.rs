@@ -195,28 +195,26 @@ where
     }
 }
 
-/// Format the decimal.
+/// Display the decimal.
+///
+/// It supports some [formatting options](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters):
+/// width, fill, alignment, precision and sign.
+///
+/// **Panic**: if the scale is too big (>1000 or <-1000) and the width is set.
 ///
 /// Examples:
 ///
 /// ```
-/// use primitive_fixed_point_decimal::{ConstScaleFpdec, ParseError};
-/// type Decimal = ConstScaleFpdec<i16, 4>;
-/// type BigPrec = ConstScaleFpdec<i16, 8>;
-/// type NegPrec = ConstScaleFpdec<i16, -2>;
+/// use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
+/// type Decimal = ConstScaleFpdec<i32, 4>;
 ///
-/// assert_eq!(format!("{}", Decimal::try_from(1.230).unwrap()), String::from("1.23"));
-/// assert_eq!(format!("{}", Decimal::try_from(-1.230).unwrap()), String::from("-1.23")); // negative
-/// assert_eq!(format!("{}", Decimal::try_from(-3.2768).unwrap()), String::from("-3.2768")); // i16::MIN
+/// let d: Decimal = fpdec!(12.3470);
 ///
-/// assert_eq!(format!("{}", BigPrec::try_from(0.00001230).unwrap()), String::from("0.0000123"));
-/// assert_eq!(format!("{}", BigPrec::try_from(-0.00001230).unwrap()), String::from("-0.0000123"));
-/// assert_eq!(format!("{}", BigPrec::try_from(-0.00032768).unwrap()), String::from("-0.00032768")); // i16::MIN
-///
-/// assert_eq!(format!("{}", NegPrec::try_from(12300).unwrap()), String::from("12300"));
-/// assert_eq!(format!("{}", NegPrec::try_from(-12300).unwrap()), String::from("-12300"));
-/// assert_eq!(format!("{}", NegPrec::try_from(-3276800).unwrap()), String::from("-3276800"));
-/// ```
+/// assert_eq!(format!("{}", d), "12.347"); // no option set: omit tailing 0
+/// assert_eq!(format!("{:.4}", d), "12.3470"); // set precision: pad 0
+/// assert_eq!(format!("{:.2}", d), "12.35"); // set smaller precision: round the number
+/// assert_eq!(format!("{:x>10}", d), "xxxx12.347"); // set width, fill, alignment
+/// assert_eq!(format!("{:+}", d), "+12.347"); // set sign
 impl<I, const S: i32> fmt::Display for ConstScaleFpdec<I, S>
 where
     I: FpdecInner + fmt::Display,

@@ -673,6 +673,27 @@ where
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
 pub struct OobFmt<I>(pub OobScaleFpdec<I>, pub i32);
 
+/// Display the decimal.
+///
+/// It supports some [formatting options](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters):
+/// width, fill, alignment, precision and sign.
+///
+/// **Panic**: if the scale is too big (>1000 or <-1000) and the width is set.
+///
+/// Examples:
+///
+/// ```
+/// use primitive_fixed_point_decimal::{OobScaleFpdec, OobFmt, fpdec};
+/// type Decimal = OobScaleFpdec<i32>;
+///
+/// let d: Decimal = fpdec!(12.3470, 4);
+/// let f = OobFmt(d, 4);
+///
+/// assert_eq!(format!("{}", f), "12.347"); // no option set: omit tailing 0
+/// assert_eq!(format!("{:.4}", f), "12.3470"); // set precision: pad 0
+/// assert_eq!(format!("{:.2}", f), "12.35"); // set smaller precision: round the number
+/// assert_eq!(format!("{:x>10}", f), "xxxx12.347"); // set width, fill, alignment
+/// assert_eq!(format!("{:+}", f), "+12.347"); // set sign
 impl<I> fmt::Display for OobFmt<I>
 where
     I: FpdecInner + fmt::Display,
