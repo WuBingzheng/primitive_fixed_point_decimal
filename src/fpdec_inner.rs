@@ -18,19 +18,17 @@ use num_traits::{
 ///
 /// Normal users don't need to use this trait.
 pub trait FpdecInner:
-    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + fmt::Display
+    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + SaturatingAdd + Zero
 {
     const MAX: Self;
     const MIN: Self;
     const MAX_POWERS: Self;
+    const TEN: Self;
     const DIGITS: u32;
     const NEG_MIN_STR: &'static str;
 
-    const UNS_TEN: Self::Unsigned;
-    const UNS_HUNDRED: Self::Unsigned;
-
     /// Used by unsigned_abs() method.
-    type Unsigned: FpdecInner + Zero + SaturatingAdd;
+    type Unsigned: FpdecInner + fmt::Display;
 
     /// For signed types, this should call their unsigned_abs();
     /// for unsigned types, this should return self directly.
@@ -256,7 +254,7 @@ pub trait FpdecInner:
             // If the number is too long (the scale out of [-950, 950]),
             // this will return error, which will make Display panic.
             let mut buf = ArrayWriter::<1000>::new();
-            self.display_num(scale, f.precision(), &mut buf)?;
+            display_num(self.unsigned_abs(), scale, f.precision(), &mut buf)?;
             f.pad_integral(self >= Self::ZERO, "", buf.ref_str())
         } else {
             // Dump the sign and the number directly. Hope this is faster.
@@ -265,108 +263,8 @@ pub trait FpdecInner:
             } else if f.sign_plus() {
                 write!(f, "+")?;
             }
-            self.display_num(scale, f.precision(), f)
+            display_num(self.unsigned_abs(), scale, f.precision(), f)
         }
-    }
-
-    // TODO move out mod
-    fn display_num(
-        self,
-        scale: i32,
-        precision: Option<usize>,
-        w: &mut impl fmt::Write,
-    ) -> fmt::Result {
-        // this method dumps the abs number only. the caller should handle the sign.
-        let uns = self.unsigned_abs();
-
-        if scale <= 0 {
-            return uns.display_num_none_pos_scale(scale, precision, w);
-        }
-
-        // scale > 0
-        let scale = scale as usize;
-
-        // calculate integer and fraction parts
-        let (int, frac, exp) = match Self::Unsigned::get_exp(scale) {
-            Some(exp) => (uns / exp, uns % exp, Some(exp)),
-            None => (Self::Unsigned::ZERO, uns, None),
-        };
-
-        match precision {
-            // no precition set, remove fraction tailing zeros
-            None => {
-                if frac.is_zero() {
-                    return write!(w, "{}", int);
-                }
-
-                // remove fraction tailing zeros
-                let (frac, zeros) = {
-                    let mut zeros = 0;
-                    let mut n = frac;
-                    while (n % Self::UNS_HUNDRED).is_zero() {
-                        n = n / Self::UNS_HUNDRED;
-                        zeros += 2;
-                    }
-                    if (n % Self::UNS_TEN).is_zero() {
-                        n = n / Self::UNS_TEN;
-                        zeros += 1;
-                    }
-                    (n, zeros)
-                };
-
-                write!(w, "{}.{:0>width$}", int, frac, width = scale - zeros)
-            }
-
-            // set precision = 0, do not show the '.' char
-            Some(precision) if precision == 0 => match exp {
-                Some(exp) => {
-                    let int = if frac.saturating_add(&frac) >= exp {
-                        int + Self::Unsigned::ONE
-                    } else {
-                        int
-                    };
-                    write!(w, "{}", int)
-                }
-                None => write!(w, "0"),
-            },
-
-            // set precision > 0
-            Some(precision) => {
-                if precision == scale {
-                    write!(w, "{}.{:0>scale$}", int, frac)
-                } else if precision > scale {
-                    let pad = precision - scale;
-                    write!(w, "{}.{:0>scale$}{:0>pad$}", int, frac, 0)
-                } else {
-                    let frac = match Self::Unsigned::get_exp(scale - precision) {
-                        Some(exp) => frac.rounding_div(exp, Rounding::Round).unwrap(),
-                        None => Self::Unsigned::ZERO,
-                    };
-                    write!(w, "{}.{:0>precision$}", int, frac)
-                }
-            }
-        }
-    }
-
-    fn display_num_none_pos_scale(
-        self,
-        scale: i32,
-        precision: Option<usize>,
-        w: &mut impl fmt::Write,
-    ) -> fmt::Result {
-        write!(w, "{}", self)?;
-
-        if scale < 0 && !self.is_zero() {
-            let width = (-scale) as usize;
-            write!(w, "{:0>width$}", 0)?;
-        }
-
-        let precision = precision.unwrap_or(0);
-        if precision != 0 {
-            write!(w, ".{:0>precision$}", 0)?;
-        }
-
-        Ok(())
     }
 
     fn checked_from_int(self, scale: i32) -> Result<Self, ParseError> {
@@ -381,6 +279,88 @@ pub trait FpdecInner:
             Ok(self / exp)
         } else {
             Ok(self)
+        }
+    }
+}
+
+// here we assume the number is positive. the caller should handle the sign.
+fn display_num<I, W>(uns: I, scale: i32, precision: Option<usize>, w: &mut W) -> fmt::Result
+where
+    I: FpdecInner + fmt::Display,
+    W: fmt::Write,
+{
+    if scale <= 0 {
+        write!(w, "{}", uns)?;
+
+        if scale < 0 && !uns.is_zero() {
+            let width = (-scale) as usize;
+            write!(w, "{:0>width$}", 0)?;
+        }
+
+        let precision = precision.unwrap_or(0);
+        if precision != 0 {
+            write!(w, ".{:0>precision$}", 0)?;
+        }
+
+        return Ok(());
+    }
+
+    // scale > 0
+    let scale = scale as usize;
+
+    // calculate integer and fraction parts
+    let (int, frac, exp) = match I::get_exp(scale) {
+        Some(exp) => (uns / exp, uns % exp, Some(exp)),
+        None => (I::ZERO, uns, None),
+    };
+
+    match precision {
+        // no precition set, remove fraction tailing zeros
+        None => {
+            if frac.is_zero() {
+                return write!(w, "{}", int);
+            }
+
+            // remove fraction tailing zeros
+            let (frac, zeros) = {
+                let mut zeros = 0;
+                let mut n = frac;
+                while (n % I::TEN).is_zero() {
+                    n = n / I::TEN;
+                    zeros += 1;
+                }
+                (n, zeros)
+            };
+
+            write!(w, "{}.{:0>width$}", int, frac, width = scale - zeros)
+        }
+
+        // set precision = 0, do not show the '.' char
+        Some(precision) if precision == 0 => match exp {
+            Some(exp) => {
+                if frac.saturating_add(frac) >= exp {
+                    write!(w, "{}", int + I::ONE)
+                } else {
+                    write!(w, "{}", int)
+                }
+            }
+            None => write!(w, "0"),
+        },
+
+        // set precision > 0
+        Some(precision) => {
+            if precision == scale {
+                write!(w, "{}.{:0>scale$}", int, frac)
+            } else if precision > scale {
+                let pad = precision - scale;
+                write!(w, "{}.{:0>scale$}{:0>pad$}", int, frac, 0)
+            } else {
+                let frac = match I::get_exp(scale - precision) {
+                    Some(exp) => frac.rounding_div(exp, Rounding::Round).unwrap(),
+                    None => I::ZERO,
+                };
+                write!(w, "{}.{:0>precision$}", int, frac)
+            }
         }
     }
 }
