@@ -4,8 +4,8 @@ use crate::Rounding;
 impl FpdecInner for i128 {
     const MAX: Self = i128::MAX;
     const MIN: Self = i128::MIN;
-    const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
     const TEN: Self = 10;
+    const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
     const DIGITS: u32 = i128::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "170141183460469231731687303715884105728";
 
@@ -104,8 +104,8 @@ impl FpdecInner for i128 {
 impl FpdecInner for u128 {
     const MAX: Self = u128::MAX;
     const MIN: Self = u128::MIN;
-    const MAX_POWERS: Self = 10_u128.pow(Self::DIGITS);
     const TEN: Self = 10;
+    const MAX_POWERS: Self = 10_u128.pow(Self::DIGITS);
     const DIGITS: u32 = u128::MAX.ilog10();
 
     #[doc(hidden)]

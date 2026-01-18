@@ -676,7 +676,7 @@ pub struct OobFmt<I>(pub OobScaleFpdec<I>, pub i32);
 /// Display the decimal.
 ///
 /// It supports some [formatting options](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters):
-/// width, fill, alignment, precision and sign.
+/// width, fill, alignment, precision, sign and 0-fill.
 ///
 /// **Panic**: if the scale is too big (>1000 or <-1000) and the width is set.
 ///

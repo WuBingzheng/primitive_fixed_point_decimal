@@ -22,8 +22,8 @@ pub trait FpdecInner:
 {
     const MAX: Self;
     const MIN: Self;
-    const MAX_POWERS: Self;
     const TEN: Self;
+    const MAX_POWERS: Self;
     const DIGITS: u32;
     const NEG_MIN_STR: &'static str;
 
@@ -278,7 +278,7 @@ pub trait FpdecInner:
     }
 }
 
-// here we assume the number is positive. the caller should handle the sign.
+// We assume the number is non-negative here. The caller should handle the sign.
 fn display_num<I, W>(uns: I, scale: i32, precision: Option<usize>, w: &mut W) -> fmt::Result
 where
     I: FpdecInner + fmt::Display,
@@ -376,7 +376,13 @@ impl<const CAP: usize> ArrayWriter<CAP> {
         }
     }
     fn ref_str(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.buf.assume_init_ref()[..self.pos]) }
+        unsafe {
+            // SAFETY: self.pos was updated with self.buf.
+            let buf = &self.buf.assume_init_ref()[..self.pos];
+
+            // SAFETY: data was written by Display, so we make sure it's valid.
+            str::from_utf8_unchecked(buf)
+        }
     }
 }
 
@@ -386,9 +392,11 @@ impl<const CAP: usize> fmt::Write for ArrayWriter<CAP> {
         if self.pos + len > CAP {
             return Err(fmt::Error);
         }
-        unsafe {
-            self.buf.assume_init_mut()[self.pos..self.pos + len].copy_from_slice(s.as_bytes());
-        }
+
+        // SAFETY: self.pos was updated with self.buf.
+        let buf = unsafe { &mut self.buf.assume_init_mut()[self.pos..self.pos + len] };
+
+        buf.copy_from_slice(s.as_bytes());
         self.pos += len;
         Ok(())
     }
@@ -418,8 +426,7 @@ mod tests {
 
         //println!("test: {s} {scale} {n}");
         let (n1, scale1) = I::try_from_str_only(s).unwrap();
-        let ten = I::ONE << 3 | I::ONE << 1;
-        let n2 = n1 * ten.pow((scale - scale1) as u32);
+        let n2 = n1 * I::TEN.pow((scale - scale1) as u32);
         assert_eq!(n2, n);
 
         let ts = TestFmt { n, scale };
@@ -562,5 +569,62 @@ mod tests {
         do_test_format_num_only(u32::MAX / 2);
         do_test_format_num_only(u64::MAX / 2);
         do_test_format_num_only(u128::MAX / 2);
+    }
+
+    #[test]
+    fn test_options() {
+        let d = TestFmt {
+            n: 12_3470,
+            scale: 4,
+        };
+        let d2 = TestFmt {
+            n: 12_5470,
+            scale: 4,
+        };
+        let n = TestFmt {
+            n: -12_3470,
+            scale: 4,
+        };
+        let z = TestFmt { n: 0, scale: 4 };
+
+        assert_eq!(std::format!("{}", &d), "12.347");
+        assert_eq!(std::format!("{}", &n), "-12.347");
+        assert_eq!(std::format!("{}", &z), "0");
+
+        // width, fill, alignment
+        assert_eq!(std::format!("{:x>10}", &d), "xxxx12.347");
+        assert_eq!(std::format!("{:0>10}", &d), "000012.347");
+        assert_eq!(std::format!("{:x>10}", &n), "xxx-12.347");
+        assert_eq!(std::format!("{:010}", &n), "-00012.347");
+
+        // precision
+        assert_eq!(std::format!("{:.0}", &d), "12");
+        assert_eq!(std::format!("{:.0}", &d2), "13");
+        assert_eq!(std::format!("{:.2}", &d), "12.35");
+        assert_eq!(std::format!("{:.4}", &d), "12.3470");
+        assert_eq!(std::format!("{:.6}", &d), "12.347000");
+        assert_eq!(std::format!("{:.0}", &n), "-12");
+        assert_eq!(std::format!("{:.2}", &n), "-12.35");
+        assert_eq!(std::format!("{:.4}", &n), "-12.3470");
+        assert_eq!(std::format!("{:.6}", &n), "-12.347000");
+        assert_eq!(std::format!("{:.0}", &z), "0");
+        assert_eq!(std::format!("{:.2}", &z), "0.00");
+        assert_eq!(std::format!("{:.4}", &z), "0.0000");
+        assert_eq!(std::format!("{:.6}", &z), "0.000000");
+
+        // sign
+        assert_eq!(std::format!("{:+}", &d), "+12.347");
+        assert_eq!(std::format!("{:+}", &n), "-12.347");
+        assert_eq!(std::format!("{:+}", &z), "+0");
+
+        // all
+        assert_eq!(std::format!("{:x>+10.2}", &d), "xxxx+12.35");
+        assert_eq!(std::format!("{:+010.2}", &d), "+000012.35");
+
+        // neg-scale
+        let d = TestFmt { n: 12, scale: -4 };
+        assert_eq!(std::format!("{}", &d), "120000");
+        assert_eq!(std::format!("{:.0}", &d), "120000");
+        assert_eq!(std::format!("{:.2}", &d), "120000.00");
     }
 }
