@@ -1,3 +1,7 @@
+# v1.2.0 (2026-01-18)
+
+- Add formatting options supporting, such as width and precision.
+
 # v1.1.0 (2026-01-01)
 
 - Add `OobScaleFpdec::checked_mul_const_scale` and more.
