@@ -1,3 +1,7 @@
+# v1.2.1 (2026-01-29)
+
+- Optimize Display.
+
 # v1.2.0 (2026-01-18)
 
 - Add formatting options supporting, such as width and precision.
