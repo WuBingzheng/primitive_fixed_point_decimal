@@ -678,7 +678,8 @@ pub struct OobFmt<I>(pub OobScaleFpdec<I>, pub i32);
 /// It supports some [formatting options](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters):
 /// width, fill, alignment, precision, sign and 0-fill.
 ///
-/// **Panic**: if the scale is too big (>1000 or <-1000) and the width is set.
+/// **Panic**: if the scale is too big (>200 or <-200) or the specified
+/// precision is too big (>200).
 ///
 /// Examples:
 ///

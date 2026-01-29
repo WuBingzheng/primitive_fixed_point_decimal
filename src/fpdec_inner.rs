@@ -11,7 +11,7 @@ use num_traits::{
     identities::{ConstOne, ConstZero, Zero},
     int::PrimInt,
     ops::wrapping::WrappingAdd,
-    Num, SaturatingAdd,
+    AsPrimitive, Num, SaturatingAdd,
 };
 
 /// The trait for underlying representation.
@@ -23,12 +23,13 @@ pub trait FpdecInner:
     const MAX: Self;
     const MIN: Self;
     const TEN: Self;
+    const HUNDRED: Self;
     const MAX_POWERS: Self;
     const DIGITS: u32;
     const NEG_MIN_STR: &'static str;
 
     /// Used by unsigned_abs() method.
-    type Unsigned: FpdecInner + fmt::Display;
+    type Unsigned: FpdecInner + AsPrimitive<u8> + AsPrimitive<usize>;
 
     /// For signed types, this should call their unsigned_abs();
     /// for unsigned types, this should return self directly.
@@ -121,7 +122,7 @@ pub trait FpdecInner:
             return Some(q);
         }
 
-        let ret = if (self ^ b) > Self::ZERO {
+        if (self ^ b) > Self::ZERO {
             // unsigned types, or signed types and self and b have same sign
             match rounding {
                 Rounding::Floor | Rounding::TowardsZero => q,
@@ -148,8 +149,8 @@ pub trait FpdecInner:
                     }
                 }
             }
-        };
-        Some(ret)
+        }
+        .into() // Some()
     }
 
     // INTERNAL
@@ -242,24 +243,23 @@ pub trait FpdecInner:
     }
 
     fn display_fmt(self, scale: i32, f: &mut fmt::Formatter) -> fmt::Result {
-        if f.width().is_some() {
-            // First, dump the number into this buffer, and then call
-            // pad_integral() for formatting options.
-            //
-            // If the number is too long (the scale out of [-1000, 1000]),
-            // this will return error, which will make Display panic.
-            let mut buf = ArrayWriter::<1050>::new();
-            display_num(self.unsigned_abs(), scale, f.precision(), &mut buf)?;
-            f.pad_integral(self >= Self::ZERO, "", buf.ref_str())
-        } else {
-            // Dump the sign and the number directly. Hope this is faster.
-            if self < Self::ZERO {
-                write!(f, "-")?;
-            } else if f.sign_plus() {
-                write!(f, "+")?;
-            }
-            display_num(self.unsigned_abs(), scale, f.precision(), f)
-        }
+        // The buffer is 250 long. 50 is for the number, and 200 is for
+        // the padding zeros for specified precision and big scales.
+        // We panic if the string is too long.
+        let mut buf: [MaybeUninit<u8>; 250] = [MaybeUninit::uninit(); 250];
+        assert!(scale.abs() <= 200);
+
+        let offset = display_num(self.unsigned_abs(), scale, f.precision(), &mut buf);
+
+        // SAFETY: offset is updated along with buf
+        let buf = unsafe {
+            core::slice::from_raw_parts((&buf[offset..]).as_ptr() as *const _, buf.len() - offset)
+        };
+
+        // SAFETY: all data is valid charactor
+        let s = unsafe { str::from_utf8_unchecked(buf) };
+
+        f.pad_integral(self >= Self::ZERO, "", s)
     }
 
     fn checked_from_int(self, scale: i32) -> Result<Self, ParseError> {
@@ -279,28 +279,39 @@ pub trait FpdecInner:
 }
 
 // We assume the number is non-negative here. The caller should handle the sign.
-fn display_num<I, W>(uns: I, scale: i32, precision: Option<usize>, w: &mut W) -> fmt::Result
+fn display_num<I>(
+    uns: I,
+    scale: i32,
+    precision: Option<usize>,
+    buf: &mut [MaybeUninit<u8>],
+) -> usize
 where
-    I: FpdecInner + fmt::Display,
-    W: fmt::Write,
+    I: FpdecInner + AsPrimitive<u8> + AsPrimitive<usize>,
 {
     if scale <= 0 {
-        write!(w, "{}", uns)?;
+        let mut offset = buf.len();
 
-        if scale < 0 && !uns.is_zero() {
-            let width = (-scale) as usize;
-            write!(w, "{:0>width$}", 0)?;
-        }
-
+        // padding 0 for precision
         let precision = precision.unwrap_or(0);
         if precision != 0 {
-            write!(w, ".{:0>precision$}", 0)?;
+            assert!(precision + (-scale) as usize <= 200);
+
+            offset = pad_zeros(precision, buf);
+
+            // point '.'
+            offset -= 1;
+            buf[offset].write(b'.');
         }
 
-        return Ok(());
+        // padding 0 for negative scale
+        if scale < 0 && !uns.is_zero() {
+            offset = pad_zeros((-scale) as usize, &mut buf[..offset]);
+        }
+
+        return dump_single(uns, &mut buf[..offset]);
     }
 
-    // scale > 0
+    // now, scale > 0
     let scale = scale as usize;
 
     // calculate integer and fraction parts
@@ -313,7 +324,7 @@ where
         // no precition set, remove fraction tailing zeros
         None => {
             if frac.is_zero() {
-                return write!(w, "{}", int);
+                return dump_single(int, buf);
             }
 
             // remove fraction tailing zeros
@@ -327,79 +338,98 @@ where
                 (n, zeros)
             };
 
-            write!(w, "{}.{:0>width$}", int, frac, width = scale - zeros)
+            dump_decimal(int, frac, scale - zeros, buf)
         }
 
         // set precision = 0, do not show the '.' char
         Some(precision) if precision == 0 => match exp {
             Some(exp) => {
                 if frac.saturating_add(frac) >= exp {
-                    write!(w, "{}", int + I::ONE)
+                    dump_single(int + I::ONE, buf)
                 } else {
-                    write!(w, "{}", int)
+                    dump_single(int, buf)
                 }
             }
-            None => write!(w, "0"),
+            None => dump_single(I::ZERO, buf),
         },
 
         // set precision > 0
         Some(precision) => {
             if precision == scale {
-                write!(w, "{}.{:0>scale$}", int, frac)
+                dump_decimal(int, frac, scale, buf)
             } else if precision > scale {
-                let pad = precision - scale;
-                write!(w, "{}.{:0>scale$}{:0>pad$}", int, frac, 0)
+                assert!(precision <= 200);
+                let offset = pad_zeros(precision - scale, buf);
+                dump_decimal(int, frac, scale, &mut buf[..offset])
             } else {
                 let frac = match I::get_exp(scale - precision) {
                     Some(exp) => frac.rounding_div(exp, Rounding::Round).unwrap(),
                     None => I::ZERO,
                 };
-                write!(w, "{}.{:0>precision$}", int, frac)
+                dump_decimal(int, frac, precision, buf)
             }
         }
     }
 }
 
-// A simple stack array writer.
-// Used for formatting display.
-// It returns error if writing too long, which will make the Display panic.
-struct ArrayWriter<const CAP: usize> {
-    pos: usize,
-    buf: MaybeUninit<[u8; CAP]>,
+// dump: "int . frac"
+fn dump_decimal<I>(int: I, frac: I, scale: usize, buf: &mut [MaybeUninit<u8>]) -> usize
+where
+    I: FpdecInner + AsPrimitive<u8> + AsPrimitive<usize>,
+{
+    let mut offset = dump_single(frac, buf);
+
+    offset = pad_zeros(scale - (buf.len() - offset), &mut buf[..offset]);
+
+    offset -= 1;
+    buf[offset].write(b'.');
+
+    dump_single(int, &mut buf[..offset])
 }
 
-impl<const CAP: usize> ArrayWriter<CAP> {
-    fn new() -> Self {
-        Self {
-            pos: 0,
-            buf: MaybeUninit::uninit(),
-        }
-    }
-    fn ref_str(&self) -> &str {
-        unsafe {
-            // SAFETY: self.pos was updated with self.buf.
-            let buf = &self.buf.assume_init_ref()[..self.pos];
+// dump a single integer number
+// This is much faster than using integers' Display.
+fn dump_single<I>(n: I, buf: &mut [MaybeUninit<u8>]) -> usize
+where
+    I: FpdecInner + AsPrimitive<u8> + AsPrimitive<usize>,
+{
+    static DECIMAL_PAIRS: &[u8; 200] = b"\
+        0001020304050607080910111213141516171819\
+        2021222324252627282930313233343536373839\
+        4041424344454647484950515253545556575859\
+        6061626364656667686970717273747576777879\
+        8081828384858687888990919293949596979899";
 
-            // SAFETY: data was written by Display, so we make sure it's valid.
-            str::from_utf8_unchecked(buf)
-        }
+    let mut offset = buf.len();
+    let mut remain = n;
+
+    // Format per two digits from the lookup table.
+    while remain >= I::TEN {
+        offset -= 2;
+
+        let pair: usize = (remain % I::HUNDRED).as_();
+        remain = remain / I::HUNDRED;
+        buf[offset + 0].write(DECIMAL_PAIRS[pair * 2 + 0]);
+        buf[offset + 1].write(DECIMAL_PAIRS[pair * 2 + 1]);
     }
+
+    // Format the last remaining digit, if any.
+    if remain != I::ZERO || n == I::ZERO {
+        offset -= 1;
+        let remain: u8 = remain.as_();
+        buf[offset].write(b'0' + remain);
+    }
+
+    offset
 }
 
-impl<const CAP: usize> fmt::Write for ArrayWriter<CAP> {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        let len = s.len();
-        if self.pos + len > CAP {
-            return Err(fmt::Error);
-        }
-
-        // SAFETY: self.pos was updated with self.buf.
-        let buf = unsafe { &mut self.buf.assume_init_mut()[self.pos..self.pos + len] };
-
-        buf.copy_from_slice(s.as_bytes());
-        self.pos += len;
-        Ok(())
+fn pad_zeros(n: usize, buf: &mut [MaybeUninit<u8>]) -> usize {
+    let mut offset = buf.len();
+    for _ in 0..n {
+        offset -= 1;
+        buf[offset].write(b'0');
     }
+    offset
 }
 
 #[cfg(test)]

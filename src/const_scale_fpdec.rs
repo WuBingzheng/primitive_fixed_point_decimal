@@ -200,7 +200,8 @@ where
 /// It supports some [formatting options](https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters):
 /// width, fill, alignment, precision, sign and 0-fill.
 ///
-/// **Panic**: if the scale is too big (>1000 or <-1000) and the width is set.
+/// **Panic**: if the scale `S` is too big (>200 or <-200) or the specified
+/// precision is too big (>200).
 ///
 /// Examples:
 ///
@@ -922,5 +923,74 @@ mod tests {
         assert_eq!(Dec32n2::from_str("-1000"), Ok(fpdec!(-1000)));
         assert_eq!(Dec32n2::from_str("1000.00"), Err(ParseError::Precision));
         assert_eq!(Dec32n2::from_str("1001"), Err(ParseError::Precision));
+    }
+
+    // used for testing format
+    struct Buffer {
+        data: [u8; 100],
+        len: usize,
+    }
+    impl Buffer {
+        fn new() -> Self {
+            Buffer {
+                data: [0; 100],
+                len: 0,
+            }
+        }
+        fn as_str(&self) -> &str {
+            unsafe { core::str::from_utf8_unchecked(&self.data[..self.len]) }
+        }
+    }
+    use core::fmt::Write;
+    impl Write for Buffer {
+        fn write_str(&mut self, s: &str) -> fmt::Result {
+            let bytes = s.as_bytes();
+            if self.len + bytes.len() > self.data.len() {
+                return Err(fmt::Error);
+            }
+            self.data[self.len..self.len + bytes.len()].copy_from_slice(bytes);
+            self.len += bytes.len();
+            Ok(())
+        }
+    }
+
+    type Dec64p7 = ConstScaleFpdec<i64, 7>;
+    fn do_check_fmt(f: f64) {
+        let mut buf = Buffer::new();
+        let dec: Dec64p7 = fpdec!(f);
+        write!(buf, "{dec}").unwrap();
+        let dec2: Dec64p7 = Dec64p7::from_str(buf.as_str()).unwrap();
+        assert_eq!(dec, dec2);
+
+        //
+        let mut buf = Buffer::new();
+        let dec: Dec64p7 = fpdec!(-f);
+        write!(buf, "{dec:.7}").unwrap();
+        let dec2: Dec64p7 = Dec64p7::from_str(buf.as_str()).unwrap();
+        assert_eq!(dec, dec2);
+
+        //
+        let mut buf = Buffer::new();
+        let dec: Dec64p7 = fpdec!(-f);
+        write!(buf, "{dec}").unwrap();
+        let dec2: Dec64p7 = Dec64p7::from_str(buf.as_str()).unwrap();
+        assert_eq!(dec, dec2);
+    }
+
+    #[test]
+    fn test_fmt2() {
+        do_check_fmt(0.0);
+        do_check_fmt(1.0);
+        do_check_fmt(123.0);
+        do_check_fmt(123.456);
+        do_check_fmt(123.4567);
+        do_check_fmt(123.002);
+        do_check_fmt(123.00002);
+        do_check_fmt(123.0000002);
+        do_check_fmt(0.456);
+        do_check_fmt(0.4567);
+        do_check_fmt(0.002);
+        do_check_fmt(0.00002);
+        do_check_fmt(0.0000002);
     }
 }
