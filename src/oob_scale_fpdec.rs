@@ -646,6 +646,24 @@ where
     }
 }
 
+impl<I> core::iter::Sum for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+{
+    fn sum<Iter: Iterator<Item = Self>>(iter: Iter) -> Self {
+        iter.fold(Self::ZERO, |acc, d| acc + d)
+    }
+}
+
+impl<'a, I> core::iter::Sum<&'a OobScaleFpdec<I>> for OobScaleFpdec<I>
+where
+    I: FpdecInner,
+{
+    fn sum<Iter: Iterator<Item = &'a Self>>(iter: Iter) -> Self {
+        iter.fold(Self::ZERO, |acc, d| acc + *d)
+    }
+}
+
 /// Wrapper to display/load OobScaleFpdec.
 ///
 /// Since the scale of OobScaleFpdec is out-of-band, we can not
@@ -1020,5 +1038,12 @@ mod tests {
             Fmt32::from_str("3.14159265359879"),
             Err(ParseError::Overflow)
         );
+    }
+
+    #[test]
+    fn test_sum() {
+        let v: [Dec32; 3] = [fpdec!(0.1, 2), fpdec!(0.2, 2), fpdec!(0.3, 2)];
+        let s: Dec32 = v.iter().sum();
+        assert_eq!(s, fpdec!(0.6, 2));
     }
 }
