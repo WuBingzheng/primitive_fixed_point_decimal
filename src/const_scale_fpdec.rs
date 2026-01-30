@@ -594,6 +594,24 @@ where
     }
 }
 
+impl<I, const S: i32> core::iter::Sum for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    fn sum<Iter: Iterator<Item = Self>>(iter: Iter) -> Self {
+        iter.fold(Self::ZERO, |acc, d| acc + d)
+    }
+}
+
+impl<'a, I, const S: i32> core::iter::Sum<&'a ConstScaleFpdec<I, S>> for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    fn sum<Iter: Iterator<Item = &'a Self>>(iter: Iter) -> Self {
+        iter.fold(Self::ZERO, |acc, d| acc + *d)
+    }
+}
+
 impl<I, J, const S: i32> IntoRatioInt<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner + Into<J>,
@@ -992,5 +1010,12 @@ mod tests {
         do_check_fmt(0.002);
         do_check_fmt(0.00002);
         do_check_fmt(0.0000002);
+    }
+
+    #[test]
+    fn test_sum() {
+        let v: [Dec32p2; 3] = [fpdec!(0.1), fpdec!(0.2), fpdec!(0.3)];
+        let s: Dec32p2 = v.iter().sum();
+        assert_eq!(s, fpdec!(0.6));
     }
 }
