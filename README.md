@@ -1,16 +1,18 @@
 Primitive fixed-point decimal types.
 
+Floating-point for flexibility, fixed-point for efficiency. We are fixed-point
+by binding scale to *type* but not each value.
+
+Binary for machines, decimal for humans. We represent and calculate
+decimal fractions accurately by scaling integers in base-10.
+
 For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
 representation, and the static scale is `4`.
 
 
 # Features
 
-- Fixed-point. The scale is bound to the *type* but not each *value*.
-
-- Decimal. Using integer types to represent numbers with a scaling factor
-  (also called as "scale") in base 10 to achieve the accuracy. This is a
-  [common idea](https://en.wikipedia.org/wiki/Fixed-point_arithmetic#Representation).
+Important:
 
 - The `+` and `-` operations only perform between same types in same scale.
   There is no implicitly type or scale conversion. This makes sense, for we
@@ -24,6 +26,8 @@ representation, and the static scale is `4`.
   the [Specify Scale](#specify-scale) section for details.
 
 - Supports both signed and unsigned types.
+
+Less important, yet might also be what you need:
 
 - Supports scale larger than the significant digits of the underlying integer
   type. For example `ConstScaleFpdec<i8, 4>` represents numbers in range
