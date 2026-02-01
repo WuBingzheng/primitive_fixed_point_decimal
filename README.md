@@ -45,36 +45,36 @@ Less important, yet might also be what you need:
 # Usage
 
 Here we take `ConstScaleFpdec` as example. The other type `OobScaleFpdec`
-is similar.
+is similar. See the [Specify Scale](#specify-scale) section for details.
 
 There are several ways to construct the decimal:
 
 ```rust
 use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
 
-// We choose `i64` as the underlying integer, and keep `6` precision.
-type Balance = ConstScaleFpdec<i64, 6>;
+// We choose `i64` as the underlying integer, and keep `4` precision.
+type Balance = ConstScaleFpdec<i64, 4>;
 
 // From float number.
-let b = Balance::try_from(12.345).unwrap();
-assert_eq!(b.to_string(), "12.345");
+let b = Balance::try_from(12.34).unwrap();
+assert_eq!(b.to_string(), "12.34");
 
 // From integer number.
-let b = Balance::try_from(123).unwrap();
-assert_eq!(b.to_string(), "123");
+let b = Balance::try_from(1234).unwrap();
+assert_eq!(b.to_string(), "1234");
 
-// This macro wraps above 2 TryFrom methods. It panics if fail in convert.
-let _b1: Balance = fpdec!(12.345);
-let _b2: Balance = fpdec!(123);
+// The macro `fpdec` wraps above 2 TryFrom methods. It panics if fail in convert.
+let _b1: Balance = fpdec!(12.34);
+let _b2: Balance = fpdec!(1234);
 
 // From string.
 use std::str::FromStr;
-let b = Balance::from_str("12.345").unwrap();
-assert_eq!(b.to_string(), "12.345");
+let b = Balance::from_str("12.34").unwrap();
+assert_eq!(b.to_string(), "12.34");
 
 // From mantissa, which is the underlying integer.
 // This is low-level, but also the only `const` construction method.
-const TWENTY: Balance = Balance::from_mantissa(20_000_000);
+const TWENTY: Balance = Balance::from_mantissa(20 * 10000);
 assert_eq!(TWENTY, fpdec!(20));
 ```
 
@@ -84,15 +84,15 @@ them super fast, roughly equivalent to one single CPU instruction.
 
 ```rust
 use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
-type Balance = ConstScaleFpdec<i64, 6>;
+type Balance = ConstScaleFpdec<i64, 4>;
 
-let b1: Balance = fpdec!(12.345);
-let b2: Balance = fpdec!(0.001);
+let b1: Balance = fpdec!(12.34);
+let b2: Balance = fpdec!(8000);
 
-assert_eq!(b1 + b2, fpdec!(12.346));
+assert_eq!(b1 + b2, fpdec!(8012.34));
 
 // If you want to check the overflow, use `checked_add()`:
-assert_eq!(b1.checked_add(b2), Some(fpdec!(12.346)));
+assert_eq!(b1.checked_add(b2), Some(fpdec!(8012.34)));
 ```
 
 Multiplication and division operations accept operand with different types
@@ -100,32 +100,32 @@ and scales, and allow the result's scale specified.
 
 ```rust
 use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec, Rounding};
-type Balance = ConstScaleFpdec<i64, 6>;
-type Price = ConstScaleFpdec<u32, 4>; // different integer type and precision
+type Balance = ConstScaleFpdec<i64, 4>;
 
-let stock: Balance = fpdec!(12.345);
-let price: Price = fpdec!(10);
+// new type with different integer type and precision
+type FeeRate = ConstScaleFpdec<u16, 6>;
 
-// `money` has the same type.
-let money = stock * price;
-assert_eq!(money, fpdec!(123.45));
+let b: Balance = fpdec!(12.34);
+let rate: FeeRate = fpdec!(0.001);
+
+// `fee` inherits the type of `b`.
+let fee = b * rate;
+assert_eq!(fee, fpdec!(0.0123)); // loss precision
 
 // If you want to check overflow, or want to specify new decimal type for
 // the result, use `checked_mul()`:
-type AnotherBalance = ConstScaleFpdec<i64, 10>; // longer precision
-let price: Price = fpdec!(1e-5);
-let money: AnotherBalance = stock.checked_mul(price).unwrap();
-assert_eq!(money, fpdec!(0.00012345));
+type AnotherBalance = ConstScaleFpdec<i64, 8>; // longer precision
+let fee: AnotherBalance = b.checked_mul(rate).unwrap();
+assert_eq!(fee, fpdec!(0.01234));
 
-// Multiplication operations can result in loss of precision. The default
-// behavior is round, though custom rounding strategies are supported by
-// `*_ext()` methods:
-let money: Balance = stock.checked_mul_ext(price, Rounding::Ceiling).unwrap();
-assert_eq!(money, fpdec!(0.000124));
+// Multiplication operations can result in loss of precision. The default behavior
+// is round, though custom rounding strategies are supported by `*_ext()` methods:
+let fee: Balance = b.checked_mul_ext(rate, Rounding::Ceiling).unwrap();
+assert_eq!(fee, fpdec!(0.0124));
 
 // Also multiply by integer:
-let double = stock.checked_mul_int(2).unwrap();
-assert_eq!(double, fpdec!(12.345 * 2.0));
+let double = b.checked_mul_int(2).unwrap();
+assert_eq!(double, fpdec!(12.34 * 2.0));
 
 // However can not by float numbers.
 ```
@@ -134,19 +134,19 @@ Decimal can be converted into some types:
 
 ```rust
 use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
-type Balance = ConstScaleFpdec<i64, 6>;
-let b: Balance = fpdec!(12.345);
+type Balance = ConstScaleFpdec<i64, 4>;
+let b: Balance = fpdec!(12.34);
 
 // Format into string.
-assert_eq!(format!("{:+.4}", b), "+12.3450");
+assert_eq!(format!("{:+.3}", b), "+12.340");
 
 // Convert into float numbers.
 let f: f32 = b.into();
-assert_eq!(f, 12.345);
+assert_eq!(f, 12.34);
 
 // Get the mantissa, which is the underlying integer.
 let m = b.mantissa();
-assert_eq!(m, 12_345_000);
+assert_eq!(m, 12_3400);
 ```
 
 
