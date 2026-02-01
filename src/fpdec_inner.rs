@@ -112,6 +112,8 @@ pub trait FpdecInner:
     /// assert_eq!(8.rounding_div(-3, Rounding::Floor), Some(-3));
     /// assert_eq!(8.rounding_div(-3, Rounding::Round), Some(-3));
     /// assert_eq!(8.rounding_div(-3, Rounding::Ceiling), Some(-2));
+    /// assert_eq!((-23).rounding_div(-5, Rounding::Round), Some(5));
+    /// assert_eq!((-21).rounding_div(-5, Rounding::Round), Some(4));
     /// assert_eq!(120_i8.rounding_div(121_i8, Rounding::Round), Some(1));
     /// assert_eq!(120_i8.rounding_div(-121_i8, Rounding::Round), Some(-1));
     /// ```
@@ -122,16 +124,33 @@ pub trait FpdecInner:
             return Some(q);
         }
 
-        if (self ^ b) > Self::ZERO {
+        if (self ^ b) >= Self::ZERO {
             // unsigned types, or signed types and self and b have same sign
             match rounding {
                 Rounding::Floor | Rounding::TowardsZero => q,
                 Rounding::Ceiling | Rounding::AwayFromZero => q + Self::ONE,
                 Rounding::Round => {
-                    if remain.saturating_add(remain) >= b {
-                        q + Self::ONE
+                    if Self::MIN < Self::ZERO {
+                        // signed type
+                        // We need to check: abs(remain) * 2 >= abs(b), but we
+                        // want to avoid overflow and minimize conditional branch.
+                        // So we do not use "*2" or abs().
+                        // `self` and `b` have same sign. So do `remain` and `b`.
+                        // If b>0, then we check: remain - (b - remain) >= 0;
+                        // else, we check: remain - (b - remain) <= 0.
+                        // Finally, we get:
+                        if (remain - (b - remain)) ^ b >= Self::ZERO {
+                            q + Self::ONE
+                        } else {
+                            q
+                        }
                     } else {
-                        q
+                        // unsigned type
+                        if remain >= b - remain {
+                            q + Self::ONE
+                        } else {
+                            q
+                        }
                     }
                 }
             }
@@ -656,5 +675,112 @@ mod tests {
         assert_eq!(std::format!("{}", &d), "120000");
         assert_eq!(std::format!("{:.0}", &d), "120000");
         assert_eq!(std::format!("{:.2}", &d), "120000.00");
+    }
+
+    fn do_test_rounding_div_no_rem(a: i32, b: i32) {
+        let q = a / b;
+        assert_eq!(a.rounding_div(b, Rounding::Floor).unwrap(), q);
+        assert_eq!(a.rounding_div(b, Rounding::Ceiling).unwrap(), q);
+        assert_eq!(a.rounding_div(b, Rounding::Round).unwrap(), q);
+
+        assert_eq!((-a).rounding_div(-b, Rounding::Floor).unwrap(), q);
+        assert_eq!((-a).rounding_div(-b, Rounding::Ceiling).unwrap(), q);
+        assert_eq!((-a).rounding_div(-b, Rounding::Round).unwrap(), q);
+
+        assert_eq!(a.rounding_div(-b, Rounding::Floor).unwrap(), -q);
+        assert_eq!(a.rounding_div(-b, Rounding::Ceiling).unwrap(), -q);
+        assert_eq!(a.rounding_div(-b, Rounding::Round).unwrap(), -q);
+
+        assert_eq!((-a).rounding_div(b, Rounding::Floor).unwrap(), -q);
+        assert_eq!((-a).rounding_div(b, Rounding::Ceiling).unwrap(), -q);
+        assert_eq!((-a).rounding_div(b, Rounding::Round).unwrap(), -q);
+    }
+
+    fn do_test_rounding_div_small(a: i32, b: i32) {
+        let q = a / b;
+        let one = if a ^ b > 0 { 1 } else { -1 };
+        assert_eq!(a.rounding_div(b, Rounding::TowardsZero).unwrap(), q);
+        assert_eq!(a.rounding_div(b, Rounding::AwayFromZero).unwrap(), q + one);
+        assert_eq!(a.rounding_div(b, Rounding::Round).unwrap(), q);
+    }
+
+    fn do_test_rounding_div_small4(a: i32, b: i32) {
+        let q = a / b;
+        assert_eq!(a.rounding_div(b, Rounding::Floor).unwrap(), q);
+        assert_eq!(a.rounding_div(b, Rounding::Ceiling).unwrap(), q + 1);
+        assert_eq!(a.rounding_div(b, Rounding::Round).unwrap(), q);
+
+        assert_eq!((-a).rounding_div(-b, Rounding::Floor).unwrap(), q);
+        assert_eq!((-a).rounding_div(-b, Rounding::Ceiling).unwrap(), q + 1);
+        assert_eq!((-a).rounding_div(-b, Rounding::Round).unwrap(), q);
+
+        assert_eq!(a.rounding_div(-b, Rounding::Floor).unwrap(), -q - 1);
+        assert_eq!(a.rounding_div(-b, Rounding::Ceiling).unwrap(), -q);
+        assert_eq!(a.rounding_div(-b, Rounding::Round).unwrap(), -q);
+
+        assert_eq!((-a).rounding_div(b, Rounding::Floor).unwrap(), -q - 1);
+        assert_eq!((-a).rounding_div(b, Rounding::Ceiling).unwrap(), -q);
+        assert_eq!((-a).rounding_div(b, Rounding::Round).unwrap(), -q);
+    }
+
+    fn do_test_rounding_div_big(a: i32, b: i32) {
+        let q = a / b;
+        let one = if a ^ b > 0 { 1 } else { -1 };
+        assert_eq!(a.rounding_div(b, Rounding::TowardsZero).unwrap(), q);
+        assert_eq!(a.rounding_div(b, Rounding::AwayFromZero).unwrap(), q + one);
+        assert_eq!(a.rounding_div(b, Rounding::Round).unwrap(), q + one);
+    }
+
+    fn do_test_rounding_div_big4(a: i32, b: i32) {
+        let q = a / b;
+        assert_eq!(a.rounding_div(b, Rounding::Floor).unwrap(), q);
+        assert_eq!(a.rounding_div(b, Rounding::Ceiling).unwrap(), q + 1);
+        assert_eq!(a.rounding_div(b, Rounding::Round).unwrap(), q + 1);
+
+        assert_eq!((-a).rounding_div(-b, Rounding::Floor).unwrap(), q);
+        assert_eq!((-a).rounding_div(-b, Rounding::Ceiling).unwrap(), q + 1);
+        assert_eq!((-a).rounding_div(-b, Rounding::Round).unwrap(), q + 1);
+
+        assert_eq!(a.rounding_div(-b, Rounding::Floor).unwrap(), -q - 1);
+        assert_eq!(a.rounding_div(-b, Rounding::Ceiling).unwrap(), -q);
+        assert_eq!(a.rounding_div(-b, Rounding::Round).unwrap(), -q - 1);
+
+        assert_eq!((-a).rounding_div(b, Rounding::Floor).unwrap(), -q - 1);
+        assert_eq!((-a).rounding_div(b, Rounding::Ceiling).unwrap(), -q);
+        assert_eq!((-a).rounding_div(b, Rounding::Round).unwrap(), -q - 1);
+    }
+
+    #[test]
+    fn test_rounding_div() {
+        do_test_rounding_div_no_rem(10, 5);
+        do_test_rounding_div_no_rem(10, 2);
+        do_test_rounding_div_no_rem(144, 12);
+
+        do_test_rounding_div_small4(7, 3);
+        do_test_rounding_div_small4(21, 5);
+        do_test_rounding_div_small4(22, 5);
+        do_test_rounding_div_small4(i32::MAX, i32::MAX - 1);
+
+        do_test_rounding_div_big4(8, 3);
+        do_test_rounding_div_big4(23, 5);
+        do_test_rounding_div_big4(24, 5);
+        do_test_rounding_div_big4(i32::MAX, 37);
+
+        do_test_rounding_div_small(i32::MIN, 20);
+        do_test_rounding_div_small(i32::MIN, -20);
+        do_test_rounding_div_small(100, i32::MIN);
+        do_test_rounding_div_small(-100, i32::MIN);
+
+        do_test_rounding_div_big(i32::MIN, 37);
+        do_test_rounding_div_big(i32::MIN, -37);
+        do_test_rounding_div_big(i32::MIN + 100, i32::MIN);
+        do_test_rounding_div_big(i32::MAX, i32::MIN);
+
+        assert_eq!(23_u32.rounding_div(5_u32, Rounding::Round).unwrap(), 5_u32);
+        assert_eq!(21_u32.rounding_div(5_u32, Rounding::Round).unwrap(), 4_u32);
+        assert_eq!(101_u32.rounding_div(100_u32, Rounding::Round).unwrap(), 1);
+        assert_eq!(199_u32.rounding_div(100_u32, Rounding::Round).unwrap(), 2);
+        assert_eq!(149_u32.rounding_div(100_u32, Rounding::Round).unwrap(), 1);
+        assert_eq!(150_u32.rounding_div(100_u32, Rounding::Round).unwrap(), 2);
     }
 }
