@@ -11,14 +11,14 @@ use num_traits::{
     identities::{ConstOne, ConstZero, Zero},
     int::PrimInt,
     ops::wrapping::WrappingAdd,
-    AsPrimitive, Num, SaturatingAdd,
+    AsPrimitive, Num,
 };
 
 /// The trait for underlying representation.
 ///
 /// Normal users don't need to use this trait.
 pub trait FpdecInner:
-    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + SaturatingAdd + Zero
+    PrimInt + ConstOne + ConstZero + AddAssign + SubAssign + WrappingAdd + Zero
 {
     const MAX: Self;
     const MIN: Self;
@@ -135,7 +135,7 @@ pub trait FpdecInner:
                         // We need to check: abs(remain) * 2 >= abs(b), but we
                         // want to avoid overflow and minimize conditional branch.
                         // So we do not use "*2" or abs().
-                        // `self` and `b` have same sign. So do `remain` and `b`.
+                        // `self` and `b` have same sign. So does `remain`.
                         // If b>0, then we check: remain - (b - remain) >= 0;
                         // else, we check: remain - (b - remain) <= 0.
                         // Finally, we get:
@@ -161,7 +161,7 @@ pub trait FpdecInner:
                 Rounding::Ceiling | Rounding::TowardsZero => q,
                 Rounding::Round => {
                     let r = remain.unsigned_abs();
-                    if r.saturating_add(&r) >= b.unsigned_abs() {
+                    if r >= b.unsigned_abs() - r {
                         q - Self::ONE
                     } else {
                         q
