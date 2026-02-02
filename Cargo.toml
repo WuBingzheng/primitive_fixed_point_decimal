@@ -21,3 +21,11 @@ version = "1.0"
 features = ["derive"]
 optional = true
 default-features = false
+
+[dev-dependencies]
+criterion = { version = "0.7", features = ["html_reports"] }
+rust_decimal = { version = "1.40", features = ["macros"] }
+
+[[bench]]
+name = "vs_rust_decimal"
+harness = false
