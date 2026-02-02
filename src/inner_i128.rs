@@ -64,7 +64,7 @@ impl FpdecInner for i128 {
     fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
         // happy path, no overflow
         if let Some(r) = self.checked_mul(b) {
-            return r.rounding_div(c, rounding);
+            return rounding_div_try_i64(r, c, rounding);
         }
 
         // normal path
@@ -96,7 +96,7 @@ impl FpdecInner for i128 {
         }
 
         // final division
-        let last_q = last_dividend.rounding_div(c, rounding)?;
+        let last_q = rounding_div_try_i64(last_dividend, c, rounding)?;
 
         q.checked_add(last_q)
     }
@@ -167,7 +167,7 @@ impl FpdecInner for u128 {
     fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
         // happy path, no overflow
         if let Some(r) = self.checked_mul(b) {
-            return r.rounding_div(c, rounding);
+            return rounding_div_try_u64(r, c, rounding);
         }
 
         // normal path
@@ -183,7 +183,7 @@ impl FpdecInner for u128 {
         };
 
         // final division
-        let last_q = last_dividend.rounding_div(c, rounding)?;
+        let last_q = rounding_div_try_u64(last_dividend, c, rounding)?;
 
         q.checked_add(last_q)
     }
@@ -289,6 +289,26 @@ fn reduce2_big(mhigh: u128, mlow: u128, divisor: u128) -> Option<(u128, u128)> {
     }
 
     Some((dividend, q))
+}
+
+// try division in i64 first, which is much faster than in i128
+fn rounding_div_try_i64(a: i128, b: i128, rounding: Rounding) -> Option<i128> {
+    if let Ok(a64) = i64::try_from(a) {
+        if let Ok(b64) = i64::try_from(b) {
+            return a64.rounding_div(b64, rounding).map(|x| x as i128);
+        }
+    }
+    a.rounding_div(b, rounding)
+}
+
+// try division in u64 first, which is much faster than in u128
+fn rounding_div_try_u64(a: u128, b: u128, rounding: Rounding) -> Option<u128> {
+    if let Ok(a64) = u64::try_from(a) {
+        if let Ok(b64) = u64::try_from(b) {
+            return a64.rounding_div(b64, rounding).map(|x| x as u128);
+        }
+    }
+    a.rounding_div(b, rounding)
 }
 
 #[cfg(test)]
