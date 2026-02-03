@@ -2,12 +2,12 @@ use crate::fpdec_inner::FpdecInner;
 use crate::Rounding;
 
 impl FpdecInner for i128 {
-    const MAX: Self = i128::MAX;
-    const MIN: Self = i128::MIN;
+    const MAX: Self = Self::MAX;
+    const MIN: Self = Self::MIN;
     const TEN: Self = 10;
     const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_i128.pow(Self::DIGITS);
-    const DIGITS: u32 = i128::MAX.ilog10();
+    const DIGITS: u32 = Self::MAX.ilog10();
     const NEG_MIN_STR: &'static str = "170141183460469231731687303715884105728";
 
     type Unsigned = u128;
@@ -103,17 +103,17 @@ impl FpdecInner for i128 {
 }
 
 impl FpdecInner for u128 {
-    const MAX: Self = u128::MAX;
-    const MIN: Self = u128::MIN;
+    const MAX: Self = Self::MAX;
+    const MIN: Self = Self::MIN;
     const TEN: Self = 10;
     const HUNDRED: Self = 100;
     const MAX_POWERS: Self = 10_u128.pow(Self::DIGITS);
-    const DIGITS: u32 = u128::MAX.ilog10();
+    const DIGITS: u32 = Self::MAX.ilog10();
 
     #[doc(hidden)]
     const NEG_MIN_STR: &'static str = "unreachable";
 
-    type Unsigned = u128;
+    type Unsigned = Self;
     fn unsigned_abs(self) -> Self::Unsigned {
         self
     }
@@ -190,7 +190,7 @@ impl FpdecInner for u128 {
 }
 
 // calculate: a * b = (mhigh,mlow)
-fn mul2(a: u128, b: u128) -> (u128, u128) {
+const fn mul2(a: u128, b: u128) -> (u128, u128) {
     let (ahigh, alow) = (a >> 64, a & u64::MAX as u128);
     let (bhigh, blow) = (b >> 64, b & u64::MAX as u128);
 

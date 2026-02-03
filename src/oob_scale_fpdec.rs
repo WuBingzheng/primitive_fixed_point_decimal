@@ -47,7 +47,7 @@ where
         self,
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self + rhs - result)
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -89,7 +89,7 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self + rhs - result)
         rounding: Rounding,
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -107,7 +107,7 @@ where
     pub fn checked_mul_const_scale<J, const S: i32>(
         self,
         rhs: ConstScaleFpdec<J, S>,
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -142,7 +142,7 @@ where
         self,
         rhs: ConstScaleFpdec<J, S>,
         rounding: Rounding,
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -159,7 +159,7 @@ where
         self,
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self - rhs - result)
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -196,7 +196,7 @@ where
         rhs: OobScaleFpdec<J>,
         diff_scale: i32, // scale (self - rhs - result)
         rounding: Rounding,
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -215,7 +215,7 @@ where
     pub fn checked_div_const_scale<J, const S: i32>(
         self,
         rhs: ConstScaleFpdec<J, S>,
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -248,7 +248,7 @@ where
         self,
         rhs: ConstScaleFpdec<J, S>,
         rounding: Rounding,
-    ) -> Option<OobScaleFpdec<I>>
+    ) -> Option<Self>
     where
         J: FpdecInner,
     {
@@ -308,7 +308,6 @@ where
     /// assert_eq!(Decimal::try_from_str("9999", 4), Err(ParseError::Overflow));
     /// assert_eq!(Decimal::try_from_str("1.23456", 4), Err(ParseError::Precision));
     /// ```
-    #[must_use]
     pub fn try_from_str(s: &str, scale: i32) -> Result<Self, ParseError>
     where
         I: Num<FromStrRadixErr = ParseIntError>,
@@ -655,7 +654,7 @@ where
     }
 }
 
-impl<'a, I> core::iter::Sum<&'a OobScaleFpdec<I>> for OobScaleFpdec<I>
+impl<'a, I> core::iter::Sum<&'a Self> for OobScaleFpdec<I>
 where
     I: FpdecInner,
 {
@@ -763,7 +762,7 @@ where
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (inner, scale) = I::try_from_str_only(s)?;
-        Ok(OobFmt(OobScaleFpdec(inner), scale))
+        Ok(Self(OobScaleFpdec(inner), scale))
     }
 }
 
@@ -787,9 +786,8 @@ where
     /// assert_eq!(df.rescale(1), Err(ParseError::Precision));
     /// assert_eq!(df.rescale(10), Err(ParseError::Overflow));
     /// ```
-    #[must_use]
     pub fn rescale(self, scale2: i32) -> Result<OobScaleFpdec<I>, ParseError> {
-        let OobFmt(dec, scale0) = self;
+        let Self(dec, scale0) = self;
 
         if scale2 == scale0 {
             Ok(dec)

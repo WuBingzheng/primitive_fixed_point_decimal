@@ -57,10 +57,10 @@ use core::fmt;
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            ParseError::Empty => "empty string",
-            ParseError::Invalid => "invalid digit in the string",
-            ParseError::Overflow => "overflow",
-            ParseError::Precision => "precision out of range",
+            Self::Empty => "empty string",
+            Self::Invalid => "invalid digit in the string",
+            Self::Overflow => "overflow",
+            Self::Precision => "precision out of range",
         };
         write!(f, "{s}")
     }

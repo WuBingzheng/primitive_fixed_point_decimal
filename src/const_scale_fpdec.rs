@@ -603,7 +603,7 @@ where
     }
 }
 
-impl<'a, I, const S: i32> core::iter::Sum<&'a ConstScaleFpdec<I, S>> for ConstScaleFpdec<I, S>
+impl<'a, I, const S: i32> core::iter::Sum<&'a Self> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
 {

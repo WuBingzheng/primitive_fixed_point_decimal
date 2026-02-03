@@ -14,9 +14,9 @@ macro_rules! calc_mul_div_higher {
 }
 
 macro_rules! signed_consts {
-    ($typ:ty, $uns_typ:ty, $neg_min_str:expr) => {
-        const MAX: Self = <$typ>::MAX;
-        const MIN: Self = <$typ>::MIN;
+    ($uns_typ:ty, $neg_min_str:expr) => {
+        const MAX: Self = Self::MAX;
+        const MIN: Self = Self::MIN;
         const TEN: Self = 10;
         const HUNDRED: Self = 100;
         const MAX_POWERS: Self = Self::TEN.pow(Self::DIGITS);
@@ -32,9 +32,9 @@ macro_rules! signed_consts {
 }
 
 macro_rules! unsigned_consts {
-    ($typ:ty) => {
-        const MAX: Self = <$typ>::MAX;
-        const MIN: Self = <$typ>::MIN;
+    () => {
+        const MAX: Self = Self::MAX;
+        const MIN: Self = Self::MIN;
         const TEN: Self = 10;
         const HUNDRED: Self = 100;
         const MAX_POWERS: Self = Self::TEN.pow(Self::DIGITS);
@@ -43,7 +43,7 @@ macro_rules! unsigned_consts {
         #[doc(hidden)]
         const NEG_MIN_STR: &'static str = "unreachable";
 
-        type Unsigned = $typ;
+        type Unsigned = Self;
         fn unsigned_abs(self) -> Self::Unsigned {
             self
         }
@@ -51,7 +51,7 @@ macro_rules! unsigned_consts {
 }
 
 impl FpdecInner for i8 {
-    signed_consts!(i8, u8, "128");
+    signed_consts!(u8, "128");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i8; 3] = [1, 10_i8.pow(1), 10_i8.pow(2)];
@@ -65,7 +65,7 @@ impl FpdecInner for i8 {
 }
 
 impl FpdecInner for i16 {
-    signed_consts!(i16, u16, "32768");
+    signed_consts!(u16, "32768");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i16; 5] = [
@@ -85,7 +85,7 @@ impl FpdecInner for i16 {
 }
 
 impl FpdecInner for i32 {
-    signed_consts!(i32, u32, "2147483648");
+    signed_consts!(u32, "2147483648");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i32; 10] = [
@@ -110,7 +110,7 @@ impl FpdecInner for i32 {
 }
 
 impl FpdecInner for i64 {
-    signed_consts!(i64, u64, "9223372036854775808");
+    signed_consts!(u64, "9223372036854775808");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i64; 19] = [
@@ -147,7 +147,7 @@ impl FpdecInner for i64 {
     }
 }
 impl FpdecInner for u8 {
-    unsigned_consts!(u8);
+    unsigned_consts!();
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u8; 3] = [1, 10_u8.pow(1), 10_u8.pow(2)];
@@ -161,7 +161,7 @@ impl FpdecInner for u8 {
 }
 
 impl FpdecInner for u16 {
-    unsigned_consts!(u16);
+    unsigned_consts!();
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u16; 5] = [
@@ -181,7 +181,7 @@ impl FpdecInner for u16 {
 }
 
 impl FpdecInner for u32 {
-    unsigned_consts!(u32);
+    unsigned_consts!();
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u32; 10] = [
@@ -206,7 +206,7 @@ impl FpdecInner for u32 {
 }
 
 impl FpdecInner for u64 {
-    unsigned_consts!(u64);
+    unsigned_consts!();
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u64; 20] = [

@@ -272,7 +272,7 @@ pub trait FpdecInner:
 
         // SAFETY: offset is updated along with buf
         let buf = unsafe {
-            core::slice::from_raw_parts((&buf[offset..]).as_ptr() as *const _, buf.len() - offset)
+            core::slice::from_raw_parts(buf[offset..].as_ptr().cast(), buf.len() - offset)
         };
 
         // SAFETY: all data is valid charactor
@@ -361,7 +361,7 @@ where
         }
 
         // set precision = 0, do not show the '.' char
-        Some(precision) if precision == 0 => match exp {
+        Some(0) => match exp {
             Some(exp) => {
                 if frac.saturating_add(frac) >= exp {
                     dump_single(int + I::ONE, buf)
