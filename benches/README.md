@@ -15,7 +15,7 @@ Floating-point versus fixed-point is the fundamental difference between these 2 
 
 # Representation
 
-Before presenting the benchmark results, I will explain how each crate represent a decimal.
+Before listing the benchmark results, I'd like to explain how each crate represent a decimal.
 
 `rust_decimal` uses a floating-point design: each instance stores a scale value.
 Its decimal type [Decimal](https://docs.rs/rust_decimal/1.40.0/rust_decimal/struct.Decimal.html)
@@ -74,12 +74,17 @@ The performance of both is the same. The benchmarks here only use `ConstScaleFpd
 
 # Environment
 
-Rust version: `cargo 1.93.0 (083ac5135 2025-12-15)`.
+Versions:
+
+- Rust: `cargo 1.93.0 (083ac5135 2025-12-15)`
+- `criterion`: `0.7`
+- `rust_decimal`: `1.40.0`
+- `primitive_fixed_point_decimal`: `1.3.0`
 
 I run the benchmark on three machines:
 
 - Ubuntu 22.04 @AMD EPYC 9754
-- Ubuntu 16.04 @Intel Xeon
+- Ubuntu 16.04 @Intel Xeon, 2500 MHZ
 - MacOS 13.5 @M1
 
 The results varied considerably. You are welcome to run the benchmark on your own computer:
@@ -116,7 +121,7 @@ load-long       | 20.80 | 31.13 | 17.41 || 28.59 | 43.31 | 24.61 || 17.64 | 26.7
 dump-short      | 25.66 | 56.98 | 38.72 || 39.07 | 87.33 | 51.14 || 17.03 | 51.09 | 21.05
 dump-long       | 32.46 | 50.56 |103.97 || 47.92 |138.05 |126.73 || 21.73 | 44.36 | 70.75
 ----------------+-------+-------+-------++-------+-------+-------++-------+-------+------
-app             | - | -                                          ||  5.96 | 16.56 | 49.61
+app             | 10.81 | 33.06 |129.82 || 33.69 | 66.27 |153.79 ||  5.96 | 16.56 | 49.61
 ```
 
 - `P-64`: `primitive_fixed_point_decimal::ConstScaleFpdec<i64, 6>`
@@ -173,9 +178,9 @@ feature. So we constructed 4 test cases:
 
 3. `add-rescale-big`, the operand is large, requiring more time for rescaling;
 
-4. `add-rescale-huge`, after rescaling the operand, it overflows, so the other
-   operand can only be rescaled downward. This is very slow. Also this may lose
-   precision.
+4. `add-rescale-huge`, the operand is so huge that it overflows after rescaling,
+   so it can only rescale the other operand downward instead. This is very slow.
+   Also this may lose precision.
 
 See the `bench_add()` function in the benchmark source code for more details.
 
@@ -254,6 +259,8 @@ rescaling does not make it much slower. (Some are even faster; the reason is unc
 While for floating-point `rust_decimal`, whether to rescale depends on whether
 the underlying integer can divide evenly. If it cannot, a very slow rescale is required.
 
+See the `bench_div()` function in the benchmark source code for more details.
+
 
 ## BENCH: load and dump
 
@@ -294,6 +301,8 @@ a single trade, it involves fund changes for both buyer and seller accounts
 and execution fees. In total, it involves 3 multiplications, 4 additions,
 and 4 subtractions.
 
+See the `bench_app()` function in the benchmark source code for more details.
+
 Let's see the results:
 
 ```
@@ -302,6 +311,21 @@ Let's see the results:
 ----------------+-----------------------++-----------------------++----------------------
                 |  P-64 | P-128 | R-dec ||  P-64 | P-128 | R-dec ||  P-64 | P-128 | R-dec
 ----------------+-------+-------+-------++-------+-------+-------++-------+-------+------
-app             | - | -                                          ||  5.96 | 16.56 | 49.61
+add             |  0.32 |  0.32 |    \  ||  0.31 |  0.63 |   \   ||  0.31 |  0.31 |    \ 
+add-rescale     |    \  |    \  | 10.10 ||    \  |    \  | 12.35 ||    \  |    \  |  3.62
+----------------+-------+-------+-------++-------+-------+-------++-------+-------+------
+mul-pure        |    \  |    \  |  9.40 ||    \  |    \  | 10.74 ||    \  |    \  |  2.88
+mul-rescale     |  2.89 | 11.98 |    \  || 12.18 | 22.40 |    \  ||  1.75 |  4.78 |    \
+----------------+-------+-------+-------++-------+-------+-------++-------+-------+------
+app             | 10.81 | 33.06 |129.82 || 33.69 | 66.27 |153.79 ||  5.96 | 16.56 | 49.61
 ```
 
+The results roughly meet expectations:
+
+    TIME(app) := TIME(add) * 8 + TIME(mul) * 3
+
+
+# Conclusion
+
+`primitive_fixed_point_decimal` is faster than `rust_decimal` in most cases,
+while slower in other cases.  No further conclusions.

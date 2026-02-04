@@ -24,7 +24,7 @@ default-features = false
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
-rust_decimal = { version = "1.40", features = ["macros"] }
+rust_decimal = { version = "1.40.0", features = ["macros"] }
 
 [[bench]]
 name = "vs_rust_decimal"
