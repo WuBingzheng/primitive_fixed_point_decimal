@@ -1,4 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
+use std::fmt::Write;
 
 // primitive_fixed_point_decimal
 use primitive_fixed_point_decimal::{fpdec, ConstScaleFpdec};
@@ -21,6 +22,13 @@ fn prim64_div_rescale(a: PrimDec64, b: PrimDec64) -> PrimDec64 {
 fn prim64_div_pure(a: PrimDec64, b: PrimDec64) -> PrimDec64Div {
     a.checked_div(b).unwrap()
 }
+fn prim64_load(s: &str) -> PrimDec64 {
+    PrimDec64::from_str(s).unwrap()
+}
+fn prim64_dump(a: PrimDec64, buf: &mut String) {
+    buf.clear();
+    write!(buf, "{a}").unwrap();
+}
 
 type PrimDec128 = ConstScaleFpdec<i128, 6>;
 type PrimDec128Mul = ConstScaleFpdec<i128, 12>;
@@ -41,6 +49,13 @@ fn prim128_div_rescale(a: PrimDec128, b: PrimDec128) -> PrimDec128 {
 fn prim128_div_pure(a: PrimDec128, b: PrimDec128) -> PrimDec128Div {
     a.checked_div(b).unwrap()
 }
+fn prim128_load(s: &str) -> PrimDec128 {
+    PrimDec128::from_str(s).unwrap()
+}
+fn prim128_dump(a: PrimDec128, buf: &mut String) {
+    buf.clear();
+    write!(buf, "{a}").unwrap();
+}
 
 // rust_decimal
 use rust_decimal::prelude::*;
@@ -54,6 +69,13 @@ fn rust_mul(a: RustDec, b: RustDec) -> RustDec {
 }
 fn rust_div(a: RustDec, b: RustDec) -> RustDec {
     a / b
+}
+fn rust_load(s: &str) -> RustDec {
+    RustDec::from_str(s).unwrap()
+}
+fn rust_dump(a: RustDec, buf: &mut String) {
+    buf.clear();
+    write!(buf, "{a}").unwrap();
 }
 
 // benches
@@ -112,13 +134,13 @@ fn bench_add(c: &mut Criterion) {
     group.bench_with_input("rust-dec", &(rust_n1, rust_n2), |b, i| {
         b.iter(|| rust_add(i.0, i.1))
     });
-    group.bench_with_input("rust-dec-diff", &(rust_n1, rust_n5), |b, i| {
+    group.bench_with_input("rust-dec-rescale", &(rust_n1, rust_n5), |b, i| {
         b.iter(|| rust_add(i.0, i.1))
     });
-    group.bench_with_input("rust-dec-diff-big", &(rust_n1, rust_n6), |b, i| {
+    group.bench_with_input("rust-dec-rescale-big", &(rust_n1, rust_n6), |b, i| {
         b.iter(|| rust_add(i.0, i.1))
     });
-    group.bench_with_input("rust-dec-diff-huge", &(rust_n1, rust_n7), |b, i| {
+    group.bench_with_input("rust-dec-rescale-huge", &(rust_n1, rust_n7), |b, i| {
         b.iter(|| rust_add(i.0, i.1))
     });
 
@@ -266,6 +288,45 @@ fn bench_div_rescale(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_load(c: &mut Criterion, name: &str, input: &str) {
+    let mut group = c.benchmark_group(name);
+
+    // prim-dec64
+    group.bench_with_input("prim-dec64", &input, |b, i| b.iter(|| prim64_load(i)));
+    // prim-dec128
+    group.bench_with_input("prim-dec128", &input, |b, i| b.iter(|| prim128_load(i)));
+    // rust-dec
+    group.bench_with_input("rust-dec", &input, |b, i| b.iter(|| rust_load(i)));
+
+    // done
+    group.finish();
+}
+
+fn bench_dump(c: &mut Criterion, name: &str, input: &str) {
+    let mut group = c.benchmark_group(name);
+
+    let mut buf = String::with_capacity(200);
+
+    // prim-dec64
+    let prim64_n1 = PrimDec64::from_str(input).unwrap();
+    group.bench_with_input("prim-dec64", &prim64_n1, |b, i| {
+        b.iter(|| prim64_dump(*i, &mut buf))
+    });
+    // prim-dec128
+    let prim128_n1 = PrimDec128::from_str(input).unwrap();
+    group.bench_with_input("prim-dec128", &prim128_n1, |b, i| {
+        b.iter(|| prim128_dump(*i, &mut buf))
+    });
+    // rust-dec
+    let rust_n1 = RustDec::from_str(input).unwrap();
+    group.bench_with_input("rust-dec", &rust_n1, |b, i| {
+        b.iter(|| rust_dump(*i, &mut buf))
+    });
+
+    // done
+    group.finish();
+}
+
 // entry
 fn criterion_benchmark(c: &mut Criterion) {
     // bench_int(c);
@@ -275,6 +336,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     bench_mul_rescale_big(c);
     bench_div_pure(c);
     bench_div_rescale(c);
+    bench_load(c, "load_short", "12.34");
+    bench_load(c, "load_long", "123456789012.123456");
+    bench_dump(c, "dump_short", "12.34");
+    bench_dump(c, "dump_long", "123456789012.123456");
 }
 
 criterion_group!(benches, criterion_benchmark);
