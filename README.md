@@ -1,7 +1,8 @@
 Primitive fixed-point decimal types.
 
 Floating-point for flexibility, fixed-point for efficiency. We are fixed-point
-by binding scale to *type* but not each value.
+by binding scale to *type* but not each instance. See the
+[benchmark](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/README.md).
 
 Binary for machines, decimal for humans. We represent and calculate
 decimal fractions accurately by scaling integers in base-10.

@@ -3,6 +3,9 @@ use std::fmt::Write;
 
 // primitive_fixed_point_decimal
 use primitive_fixed_point_decimal::{fpdec, ConstScaleFpdec};
+type PrimPrice = ConstScaleFpdec<u32, 4>;
+type PrimFeeRate = ConstScaleFpdec<u16, 6>;
+
 type PrimDec64 = ConstScaleFpdec<i64, 6>;
 type PrimDec64Mul = ConstScaleFpdec<i64, 12>;
 type PrimDec64Div = ConstScaleFpdec<i64, 0>;
@@ -28,6 +31,38 @@ fn prim64_load(s: &str) -> PrimDec64 {
 fn prim64_dump(a: PrimDec64, buf: &mut String) {
     buf.clear();
     write!(buf, "{a}").unwrap();
+}
+
+#[derive(Clone)]
+struct Prim64AppAccount {
+    base: PrimDec64,
+    quota: PrimDec64,
+}
+#[derive(Clone)]
+struct Prim64AppContext {
+    bider: Prim64AppAccount,
+    asker: Prim64AppAccount,
+    sys_fee: Prim64AppAccount,
+    fee_rate: PrimFeeRate,
+}
+fn prim64_app(ctx: &Prim64AppContext, amount: PrimDec64, price: PrimPrice) {
+    let mut ctx = ctx.clone();
+
+    let money = amount * price;
+    let quota_fee = money * ctx.fee_rate;
+    let base_fee = amount * ctx.fee_rate;
+
+    ctx.bider.base += amount;
+    ctx.bider.quota -= money;
+    ctx.bider.base -= base_fee;
+    ctx.sys_fee.base += base_fee;
+
+    ctx.asker.base -= amount;
+    ctx.asker.quota += money;
+    ctx.asker.quota -= quota_fee;
+    ctx.sys_fee.quota += quota_fee;
+
+    std::hint::black_box(&ctx);
 }
 
 type PrimDec128 = ConstScaleFpdec<i128, 6>;
@@ -57,6 +92,38 @@ fn prim128_dump(a: PrimDec128, buf: &mut String) {
     write!(buf, "{a}").unwrap();
 }
 
+#[derive(Clone)]
+struct Prim128AppAccount {
+    base: PrimDec128,
+    quota: PrimDec128,
+}
+#[derive(Clone)]
+struct Prim128AppContext {
+    bider: Prim128AppAccount,
+    asker: Prim128AppAccount,
+    sys_fee: Prim128AppAccount,
+    fee_rate: PrimFeeRate,
+}
+fn prim128_app(ctx: &Prim128AppContext, amount: PrimDec128, price: PrimPrice) {
+    let mut ctx = ctx.clone();
+
+    let money = amount * price;
+    let quota_fee = money * ctx.fee_rate;
+    let base_fee = amount * ctx.fee_rate;
+
+    ctx.bider.base += amount;
+    ctx.bider.quota -= money;
+    ctx.bider.base -= base_fee;
+    ctx.sys_fee.base += base_fee;
+
+    ctx.asker.base -= amount;
+    ctx.asker.quota += money;
+    ctx.asker.quota -= quota_fee;
+    ctx.sys_fee.quota += quota_fee;
+
+    std::hint::black_box(&ctx);
+}
+
 // rust_decimal
 use rust_decimal::prelude::*;
 type RustDec = Decimal;
@@ -76,6 +143,38 @@ fn rust_load(s: &str) -> RustDec {
 fn rust_dump(a: RustDec, buf: &mut String) {
     buf.clear();
     write!(buf, "{a}").unwrap();
+}
+
+#[derive(Clone)]
+struct RustAppAccount {
+    base: RustDec,
+    quota: RustDec,
+}
+#[derive(Clone)]
+struct RustAppContext {
+    bider: RustAppAccount,
+    asker: RustAppAccount,
+    sys_fee: RustAppAccount,
+    fee_rate: RustDec,
+}
+fn rust_app(ctx: &RustAppContext, amount: RustDec, price: RustDec) {
+    let mut ctx = ctx.clone();
+
+    let money = amount * price;
+    let quota_fee = money * ctx.fee_rate;
+    let base_fee = amount * ctx.fee_rate;
+
+    ctx.bider.base += amount;
+    ctx.bider.quota -= money;
+    ctx.bider.base -= base_fee;
+    ctx.sys_fee.base += base_fee;
+
+    ctx.asker.base -= amount;
+    ctx.asker.quota += money;
+    ctx.asker.quota -= quota_fee;
+    ctx.sys_fee.quota += quota_fee;
+
+    std::hint::black_box(&ctx);
 }
 
 // benches
@@ -327,6 +426,64 @@ fn bench_dump(c: &mut Criterion, name: &str, input: &str) {
     group.finish();
 }
 
+fn bench_app(c: &mut Criterion) {
+    let mut group = c.benchmark_group("app");
+
+    // prim-dec64
+    let account = Prim64AppAccount {
+        base: fpdec!(10000),
+        quota: fpdec!(10000),
+    };
+    let ctx = Prim64AppContext {
+        bider: account.clone(),
+        asker: account.clone(),
+        sys_fee: account,
+        fee_rate: fpdec!(0.000012),
+    };
+    let amount: PrimDec64 = fpdec!(56.789);
+    let price: PrimPrice = fpdec!(1234.5);
+    group.bench_with_input("prim-dec64", &(amount, price), |b, i| {
+        b.iter(|| prim64_app(&ctx, i.0, i.1))
+    });
+
+    // prim-dec128
+    let account = Prim128AppAccount {
+        base: fpdec!(10000),
+        quota: fpdec!(10000),
+    };
+    let ctx = Prim128AppContext {
+        bider: account.clone(),
+        asker: account.clone(),
+        sys_fee: account,
+        fee_rate: fpdec!(0.000012),
+    };
+    let amount: PrimDec128 = fpdec!(56.789);
+    let price: PrimPrice = fpdec!(1234.5);
+    group.bench_with_input("prim-dec128", &(amount, price), |b, i| {
+        b.iter(|| prim128_app(&ctx, i.0, i.1))
+    });
+
+    // rust-dec
+    let account = RustAppAccount {
+        base: dec!(10000),
+        quota: dec!(10000),
+    };
+    let ctx = RustAppContext {
+        bider: account.clone(),
+        asker: account.clone(),
+        sys_fee: account,
+        fee_rate: dec!(0.000012),
+    };
+    let amount: RustDec = dec!(56.789);
+    let price: RustDec = dec!(1234.5);
+    group.bench_with_input("rust-dec", &(amount, price), |b, i| {
+        b.iter(|| rust_app(&ctx, i.0, i.1))
+    });
+
+    // done
+    group.finish();
+}
+
 // entry
 fn criterion_benchmark(c: &mut Criterion) {
     // bench_int(c);
@@ -336,10 +493,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     bench_mul_rescale_big(c);
     bench_div_pure(c);
     bench_div_rescale(c);
-    bench_load(c, "load_short", "12.34");
-    bench_load(c, "load_long", "123456789012.123456");
-    bench_dump(c, "dump_short", "12.34");
-    bench_dump(c, "dump_long", "123456789012.123456");
+    bench_load(c, "load-short", "12.34");
+    bench_load(c, "load-long", "123456789012.123456");
+    bench_dump(c, "dump-short", "12.34");
+    bench_dump(c, "dump-long", "123456789012.123456");
+    bench_app(c);
 }
 
 criterion_group!(benches, criterion_benchmark);
