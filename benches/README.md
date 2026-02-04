@@ -81,13 +81,14 @@ Versions:
 - `rust_decimal`: `1.40.0`
 - `primitive_fixed_point_decimal`: `1.3.0`
 
-I run the benchmark on three machines:
+Machines:
 
 - Ubuntu 22.04 @AMD EPYC 9754
 - Ubuntu 16.04 @Intel Xeon, 2500 MHZ
 - MacOS 13.5 @M1
 
-The results varied considerably. You are welcome to run the benchmark on your own computer:
+The results varied considerably at different Machines.
+You are welcome to run the benchmark on your own computer:
 
 ```bash
 git clone https://github.com/WuBingzheng/primitive_fixed_point_decimal.git
@@ -182,7 +183,9 @@ feature. So we constructed 4 test cases:
    so it can only rescale the other operand downward instead. This is very slow.
    Also this may lose precision.
 
-See the `bench_add()` function in the benchmark source code for more details.
+See the `bench_add()` function in the benchmark
+[source code](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/vs_rust_decimal.rs)
+for more details.
 
 
 ## BENCH: multiplication
@@ -229,7 +232,9 @@ For the first case, `mul-pure`, all 3 types are as fast as their addition operat
 This shows that the speed of addition and multiplication CPU instruction is
 roughly the same.
 
-See the `bench_mul()` function in the benchmark source code for more details.
+See the `bench_mul()` function in the benchmark
+[source code](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/vs_rust_decimal.rs)
+for more details.
 
 
 ## BENCH: division
@@ -259,7 +264,9 @@ rescaling does not make it much slower. (Some are even faster; the reason is unc
 While for floating-point `rust_decimal`, whether to rescale depends on whether
 the underlying integer can divide evenly. If it cannot, a very slow rescale is required.
 
-See the `bench_div()` function in the benchmark source code for more details.
+See the `bench_div()` function in the benchmark
+[source code](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/vs_rust_decimal.rs)
+for more details.
 
 
 ## BENCH: load and dump
@@ -301,7 +308,9 @@ a single trade, it involves fund changes for both buyer and seller accounts
 and execution fees. In total, it involves 3 multiplications, 4 additions,
 and 4 subtractions.
 
-See the `bench_app()` function in the benchmark source code for more details.
+See the `bench_app()` function in the benchmark
+[source code](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/vs_rust_decimal.rs)
+for more details.
 
 Let's see the results:
 
