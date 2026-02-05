@@ -1,5 +1,3 @@
-
-
 I benchmarked 2 decimal crates: `rust_decimal` and `primitive_fixed_point_decimal`.
 The benchmark results are listed below, along with an analysis of the possible
 reasons for their performance differences.
@@ -336,5 +334,7 @@ The results roughly meet expectations:
 
 # Conclusion
 
-`primitive_fixed_point_decimal` is faster than `rust_decimal` in most cases,
-while slower in other cases.  No further conclusions.
+`primitive_fixed_point_decimal` is faster than `rust_decimal` in most cases.
+
+`primitive_fixed_point_decimal` delivers more stable performance. `rust_decimal`
+experiences significant performance fluctuations due to implicit rescaling.
