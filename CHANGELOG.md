@@ -1,3 +1,9 @@
+# v1.3.0 (2026-02-05)
+
+- Implement `core::iter::Sum`.
+- Fix and optimize `rounding_div()`.
+- Add benchmark.
+
 # v1.2.1 (2026-01-29)
 
 - Optimize Display.
