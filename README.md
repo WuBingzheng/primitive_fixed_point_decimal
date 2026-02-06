@@ -56,13 +56,9 @@ use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
 // We choose `i64` as the underlying integer, and keep `4` precision.
 type Balance = ConstScaleFpdec<i64, 4>;
 
-// From float number.
-let b = Balance::try_from(12.34).unwrap();
-assert_eq!(b.to_string(), "12.34");
-
-// From integer number.
-let b = Balance::try_from(1234).unwrap();
-assert_eq!(b.to_string(), "1234");
+// From float or integer number.
+let _b1 = Balance::try_from(12.34).unwrap();
+let _b2 = Balance::try_from(1234).unwrap();
 
 // The macro `fpdec` wraps above 2 TryFrom methods. It panics if fail in convert.
 let _b1: Balance = fpdec!(12.34);
@@ -70,13 +66,11 @@ let _b2: Balance = fpdec!(1234);
 
 // From string.
 use std::str::FromStr;
-let b = Balance::from_str("12.34").unwrap();
-assert_eq!(b.to_string(), "12.34");
+let _b = Balance::from_str("12.34").unwrap();
 
 // From mantissa, which is the underlying integer.
 // This is low-level, but also the only `const` construction method.
 const TWENTY: Balance = Balance::from_mantissa(20 * 10000);
-assert_eq!(TWENTY, fpdec!(20));
 ```
 
 Addition and substraction operations only perform between same types in
@@ -138,16 +132,15 @@ use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
 type Balance = ConstScaleFpdec<i64, 4>;
 let b: Balance = fpdec!(12.34);
 
+// Convert into float numbers.
+let f: f32 = b.into();
+assert_eq!(f, 12.34_f32);
+
 // Format into string.
 assert_eq!(format!("{:+.3}", b), "+12.340");
 
-// Convert into float numbers.
-let f: f32 = b.into();
-assert_eq!(f, 12.34);
-
 // Get the mantissa, which is the underlying integer.
-let m = b.mantissa();
-assert_eq!(m, 12_3400);
+assert_eq!(b.mantissa(), 12_3400);
 ```
 
 
