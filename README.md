@@ -1,14 +1,15 @@
 Primitive fixed-point decimal types.
 
-Floating-point for flexibility, fixed-point for efficiency. We are fixed-point
-by binding scale to *type* but not each instance. See the
-[benchmark](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/README.md).
+*Fixed-point*: The scale is bound to type. All instances under one
+type have the same fraction precision and won't change in their whole lifetime.
 
-Binary for machines, decimal for humans. We represent and calculate
-decimal fractions accurately by scaling integers in base-10.
+*Decimal*: It represents decimal fractions accurately by scaling
+integers in base-10. So there is no round-off error like 0.1 + 0.2 != 0.3.
 
-For example, `ConstScaleFpdec<i64, 4>` means using `i64` as the underlying
-representation, and the static scale is `4`.
+Therefore, it is especially suitable for financial use cases, along with
+many others.
+
+See the [Comparison](#comparison) section for details.
 
 
 # Features
@@ -26,7 +27,12 @@ Important:
 - Supports 2 ways to specify the scale: *const* and *out-of-band*. See
   the [Specify Scale](#specify-scale) section for details.
 
-- Supports both signed and unsigned types.
+- Supports all primitive integers as the underlying types: short, long,
+  signed and unsigned.
+
+- Compact memory and high performance. See the
+  [benchmark](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/README.md)
+  for details.
 
 Less important, yet might also be what you need:
 
@@ -88,6 +94,7 @@ assert_eq!(b1 + b2, fpdec!(8012.34));
 
 // If you want to check the overflow, use `checked_add()`:
 assert_eq!(b1.checked_add(b2), Some(fpdec!(8012.34)));
+assert_eq!(b1.checked_add(Balance::MAX), None);
 ```
 
 Multiplication and division operations accept operand with different types
@@ -118,29 +125,8 @@ assert_eq!(fee, fpdec!(0.01234));
 let fee: Balance = b.checked_mul_ext(rate, Rounding::Ceiling).unwrap();
 assert_eq!(fee, fpdec!(0.0124));
 
-// Also multiply by integer:
-let double = b.checked_mul_int(2).unwrap();
-assert_eq!(double, fpdec!(12.34 * 2.0));
-
-// However can not by float numbers.
-```
-
-Decimal can be converted into some types:
-
-```rust
-use primitive_fixed_point_decimal::{ConstScaleFpdec, fpdec};
-type Balance = ConstScaleFpdec<i64, 4>;
-let b: Balance = fpdec!(12.34);
-
-// Convert into float numbers.
-let f: f32 = b.into();
-assert_eq!(f, 12.34_f32);
-
-// Format into string.
-assert_eq!(format!("{:+.3}", b), "+12.340");
-
-// Get the mantissa, which is the underlying integer.
-assert_eq!(b.mantissa(), 12_3400);
+// Also multiply by integer (but not float):
+assert_eq!(b * 2, fpdec!(24.68));
 ```
 
 
@@ -224,6 +210,65 @@ In summary,
 You can also use these two types in combination.
 [For example](OobScaleFpdec::checked_mul_const_scale_ext),
 use `OobScaleFpdec` as Balance and `ConstScaleFpdec` as FeeRate.
+
+
+# Comparison
+
+There are kinds of ways to represent fractions. This crate is fixed-point
+and decimal. So here we compare it with floating-point and binary.
+
+Floating-point vs Fixed-point. For floating-point, the scale is stored in
+each instance and changes with calculations (hence the name "float").
+As the scale changes, the range of representable values also changes.
+While this allows for a larger range, it can loss fraction precision and
+[lead to round-off errors](https://en.wikipedia.org/wiki/Floating-point_arithmetic#Addition_and_subtraction).
+In contrast, fixed-point ensures the fraction precision.
+Additionally, the instances in fixed-point only needs to store the
+significant digits, but no scale, resulting in higher memory utilization.
+For example, the 128 bits of the `ConstScaleFpdec<i128, _>` type in this
+crate are fully used to represent significant digits; by contrast, the
+`Decimal` type from `rust_decimal` also occupies 128 bits, but only has
+96 bits significant digits.
+
+Binary vs Decimal. Binary for machines, decimal for humans. Binary works
+well inside computer, but can not represent decimal fractions accurately.
+This leads to some odd issues of precisio when interacting with humans.
+
+Here are some instances for each kinds:
+
+- Floating-point Binary: primitive `f32`
+- Floating-point Decimal: crate `rust_decimal`, `bigdecimal`, `fastnum`
+- Fixed-point Binary: crate `fixed`
+- Fixed-point Decimal: THIS crate `primitive_fixed_point_decimal` !!!
+
+For example, in financial scenarios, it is essential to ensure the fraction
+precision and accurate representation. So the fixed-point decimal is the
+best choice.
+
+However, even in finance, floating-point are more adopted than fixed-point.
+I think there are three reasons. 1. In most cases, the required representable
+range is small enough to avoid floating-point round-off errors. Here, they
+works as fixed-point actually; 2. In most cases, high memory utilization
+is not critical; 3. Floating-point is more convenient to use, you do not need
+to manually manage the precision of each type.
+
+Additionally, some projects use neither floating-point nor fixed-point decimal
+crates, but only raw underlying integers and manual scale management. E.g.,
+the BTC project uses integers for 1e-8 BTC units. Add and subtract via
+integer ops directly; while calculate fees by multiplying rate then dividing
+by scale manually.
+
+Two extremes here:
+
+- Floating-point decimal: simple and convenient, you do not need to concern for the
+precisions for each type. It's like dynamic scripting languages.
+- Raw underlying integer: straightforward but verbose, you have to manually
+manage the scale. It's like assembly languages.
+
+Fixed-point decimal, however, falls between these two extremes. It encapsulates
+underlying integers, manages the scale automatically, and offers safety and
+convenience without introducing any performance overhead. It's like statically
+typed languages.
 
 
 # License
