@@ -1,3 +1,7 @@
+# v1.3.1 (2026-03-05)
+
+- Update the module document only.
+
 # v1.3.0 (2026-02-05)
 
 - Implement `core::iter::Sum`.
