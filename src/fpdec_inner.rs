@@ -271,9 +271,7 @@ pub trait FpdecInner:
         let offset = display_num(self.unsigned_abs(), scale, f.precision(), &mut buf);
 
         // SAFETY: offset is updated along with buf
-        let buf = unsafe {
-            core::slice::from_raw_parts(buf[offset..].as_ptr().cast(), buf.len() - offset)
-        };
+        let buf = unsafe { buf[offset..].assume_init_ref() };
 
         // SAFETY: all data is valid charactor
         let s = unsafe { str::from_utf8_unchecked(buf) };
