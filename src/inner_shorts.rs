@@ -1,26 +1,28 @@
 use crate::fpdec_inner::FpdecInner;
 use crate::Rounding;
 
-macro_rules! calc_mul_div_higher {
-    (
-        $a:expr, $b:expr, $c:expr, $rounding:expr,
-        $origin_type:ty, $higher_type:ty
-    ) => {{
-        let dividend = $a as $higher_type * $b as $higher_type;
-        let divisor = $c as $higher_type;
-        let q = dividend.rounding_div(divisor, $rounding)?;
-        <$origin_type>::try_from(q).ok()
-    }};
-}
-
-macro_rules! signed_consts {
-    ($uns_typ:ty, $neg_min_str:expr) => {
+macro_rules! common_consts {
+    ($wider_typ:ty) => {
         const MAX: Self = Self::MAX;
         const MIN: Self = Self::MIN;
         const TEN: Self = 10;
         const HUNDRED: Self = 100;
         const MAX_POWERS: Self = Self::TEN.pow(Self::DIGITS);
         const DIGITS: u32 = Self::MAX.ilog10();
+
+        type Wider = $wider_typ;
+        fn as_wider(self) -> Self::Wider {
+            self as $wider_typ
+        }
+        fn from_wider(w: Self::Wider) -> Option<Self> {
+            Self::try_from(w).ok()
+        }
+    };
+}
+
+macro_rules! signed_consts {
+    ($wider_typ:ty, $uns_typ:ty, $neg_min_str:expr) => {
+        common_consts!($wider_typ);
 
         const NEG_MIN_STR: &'static str = $neg_min_str;
 
@@ -32,13 +34,8 @@ macro_rules! signed_consts {
 }
 
 macro_rules! unsigned_consts {
-    () => {
-        const MAX: Self = Self::MAX;
-        const MIN: Self = Self::MIN;
-        const TEN: Self = 10;
-        const HUNDRED: Self = 100;
-        const MAX_POWERS: Self = Self::TEN.pow(Self::DIGITS);
-        const DIGITS: u32 = Self::MAX.ilog10();
+    ($wider_typ:ty) => {
+        common_consts!($wider_typ);
 
         #[doc(hidden)]
         const NEG_MIN_STR: &'static str = "unreachable";
@@ -51,21 +48,17 @@ macro_rules! unsigned_consts {
 }
 
 impl FpdecInner for i8 {
-    signed_consts!(u8, "128");
+    signed_consts!(i16, u8, "128");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i8; 3] = [1, 10_i8.pow(1), 10_i8.pow(2)];
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, i8, i16)
-    }
 }
 
 impl FpdecInner for i16 {
-    signed_consts!(u16, "32768");
+    signed_consts!(i32, u16, "32768");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i16; 5] = [
@@ -78,14 +71,10 @@ impl FpdecInner for i16 {
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, i16, i32)
-    }
 }
 
 impl FpdecInner for i32 {
-    signed_consts!(u32, "2147483648");
+    signed_consts!(i64, u32, "2147483648");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i32; 10] = [
@@ -103,14 +92,10 @@ impl FpdecInner for i32 {
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, i32, i64)
-    }
 }
 
 impl FpdecInner for i64 {
-    signed_consts!(u64, "9223372036854775808");
+    signed_consts!(i128, u64, "9223372036854775808");
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [i64; 19] = [
@@ -137,31 +122,19 @@ impl FpdecInner for i64 {
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        // try to avoid casting to i128 which is slower
-        match self.checked_mul(b) {
-            Some(m) => m.rounding_div(c, rounding),
-            None => calc_mul_div_higher!(self, b, c, rounding, i64, i128),
-        }
-    }
 }
 impl FpdecInner for u8 {
-    unsigned_consts!();
+    unsigned_consts!(u16);
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u8; 3] = [1, 10_u8.pow(1), 10_u8.pow(2)];
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, u8, u16)
-    }
 }
 
 impl FpdecInner for u16 {
-    unsigned_consts!();
+    unsigned_consts!(u32);
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u16; 5] = [
@@ -174,14 +147,10 @@ impl FpdecInner for u16 {
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, u16, u32)
-    }
 }
 
 impl FpdecInner for u32 {
-    unsigned_consts!();
+    unsigned_consts!(u64);
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u32; 10] = [
@@ -199,14 +168,10 @@ impl FpdecInner for u32 {
 
         ALL_EXPS.get(i).copied()
     }
-
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        calc_mul_div_higher!(self, b, c, rounding, u32, u64)
-    }
 }
 
 impl FpdecInner for u64 {
-    unsigned_consts!();
+    unsigned_consts!(u128);
 
     fn get_exp(i: usize) -> Option<Self> {
         const ALL_EXPS: [u64; 20] = [
@@ -235,14 +200,6 @@ impl FpdecInner for u64 {
         ALL_EXPS.get(i).copied()
     }
 
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
-        // try to avoid casting to u128 which is slower
-        match self.checked_mul(b) {
-            Some(m) => m.rounding_div(c, rounding),
-            None => calc_mul_div_higher!(self, b, c, rounding, u64, u128),
-        }
-    }
-
     fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
         match self.checked_mul(b) {
             Some(m) => m.rounding_div(Self::get_exp(i)?, rounding),
@@ -254,7 +211,7 @@ impl FpdecInner for u64 {
                 let extra = match rounding {
                     Rounding::Floor | Rounding::TowardsZero => 0,
                     Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
-                    Rounding::Round => exp / 2,
+                    Rounding::Round => exp / 2, // exp is even
                 };
 
                 let q = (p + extra).div_exp(exp, i);

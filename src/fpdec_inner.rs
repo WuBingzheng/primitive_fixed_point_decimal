@@ -38,10 +38,23 @@ pub trait FpdecInner:
     /// Return 10 to the power of `i`.
     fn get_exp(i: usize) -> Option<Self>;
 
+    /// Used by as_wider() and from_wider(), which are invoked by calc_mul_div().
+    type Wider: FpdecInner;
+    fn as_wider(self) -> Self::Wider;
+    fn from_wider(w: Self::Wider) -> Option<Self>;
+
     /// Calculate `self * b / c`.
-    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self>;
+    /// Since i128 and u128 do not have wider types, then have
+    /// their own implementations.
+    fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self> {
+        let p = self.as_wider() * b.as_wider();
+        p.rounding_div(c.as_wider(), rounding)
+            .and_then(Self::from_wider)
+    }
 
     /// Calculate `self * b / EXP[i]`.
+    /// i64, u64, i128, u128 have their own implemetations to avoid the
+    /// expensive 128-bit division.
     fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
         self.calc_mul_div(b, Self::get_exp(i)?, rounding)
     }
