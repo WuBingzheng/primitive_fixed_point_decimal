@@ -41,6 +41,11 @@ pub trait FpdecInner:
     /// Calculate `self * b / c`.
     fn calc_mul_div(self, b: Self, c: Self, rounding: Rounding) -> Option<Self>;
 
+    /// Calculate `self * b / EXP[i]`.
+    fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
+        self.calc_mul_div(b, Self::get_exp(i)?, rounding)
+    }
+
     // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
     // diff_scale = scale (self + rhs - result)
     fn checked_mul_ext(self, rhs: Self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
@@ -52,8 +57,7 @@ pub trait FpdecInner:
             // to avoid returning `None` directly, but that's not enough.
             // Because `MAX * MAX / exp[DIGITS]` still overflows. For
             // simplicity's sake, we do not handle this case which is rare.
-            let exp = Self::get_exp(diff_scale as usize)?;
-            self.calc_mul_div(rhs, exp, rounding)
+            self.calc_mul_div_exp(rhs, diff_scale as usize, rounding)
         } else if diff_scale < 0 {
             // self * rhs * diff_exp
             let exp = Self::get_exp(-diff_scale as usize)?;
@@ -170,6 +174,10 @@ pub trait FpdecInner:
             }
         }
         .into() // Some()
+    }
+
+    fn div_exp(self, exp: Self, _i: usize) -> Self {
+        self / exp
     }
 
     // INTERNAL

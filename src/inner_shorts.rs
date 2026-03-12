@@ -242,4 +242,24 @@ impl FpdecInner for u64 {
             None => calc_mul_div_higher!(self, b, c, rounding, u64, u128),
         }
     }
+
+    fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
+        match self.checked_mul(b) {
+            Some(m) => m.rounding_div(Self::get_exp(i)?, rounding),
+            None => {
+                let p = self as u128 * b as u128;
+                let exp = Self::get_exp(i)? as u128;
+                debug_assert!(p.checked_add(exp).is_some());
+
+                let extra = match rounding {
+                    Rounding::Floor | Rounding::TowardsZero => 0,
+                    Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
+                    Rounding::Round => exp / 2,
+                };
+
+                let q = (p + extra).div_exp(exp, i);
+                u64::try_from(q).ok()
+            }
+        }
+    }
 }
