@@ -189,10 +189,6 @@ pub trait FpdecInner:
         .into() // Some()
     }
 
-    fn div_exp(self, exp: Self, _i: usize) -> Self {
-        self / exp
-    }
-
     // INTERNAL
     // Parse an string as negative.
     // We try to parse it as positive first. If fail for overflow,

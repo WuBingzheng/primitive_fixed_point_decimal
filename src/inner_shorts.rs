@@ -259,9 +259,9 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
     //
     // def gen(d):
     //     zeros = 64 - d.bit_length()
-    //     m = pow(2, 128) // (d << zeros)
-    //     m = m - pow(2, 64) # make m fit in 128-bit
-    //     return (m, zeros)
+    //     magic = pow(2, 128) // (d << zeros)
+    //     magic = magic - pow(2, 64) # make magic fit in 128-bit
+    //     return (magic, zeros)
     const MG_EXP_MAGICS: [(u64, u32); 20] = [
         (0, 0),
         (0x9999999999999999, 60),
@@ -291,22 +291,23 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
     }
 
     // algorithm:
-    //   n = n << zeros
-    //   q = (((m * n) >> 64) + n) >> 64
+    //   zn = n << zeros
+    //   q = (((magic * zn) >> 64) + zn) >> 64
 
     // SAFETY: exp has been read by i already
     let &(magic, zeros) = unsafe { MG_EXP_MAGICS.get_unchecked(i) };
 
     // calc: (high, low) := n << zeros
-    let high = n.unbounded_shr(64 - zeros) as u64;
-    let low = (n << zeros) as u64;
+    let zn = n << zeros;
+    let high = (zn >> 64) as u64;
+    let low = zn as u64;
 
-    // calc: mul := (m * n) >> 64
+    // calc: mul := (magic * zn) >> 64
     let mul_low = (low as u128 * magic as u128) >> 64;
     let mul = (high as u128 * magic as u128) + mul_low;
 
     // calc: final q
-    let q = (mul + n) >> 64;
+    let q = (mul + zn) >> 64;
 
     // correction by remainder
     let exp = exp as u128;
@@ -314,5 +315,36 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
         Some(q as u64)
     } else {
         Some(q as u64 + 1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calc_mul_div() {
+        for iexp in 1..20 {
+            let exp = 10_u64.pow(iexp);
+
+            for i in 0..iexp {
+                let a = exp - i as u64;
+
+                // enlarge this range for more test
+                for j in 0..1000 {
+                    let b = u64::MAX - j * 13;
+
+                    let q1 = a.calc_mul_div(b, exp, Rounding::Floor);
+                    let q2 = a.calc_mul_div_exp(b, iexp as usize, Rounding::Floor);
+                    assert_eq!(q1, q2);
+                    let q1 = a.calc_mul_div(b, exp, Rounding::Ceiling);
+                    let q2 = a.calc_mul_div_exp(b, iexp as usize, Rounding::Ceiling);
+                    assert_eq!(q1, q2);
+                    let q1 = a.calc_mul_div(b, exp, Rounding::Round);
+                    let q2 = a.calc_mul_div_exp(b, iexp as usize, Rounding::Round);
+                    assert_eq!(q1, q2);
+                }
+            }
+        }
     }
 }
