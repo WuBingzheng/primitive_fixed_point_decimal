@@ -262,7 +262,7 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
     //     m = pow(2, 128) // (d << zeros)
     //     m = m - pow(2, 64) # make m fit in 128-bit
     //     return (m, zeros)
-    const MG_EXP_MAGICS: [(u64, u32); 19] = [
+    const MG_EXP_MAGICS: [(u64, u32); 20] = [
         (0, 0),
         (0x9999999999999999, 60),
         (0x47ae147ae147ae14, 57),
@@ -282,6 +282,7 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
         (0xcd2b297d889bc2b6, 10),
         (0x70ef54646d496892, 7),
         (0x2725dd1d243aba0e, 4),
+        (0xd83c94fb6d2ac34a, 0),
     ];
 
     // check overflow
@@ -297,7 +298,7 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
     let &(magic, zeros) = unsafe { MG_EXP_MAGICS.get_unchecked(i) };
 
     // calc: (high, low) := n << zeros
-    let high = (n >> (64 - zeros)) as u64;
+    let high = n.unbounded_shr(64 - zeros) as u64;
     let low = (n << zeros) as u64;
 
     // calc: mul := (m * n) >> 64
