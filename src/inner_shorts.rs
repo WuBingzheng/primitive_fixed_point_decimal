@@ -122,7 +122,36 @@ impl FpdecInner for i64 {
 
         ALL_EXPS.get(i).copied()
     }
+
+    fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
+        match self.checked_mul(b) {
+            Some(m) => m.rounding_div(Self::get_exp(i)?, rounding),
+            None => {
+                let p = self as i128 * b as i128;
+                let exp = Self::get_exp(i)? as i128;
+                debug_assert!(p.checked_add(exp).is_some());
+
+                let extra = if self >= 0 {
+                    match rounding {
+                        Rounding::Floor | Rounding::TowardsZero => 0,
+                        Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
+                        Rounding::Round => exp / 2, // exp is even
+                    }
+                } else {
+                    match rounding {
+                        Rounding::Ceiling | Rounding::TowardsZero => 0,
+                        Rounding::Floor | Rounding::AwayFromZero => 1 - exp,
+                        Rounding::Round => -exp / 2, // exp is even
+                    }
+                };
+
+                let q = (p + extra).div_exp(exp, i);
+                i64::try_from(q).ok()
+            }
+        }
+    }
 }
+
 impl FpdecInner for u8 {
     unsigned_consts!(u16);
 
