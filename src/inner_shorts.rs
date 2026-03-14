@@ -126,21 +126,21 @@ impl FpdecInner for i64 {
     fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
         let exp = Self::get_exp(i)?;
 
-        if let Some(p) = self.checked_mul(b) {
-            return p.rounding_div(exp, rounding);
-        }
-
-        let exp = exp as u64;
-        let n = self as i128 * b as i128;
-        if n >= 0 {
+        if self ^ b >= 0 {
             let extra = match rounding {
                 Rounding::Floor | Rounding::TowardsZero => 0,
                 Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
                 Rounding::Round => exp / 2, // exp is even
             };
 
-            let q = div_exp_fast(n as u128 + extra as u128, exp, i)?;
-            i64::try_from(q).ok()
+            if self.leading_zeros() + b.leading_zeros() >= 64 + 2 {
+                // happy path, (self * b + extra) is not overflow
+                Some((self * b + extra) / exp)
+            } else {
+                let n = self as i128 * b as i128;
+                let q = div_exp_fast(n as u128 + extra as u128, exp as u64, i)?;
+                i64::try_from(q).ok()
+            }
         } else {
             let extra = match rounding {
                 Rounding::Ceiling | Rounding::TowardsZero => 0,
@@ -148,7 +148,8 @@ impl FpdecInner for i64 {
                 Rounding::Round => exp / 2, // exp is even
             };
 
-            let q = div_exp_fast(-n as u128 + extra as u128, exp, i)?;
+            let n = self as i128 * b as i128;
+            let q = div_exp_fast(-n as u128 + extra as u128, exp as u64, i)?;
             i64::try_from(-(q as i128)).ok()
         }
     }
@@ -234,19 +235,19 @@ impl FpdecInner for u64 {
     fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
         let exp = Self::get_exp(i)?;
 
-        if let Some(p) = self.checked_mul(b) {
-            return p.rounding_div(exp, rounding);
-        }
-
-        // rounding
         let extra = match rounding {
             Rounding::Floor | Rounding::TowardsZero => 0,
             Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
             Rounding::Round => exp / 2, // exp is even
         };
 
-        let n = self as u128 * b as u128;
-        div_exp_fast(n + extra as u128, exp, i)
+        if self.leading_zeros() + b.leading_zeros() >= 64 + 1 {
+            // happy path, (self * b + extra) is not overflow
+            Some((self * b + extra) / exp)
+        } else {
+            let n = self as u128 * b as u128;
+            div_exp_fast(n + extra as u128, exp, i)
+        }
     }
 }
 
