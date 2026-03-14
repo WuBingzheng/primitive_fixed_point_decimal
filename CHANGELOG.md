@@ -1,3 +1,7 @@
+# v1.4.0 (2026-03-14)
+
+- Optimize multiplication of 64-bit and 128-bit.
+
 # v1.3.1 (2026-03-05)
 
 - Update the module document only.
