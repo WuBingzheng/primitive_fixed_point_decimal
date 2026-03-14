@@ -323,6 +323,55 @@ fn div_exp_fast(n: u128, exp: u64, i: usize) -> Option<u64> {
 mod tests {
     use super::*;
 
+    fn do_test_calc_mul_div(a: u64, b: u64, exp: u64, iexp: usize) {
+        let q1 = a.calc_mul_div(b, exp, Rounding::Floor);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Floor);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Ceiling);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Ceiling);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Round);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Round);
+        assert_eq!(q1, q2);
+    }
+
+    fn do_test_calc_mul_div_signed(a: i64, b: i64, exp: i64, iexp: usize) {
+        // +-
+        let q1 = a.calc_mul_div(b, exp, Rounding::Floor);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Floor);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Ceiling);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Ceiling);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Round);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Round);
+        assert_eq!(q1, q2);
+
+        // --
+        let a = -a;
+        let q1 = a.calc_mul_div(b, exp, Rounding::Floor);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Floor);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Ceiling);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Ceiling);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Round);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Round);
+        assert_eq!(q1, q2);
+
+        // ++
+        let b = b.wrapping_neg();
+        let q1 = a.calc_mul_div(b, exp, Rounding::Floor);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Floor);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Ceiling);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Ceiling);
+        assert_eq!(q1, q2);
+        let q1 = a.calc_mul_div(b, exp, Rounding::Round);
+        let q2 = a.calc_mul_div_exp(b, iexp, Rounding::Round);
+        assert_eq!(q1, q2);
+    }
+
     #[test]
     fn test_calc_mul_div() {
         for iexp in 1..20 {
@@ -333,17 +382,42 @@ mod tests {
 
                 // enlarge this range for more test
                 for j in 0..1000 {
-                    let b = u64::MAX - j * 13;
+                    let b = u64::MAX - j * 113;
+                    do_test_calc_mul_div(a, b, exp, iexp as usize);
+                }
+                for j in 0..1000 {
+                    let b = u64::MAX - j * 11113;
+                    do_test_calc_mul_div(a, b, exp, iexp as usize);
+                }
 
-                    let q1 = a.calc_mul_div(b, exp, Rounding::Floor);
-                    let q2 = a.calc_mul_div_exp(b, iexp as usize, Rounding::Floor);
-                    assert_eq!(q1, q2);
-                    let q1 = a.calc_mul_div(b, exp, Rounding::Ceiling);
-                    let q2 = a.calc_mul_div_exp(b, iexp as usize, Rounding::Ceiling);
-                    assert_eq!(q1, q2);
-                    let q1 = a.calc_mul_div(b, exp, Rounding::Round);
-                    let q2 = a.calc_mul_div_exp(b, iexp as usize, Rounding::Round);
-                    assert_eq!(q1, q2);
+                // small values
+                for j in 0..1000 {
+                    let b = u32::MAX as u64 - j * 113;
+                    do_test_calc_mul_div(a, b, exp, iexp as usize);
+                }
+            }
+        }
+
+        for iexp in 1..19 {
+            let exp = 10_i64.pow(iexp);
+
+            for i in 0..iexp {
+                let a = exp - i as i64;
+
+                // enlarge this range for more test
+                for j in 0..1000 {
+                    let b = i64::MIN + j * 113;
+                    do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
+                }
+                for j in 0..1000 {
+                    let b = i64::MIN + j * 111113;
+                    do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
+                }
+
+                // small values
+                for j in 0..1000 {
+                    let b = i32::MIN as i64 + j * 113;
+                    do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
                 }
             }
         }
