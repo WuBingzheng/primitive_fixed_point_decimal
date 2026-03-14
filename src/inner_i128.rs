@@ -124,7 +124,9 @@ impl FpdecInner for i128 {
                 // happy path, (self * b + extra) is not overflow
                 Some((self * b + extra) / exp)
             } else {
-                let q = div_exp_fast(self as u128, b as u128, extra as u128, exp as u128, i)?;
+                let ua = self.unsigned_abs();
+                let ub = b.unsigned_abs();
+                let q = div_exp_fast(ua, ub, extra as u128, exp as u128, i)?;
                 i128::try_from(q).ok()
             }
         } else {
@@ -135,7 +137,9 @@ impl FpdecInner for i128 {
                 Rounding::Round => exp / 2, // exp is even
             };
 
-            let q = div_exp_fast(self.unsigned_abs(), b.unsigned_abs(), extra, exp, i)?;
+            let ua = self.unsigned_abs();
+            let ub = b.unsigned_abs();
+            let q = div_exp_fast(ua, ub, extra, exp, i)?;
 
             if q <= i128::MAX as u128 {
                 Some(-(q as i128))
@@ -741,27 +745,25 @@ mod tests {
             }
 
             // signed
-            for iexp in 1..39 {
-                let exp = 10_i128.pow(iexp);
+            let exp = 10_i128.pow(iexp);
 
-                for i in 0..iexp {
-                    let a = exp - i as i128;
+            for i in 0..iexp {
+                let a = exp - i as i128;
 
-                    // enlarge this range for more test
-                    for j in 0..1000 {
-                        let b = i128::MIN + j * 113;
-                        do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
-                    }
-                    for j in 0..1000 {
-                        let b = i128::MIN + j * 111113;
-                        do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
-                    }
+                // enlarge this range for more test
+                for j in 0..1000 {
+                    let b = i128::MIN + j * 113;
+                    do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
+                }
+                for j in 0..1000 {
+                    let b = i128::MIN + j * 111113;
+                    do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
+                }
 
-                    // small values
-                    for j in 0..1000 {
-                        let b = i64::MIN as i128 + j * 113;
-                        do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
-                    }
+                // small values
+                for j in 0..1000 {
+                    let b = i64::MIN as i128 + j * 113;
+                    do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
                 }
             }
         }
