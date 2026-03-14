@@ -150,6 +150,16 @@ impl FpdecInner for i128 {
             }
         }
     }
+
+    fn rounding_div(self, b: Self, rounding: Rounding) -> Option<Self> {
+        // try 64-bit first, which is much faster
+        if let Ok(a64) = i64::try_from(self) {
+            if let Ok(b64) = i64::try_from(b) {
+                return a64.rounding_div(b64, rounding).map(|x| x as i128);
+            }
+        }
+        FpdecInner::rounding_div(self, b, rounding)
+    }
 }
 
 impl FpdecInner for u128 {
@@ -262,6 +272,16 @@ impl FpdecInner for u128 {
         } else {
             div_exp_fast(self, b, extra as u128, exp, i)
         }
+    }
+
+    fn rounding_div(self, b: Self, rounding: Rounding) -> Option<Self> {
+        // try 64-bit first, which is much faster
+        if let Ok(a64) = u64::try_from(self) {
+            if let Ok(b64) = u64::try_from(b) {
+                return a64.rounding_div(b64, rounding).map(|x| x as u128);
+            }
+        }
+        FpdecInner::rounding_div(self, b, rounding)
     }
 }
 
