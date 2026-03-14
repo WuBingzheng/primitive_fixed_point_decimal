@@ -77,7 +77,7 @@ Versions:
 - Rust: `cargo 1.93.0 (083ac5135 2025-12-15)`
 - `criterion`: `0.7`
 - `rust_decimal`: `1.40.0`
-- `primitive_fixed_point_decimal`: `1.3.0`
+- `primitive_fixed_point_decimal`: `1.4.0`
 
 Machines:
 
