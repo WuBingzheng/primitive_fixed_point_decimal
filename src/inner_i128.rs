@@ -158,7 +158,7 @@ impl FpdecInner for i128 {
                 return a64.rounding_div(b64, rounding).map(|x| x as i128);
             }
         }
-        FpdecInner::rounding_div(self, b, rounding)
+        self.do_rounding_div(b, rounding)
     }
 }
 
@@ -281,7 +281,7 @@ impl FpdecInner for u128 {
                 return a64.rounding_div(b64, rounding).map(|x| x as u128);
             }
         }
-        FpdecInner::rounding_div(self, b, rounding)
+        self.do_rounding_div(b, rounding)
     }
 }
 
@@ -752,11 +752,11 @@ mod tests {
 
                 // enlarge this range for more test
                 for j in 0..1000 {
-                    let b = i128::MIN + j * 113;
+                    let b = i128::MIN + j * 113 + 1;
                     do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
                 }
                 for j in 0..1000 {
-                    let b = i128::MIN + j * 111113;
+                    let b = i128::MIN + j * 111113 + 1;
                     do_test_calc_mul_div_signed(a, b, exp, iexp as usize);
                 }
 

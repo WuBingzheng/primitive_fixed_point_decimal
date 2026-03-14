@@ -135,6 +135,10 @@ pub trait FpdecInner:
     /// assert_eq!(120_i8.rounding_div(-121_i8, Rounding::Round), Some(-1));
     /// ```
     fn rounding_div(self, b: Self, rounding: Rounding) -> Option<Self> {
+        self.do_rounding_div(b, rounding)
+    }
+
+    fn do_rounding_div(self, b: Self, rounding: Rounding) -> Option<Self> {
         let q = self.checked_div(&b)?;
         let remain = self % b;
         if remain == Self::ZERO {
