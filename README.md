@@ -248,9 +248,9 @@ best choice.
 However, even in finance, floating-point are more adopted than fixed-point.
 I think there are three reasons. 1. In most cases, the required representable
 range is small enough to avoid floating-point round-off errors. Here, they
-works as fixed-point actually; 2. In most cases, high memory utilization
-is not critical; 3. Floating-point is more convenient to use, you do not need
-to manually manage the precision of each type.
+works as fixed-point actually; 2. In most cases, high performance and memory
+utilization are not critical; 3. Floating-point is more convenient to use,
+you do not need to concern for the precision of each type.
 
 Additionally, some projects use neither floating-point nor fixed-point decimal
 crates, but only raw underlying integers and manual scale management. E.g.,
@@ -260,8 +260,8 @@ by scale manually.
 
 Two extremes here:
 
-- Floating-point decimal: simple and convenient, you do not need to concern for the
-precisions for each type. It's like dynamic scripting languages.
+- Floating-point decimal: simple and convenient, you do not need to concern
+for the precisions for each type. It's like dynamic scripting languages.
 - Raw underlying integer: straightforward but verbose, you have to manually
 manage the scale. It's like assembly languages.
 
