@@ -403,7 +403,20 @@ where
                 dump_decimal(int, frac, scale, &mut buf[..offset])
             } else {
                 let frac = match I::get_exp(scale - precision) {
-                    Some(exp) => frac.rounding_div(exp, Rounding::Round).unwrap(),
+                    Some(exp) => {
+                        let frac = frac.rounding_div(exp, Rounding::Round).unwrap();
+
+                        if let Some(prec_exp) = I::get_exp(precision) {
+                            // fraction digits adds 1 more.
+                            // for example: 12.99967 with precision=3, the fraction 99967
+                            // is round to 1000 whose digits is more than 3.
+                            if frac == prec_exp {
+                                return dump_decimal(int + I::ONE, I::ZERO, precision, buf);
+                            }
+                        }
+
+                        frac
+                    }
                     None => I::ZERO,
                 };
                 dump_decimal(int, frac, precision, buf)
