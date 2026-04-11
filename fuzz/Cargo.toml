@@ -1,0 +1,22 @@
+[package]
+name = "primitive_fixed_point_decimal-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { features = ["derive"], version = "1.0" }
+libfuzzer-sys = "0.4"
+
+[dependencies.primitive_fixed_point_decimal]
+path = ".."
+
+[[bin]]
+name = "self_proof"
+path = "fuzz_targets/self_proof.rs"
+test = false
+doc = false
+bench = false
