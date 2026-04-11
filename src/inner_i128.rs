@@ -113,6 +113,9 @@ impl FpdecInner for i128 {
     fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
         let exp = Self::get_exp(i)?;
 
+        let ua = self.unsigned_abs();
+        let ub = b.unsigned_abs();
+
         if self ^ b >= 0 {
             let extra = match rounding {
                 Rounding::Floor | Rounding::TowardsZero => 0,
@@ -120,12 +123,10 @@ impl FpdecInner for i128 {
                 Rounding::Round => exp / 2, // exp is even
             };
 
-            if self.leading_zeros() + b.leading_zeros() >= 128 + 2 {
+            if ua.leading_zeros() + ub.leading_zeros() >= 128 + 2 {
                 // happy path, (self * b + extra) is not overflow
-                Some(div_exp_fast_1word((self * b + extra) as u128, i) as i128)
+                Some(div_exp_fast_1word(ua * ub + extra as u128, i) as i128)
             } else {
-                let ua = self.unsigned_abs();
-                let ub = b.unsigned_abs();
                 let q = div_exp_fast_2word(ua, ub, extra as u128, exp as u128, i)?;
                 i128::try_from(q).ok()
             }
@@ -137,8 +138,6 @@ impl FpdecInner for i128 {
                 Rounding::Round => exp / 2, // exp is even
             };
 
-            let ua = self.unsigned_abs();
-            let ub = b.unsigned_abs();
             let q = div_exp_fast_2word(ua, ub, extra, exp, i)?;
 
             if q <= i128::MAX as u128 {
@@ -337,6 +336,7 @@ fn reduce2(mhigh: u128, mlow: u128, divisor: u128, rate: u128) -> Option<(u128, 
 
 // Works for divisor >= u128::MAX/2
 // We can not use division in loop, but use substraction.
+#[cold]
 fn reduce2_big(mhigh: u128, mlow: u128, divisor: u128) -> Option<(u128, u128)> {
     // check overflow or c==0
     if mhigh >= divisor {
