@@ -1,3 +1,9 @@
+# v1.4.1 (2026-04-17)
+
+- Optimize multiplication of 64-bit and 128-bit for small numbers.
+- Fix Display if the fraction part rounding up to exceed exp.
+- Add fuzz tests.
+
 # v1.4.0 (2026-03-14)
 
 - Optimize multiplication of 64-bit and 128-bit.
