@@ -1,3 +1,7 @@
+# v1.4.2 (2026-04-18)
+
+- Fix bug in division for i128 type.
+
 # v1.4.1 (2026-04-17)
 
 - Optimize multiplication of 64-bit and 128-bit for small numbers.
