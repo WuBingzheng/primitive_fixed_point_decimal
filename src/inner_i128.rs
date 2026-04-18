@@ -154,7 +154,10 @@ impl FpdecInner for i128 {
         // try 64-bit first, which is much faster
         if let Ok(a64) = i64::try_from(self) {
             if let Ok(b64) = i64::try_from(b) {
-                return a64.rounding_div(b64, rounding).map(|x| x as i128);
+                // may be overflow if: MIN / -1
+                if let Some(q) = a64.rounding_div(b64, rounding) {
+                    return Some(q as i128);
+                }
             }
         }
         self.do_rounding_div(b, rounding)
