@@ -31,7 +31,7 @@ Important:
   signed and unsigned.
 
 - Compact memory and high performance. See the
-  [benchmark](https://github.com/WuBingzheng/primitive_fixed_point_decimal/blob/master/benches/README.md)
+  [benchmark](https://wubingzheng.github.io/en/Decimal-Crates-Comparison.html)
   for details.
 
 Less important, yet might also be what you need:
