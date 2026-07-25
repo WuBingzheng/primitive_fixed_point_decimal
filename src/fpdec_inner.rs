@@ -61,6 +61,7 @@ pub trait FpdecInner:
 
     // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
     // diff_scale = scale (self + rhs - result)
+    #[inline]
     fn checked_mul_ext(self, rhs: Self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
         if diff_scale > 0 {
             // self * rhs / diff_exp
