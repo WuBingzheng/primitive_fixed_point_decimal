@@ -85,7 +85,7 @@ impl FpdecInner for i128 {
 
         // (last_dividend, q) = (mhigh, mlow) / abs(c)
         let unsigned_c = c.unsigned_abs();
-        let (last_dividend, mut q) = reduce2(mhigh, mlow, unsigned_c, 2)?;
+        let (last_dividend, mut q) = reduce2(mhigh, mlow, unsigned_c)?;
 
         // back to signed i128: last_dividend
         let mut last_dividend = match i128::try_from(last_dividend) {
@@ -101,10 +101,14 @@ impl FpdecInner for i128 {
         }
 
         // back to signed i128: quotient
-        let mut q = i128::try_from(q).ok()?;
-        if (self ^ b ^ c) < 0 {
-            q = -q;
-        }
+        let q = if (self ^ b ^ c) < 0 {
+            if q > (i128::MAX as u128 + 1) {
+                return None;
+            }
+            (q as i128).wrapping_neg()
+        } else {
+            i128::try_from(q).ok()?
+        };
 
         // final division
         let last_q = last_dividend.rounding_div(c, rounding)?;
@@ -119,44 +123,39 @@ impl FpdecInner for i128 {
         let ua = self.unsigned_abs();
         let ub = b.unsigned_abs();
 
-        if self ^ b >= 0 {
-            let extra = match rounding {
-                Rounding::Floor | Rounding::TowardsZero => 0,
-                Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
-                Rounding::Round => exp / 2, // exp is even
-            };
+        let is_pos = self ^ b >= 0;
 
-            if ua.leading_zeros() + ub.leading_zeros() >= 128 + 2 {
-                // happy path, (self * b + extra) is not overflow
-                let divident = ua * ub + extra as u128;
+        #[rustfmt::skip]
+        let extra = match rounding {
+            Rounding::TowardsZero => 0,
+            Rounding::AwayFromZero => exp - 1,
+            Rounding::Round => exp / 2, // exp is even
+            Rounding::Floor => if is_pos { 0 } else { exp - 1 },
+            Rounding::Ceiling => if is_pos { exp - 1 } else { 0 },
+        } as u128;
 
-                // SAFETY:
-                //   i != 0, checked in checked_mul_ext() outside
-                //   i <= 38, checked by get_exp() before
-                //   divident < 2^127, checked by leading_zeros() before
-                unsafe { Some(bit128::unchecked_div_single_r1b(divident, i as u32) as i128) }
-            } else {
-                let (q, _) = bit128::mul_div(ua, ub, extra as u128, i as u32)?;
-                i128::try_from(q).ok()
-            }
+        let uq = if ua.leading_zeros() + ub.leading_zeros() >= 128 + 2 {
+            // happy path, (self * b + extra) is not overflow 128-bit
+            let divident = ua * ub + extra;
+
+            // SAFETY:
+            //   i != 0, checked in checked_mul_ext() outside
+            //   i <= 38, checked by get_exp() before
+            //   divident < 2^127, checked by leading_zeros() before
+            unsafe { bit128::unchecked_div_single_r1b(divident, i as u32) }
         } else {
-            let exp = exp as u128;
-            let extra = match rounding {
-                Rounding::Ceiling | Rounding::TowardsZero => 0,
-                Rounding::Floor | Rounding::AwayFromZero => exp - 1,
-                Rounding::Round => exp / 2, // exp is even
-            };
+            // use double-128-bit
+            let (q, _) = bit128::mul_div(ua, ub, extra, i as u32)?;
 
-            let (q, _) = bit128::mul_div(ua, ub, extra as u128, i as u32)?;
-
-            if q <= i128::MAX as u128 {
-                Some(-(q as i128))
-            } else if q == i128::MAX as u128 + 1 {
-                Some(i128::MIN)
-            } else {
-                None
+            // check overflow
+            if q > (i128::MAX as u128 + (!is_pos as u128)) {
+                return None;
             }
-        }
+            q
+        };
+
+        let iq = uq as i128;
+        Some(if is_pos { iq } else { iq.wrapping_neg() })
     }
 
     fn rounding_div(self, b: Self, rounding: Rounding) -> Option<Self> {
@@ -257,7 +256,7 @@ impl FpdecInner for u128 {
 
         // (last_dividend, q) = (mhigh, mlow) / c
         let (last_dividend, q) = if c < (1_u128 << 127) {
-            reduce2(mhigh, mlow, c, 1)?
+            reduce2(mhigh, mlow, c)?
         } else {
             reduce2_big(mhigh, mlow, c)?
         };
@@ -318,9 +317,9 @@ const fn mul2(a: u128, b: u128) -> (u128, u128) {
 // calculate: (mhigh,mlow) / divisor = q .. last_dividend
 // where last_dividend not {<divisor} while {fits in 128-bit}.
 // So the caller should do the final division.
-fn reduce2(mhigh: u128, mlow: u128, divisor: u128, rate: u128) -> Option<(u128, u128)> {
+fn reduce2(mhigh: u128, mlow: u128, divisor: u128) -> Option<(u128, u128)> {
     // check overflow or c==0
-    if mhigh * rate >= divisor {
+    if mhigh >= divisor {
         return None;
     }
 

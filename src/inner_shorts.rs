@@ -129,39 +129,42 @@ impl FpdecInner for i64 {
     fn calc_mul_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
         let exp = Self::get_exp(i)?;
 
-        if self ^ b >= 0 {
-            let extra = match rounding {
-                Rounding::Floor | Rounding::TowardsZero => 0,
-                Rounding::Ceiling | Rounding::AwayFromZero => exp - 1,
-                Rounding::Round => exp / 2, // exp is even
-            };
+        let ua = self.unsigned_abs();
+        let ub = b.unsigned_abs();
 
-            if self.leading_zeros() + b.leading_zeros() >= 64 + 2 {
-                // happy path, (self * b + extra) is not overflow
-                let divident = (self * b + extra) as u64;
+        let is_pos = self ^ b >= 0;
 
-                // SAFETY:
-                //   i != 0, checked in checked_mul_ext() outside
-                //   i <= 19, checked by get_exp() before
-                unsafe { Some(bit64::unchecked_div_single(divident, i as u32) as i64) }
-            } else {
-                let n = self as i128 * b as i128;
-                let divident = n as u128 + extra as u128;
-                let (q, _) = bit64::div_double(divident, i as u32)?;
-                i64::try_from(q).ok()
-            }
+        #[rustfmt::skip]
+        let extra = match rounding {
+            Rounding::TowardsZero => 0,
+            Rounding::AwayFromZero => exp - 1,
+            Rounding::Round => exp / 2, // exp is even
+            Rounding::Floor => if is_pos { 0 } else { exp - 1 },
+            Rounding::Ceiling => if is_pos { exp - 1 } else { 0 },
+        };
+
+        let uq = if ua.leading_zeros() + ub.leading_zeros() >= 64 + 2 {
+            // happy path, (self * b + extra) is not overflow 64-bit
+            let divident = ua * ub + extra as u64;
+
+            // SAFETY:
+            //   i != 0, checked in checked_mul_ext() outside
+            //   i <= 19, checked by get_exp() before
+            unsafe { bit64::unchecked_div_single(divident, i as u32) }
         } else {
-            let extra = match rounding {
-                Rounding::Ceiling | Rounding::TowardsZero => 0,
-                Rounding::Floor | Rounding::AwayFromZero => exp - 1,
-                Rounding::Round => exp / 2, // exp is even
-            };
-
-            let n = self as i128 * b as i128;
-            let divident = -n as u128 + extra as u128;
+            // use 128-bit
+            let divident = ua as u128 * ub as u128 + extra as u128;
             let (q, _) = bit64::div_double(divident, i as u32)?;
-            i64::try_from(-(q as i128)).ok()
-        }
+
+            // check overflow
+            if q > (i64::MAX as u64 + (!is_pos as u64)) {
+                return None;
+            }
+            q
+        };
+
+        let iq = uq as i64;
+        Some(if is_pos { iq } else { iq.wrapping_neg() })
     }
 }
 
