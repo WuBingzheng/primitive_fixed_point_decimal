@@ -59,6 +59,47 @@ pub trait FpdecInner:
         self.calc_mul_div(b, Self::get_exp(i)?, rounding)
     }
 
+    /// Calculate `self / b / EXP[i]`.
+    fn calc_div_div_exp(self, b: Self, i: usize, rounding: Rounding) -> Option<Self> {
+        let exp = Self::get_exp(i)?;
+        match b.checked_mul(&exp) {
+            Some(p) => self.rounding_div(p, rounding),
+            None => {
+                let is_pos = self ^ b >= Self::ZERO;
+                let c = match rounding {
+                    Rounding::TowardsZero => false,
+                    Rounding::AwayFromZero => self != Self::ZERO,
+                    Rounding::Floor => {
+                        if is_pos {
+                            false
+                        } else {
+                            self != Self::ZERO
+                        }
+                    }
+                    Rounding::Ceiling => {
+                        if !is_pos {
+                            false
+                        } else {
+                            self != Self::ZERO
+                        }
+                    }
+                    Rounding::Round => match b.checked_mul(&(exp >> 1)) {
+                        Some(p) => self.unsigned_abs() >= p.unsigned_abs(),
+                        None => false,
+                    },
+                };
+                if !c {
+                    Self::ZERO
+                } else if is_pos {
+                    Self::ONE
+                } else {
+                    Self::ZERO - Self::ONE
+                }
+            }
+            .into(), // Some()
+        }
+    }
+
     // works only when: diff_scale in range [-Self::DIGITS, Self::DIGITS]
     // diff_scale = scale (self + rhs - result)
     #[inline]
@@ -86,9 +127,7 @@ pub trait FpdecInner:
     fn checked_div_ext(self, rhs: Self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
         if diff_scale > 0 {
             // self / rhs / diff_exp
-            let exp = Self::get_exp(diff_scale as usize)?;
-            let q = self.rounding_div(rhs, rounding)?;
-            q.rounding_div(exp, rounding)
+            self.calc_div_div_exp(rhs, diff_scale as usize, rounding)
         } else if diff_scale < 0 {
             // self * diff_exp / rhs
 
@@ -152,23 +191,14 @@ pub trait FpdecInner:
                 Rounding::Floor | Rounding::TowardsZero => q,
                 Rounding::Ceiling | Rounding::AwayFromZero => q + Self::ONE,
                 Rounding::Round => {
-                    if Self::MIN < Self::ZERO {
-                        // signed type
-                        // We need to check: abs(remain) * 2 >= abs(b), but we
-                        // want to avoid overflow and minimize conditional branch.
-                        // So we do not use "*2" or abs().
-                        // `self` and `b` have same sign. So does `remain`.
-                        // If b>0, then we check: remain - (b - remain) >= 0;
-                        // else, we check: remain - (b - remain) <= 0.
-                        // Finally, we get:
-                        if (remain - (b - remain)) ^ b >= Self::ZERO {
+                    if b >= Self::ZERO {
+                        if remain >= b - remain {
                             q + Self::ONE
                         } else {
                             q
                         }
                     } else {
-                        // unsigned type
-                        if remain >= b - remain {
+                        if remain <= b - remain {
                             q + Self::ONE
                         } else {
                             q
