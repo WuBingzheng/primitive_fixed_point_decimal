@@ -10,6 +10,8 @@ cargo-fuzz = true
 [dependencies]
 arbitrary = { features = ["derive"], version = "1.0" }
 libfuzzer-sys = "0.4"
+num-traits = {version="0.2", default-features=false}
+primitive-types = "0.14"
 
 [dependencies.primitive_fixed_point_decimal]
 path = ".."
