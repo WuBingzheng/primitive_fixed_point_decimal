@@ -1,3 +1,9 @@
+# v1.5.0 (2026-08-08)
+
+- Use div-pow10 crate.
+- Fix rounding bug for negative quotient.
+- Rewrite fuzz.
+
 # v1.4.2 (2026-04-18)
 
 - Fix bug in division for i128 type.
