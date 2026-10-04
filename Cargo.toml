@@ -22,3 +22,52 @@ version = "1.0"
 features = ["derive"]
 optional = true
 default-features = false
+
+# Zero-copy byte access. Sound for these types because both are
+# `#[repr(transparent)]` over the inner integer with NO range invariant
+# (`FpdecInner::MAX == I::MAX`), so every bit pattern is a valid value and
+# `FromBytes` can be derived -- unlike range-restricted decimals.
+[dependencies.zerocopy]
+version = "0.8"
+optional = true
+default-features = false
+features = ["derive"]
+
+# Python interop (<-> decimal.Decimal). PyO3 links libpython and needs a Python
+# toolchain, so this feature is std-only.
+[dependencies.pyo3]
+version = "0.28.3"
+optional = true
+default-features = false
+
+[features]
+default = []
+std = []
+serde = ["dep:serde"]
+num-traits-impls = []
+zerocopy = ["dep:zerocopy"]
+pyo3 = ["dep:pyo3", "std"]
+full = ["std", "serde", "num-traits-impls", "zerocopy"]
+
+[dev-dependencies]
+serde_json = "1"
+bincode = "1.3"
+zerocopy = { version = "0.8", features = ["derive"] }
+# auto-initialize starts an embedded interpreter for the interop test.
+pyo3 = { version = "0.28.3", default-features = false, features = ["auto-initialize"] }
+
+[[test]]
+name = "feature_serde"
+required-features = ["serde"]
+
+[[test]]
+name = "feature_num_traits"
+required-features = ["num-traits-impls"]
+
+[[test]]
+name = "feature_zerocopy"
+required-features = ["zerocopy"]
+
+[[test]]
+name = "feature_pyo3"
+required-features = ["pyo3"]

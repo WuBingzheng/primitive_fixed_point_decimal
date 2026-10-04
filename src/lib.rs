@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../README.md")]
 
 // modules:
@@ -19,6 +19,10 @@
 // +------------------------------------+  +-----------------------+
 mod const_scale_fpdec;
 mod fpdec_inner;
+#[cfg(feature = "num-traits-impls")]
+mod num_traits_impls;
+#[cfg(feature = "pyo3")]
+mod pyo3_conv;
 mod inner_i128;
 mod inner_shorts;
 mod none_scale_common;

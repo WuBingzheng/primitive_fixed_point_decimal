@@ -6,7 +6,7 @@ use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
 #[allow(unused_imports)]
 use num_traits::float::FloatCore; // used only for `no_std`
-use num_traits::{cast::FromPrimitive, Num, Signed};
+use num_traits::{cast::FromPrimitive, Num, PrimInt, Signed};
 
 /// Const-scale fixed-point decimal.
 ///
@@ -22,6 +22,18 @@ use num_traits::{cast::FromPrimitive, Num, Signed};
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
+// `FromBytes` is sound here (unlike range-restricted decimal types): this is
+// `repr(transparent)` over `I` and carries NO invariant -- `FpdecInner::MAX` is
+// `I::MAX` -- so every bit pattern of `I` denotes a valid decimal.
+#[cfg_attr(
+    feature = "zerocopy",
+    derive(
+        zerocopy::IntoBytes,
+        zerocopy::FromBytes,
+        zerocopy::Immutable,
+        zerocopy::KnownLayout
+    )
+)]
 #[repr(transparent)]
 pub struct ConstScaleFpdec<I, const S: i32>(I);
 
@@ -414,6 +426,41 @@ where
     }
 }
 
+/// Checked remainder, and the `%` operator.
+///
+/// Both operands share a scale, so the remainder is just the remainder of the
+/// mantissas -- exact, and needing no rescale.
+impl<I, const S: i32> ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    /// Checked remainder. Returns `None` if `rhs` is zero.
+    #[must_use]
+    pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+        if rhs.0 == I::ZERO {
+            None
+        } else {
+            Some(Self(self.0 % rhs.0))
+        }
+    }
+}
+
+/// Performs the `%` operation.
+///
+/// # Panics
+///
+/// If `rhs` is zero.
+impl<I, const S: i32> ops::Rem for ConstScaleFpdec<I, S>
+where
+    I: FpdecInner,
+{
+    type Output = Self;
+    fn rem(self, rhs: Self) -> Self::Output {
+        self.checked_rem(rhs)
+            .expect("attempt to calculate the remainder with a divisor of zero")
+    }
+}
+
 impl<I, const S: i32> ops::Add for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
@@ -476,7 +523,11 @@ where
 impl<I, J, const S: i32> ops::Mul<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
-    J: Into<I> + Num, // the `Num` to avoid conflicting implementations only
+    J: Into<I> + PrimInt, // `PrimInt` keeps this disjoint from the decimal-by-decimal
+    // impl above. It used to be `Num`, which worked only by coincidence: nothing
+    // implemented `Num` for a decimal. `num-traits-impls` does, so the marker has
+    // to be one a decimal will never satisfy. (`PrimInt` is already this crate's
+    // marker for "primitive integer" -- see `IntoRatioInt`.)
 {
     type Output = Self;
     fn mul(self, rhs: J) -> Self::Output {
@@ -526,7 +577,7 @@ where
 impl<I, J, const S: i32> ops::Div<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     type Output = Self;
     fn div(self, rhs: J) -> Self::Output {
@@ -566,7 +617,7 @@ where
 impl<I, J, const S: i32> ops::MulAssign<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     fn mul_assign(&mut self, rhs: J) {
         *self = *self * rhs;
@@ -587,7 +638,7 @@ where
 impl<I, J, const S: i32> ops::DivAssign<J> for ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     fn div_assign(&mut self, rhs: J) {
         *self = *self / rhs;
@@ -627,17 +678,24 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "serde")]
 impl<I, const S0: i32> Serialize for ConstScaleFpdec<I, S0>
 where
-    I: FpdecInner + fmt::Display,
+    I: FpdecInner + fmt::Display + Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        // XXX how to selete dump type?
         if serializer.is_human_readable() {
+            // Decimal string: exact, and readable by anything.
             serializer.collect_str(self)
         } else {
-            Into::<f64>::into(*self).serialize(serializer)
+            // The raw mantissa: exact, compact, and the scale is carried by the
+            // TYPE, so the round-trip needs nothing else.
+            //
+            // This deliberately does NOT go through `f64`. `f64` holds ~15.9
+            // significant decimal digits; `ConstScaleFpdec<i128, 12>` holds up
+            // to 39. Serializing money through `f64` silently truncates it --
+            // e.g. 123456789.123456789012 comes back as 123456789.12345679.
+            self.0.serialize(serializer)
         }
     }
 }
@@ -645,7 +703,7 @@ where
 #[cfg(feature = "serde")]
 impl<'de, I, const S: i32> Deserialize<'de> for ConstScaleFpdec<I, S>
 where
-    I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
+    I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError> + Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -693,7 +751,16 @@ where
             visit_num!(visit_u128, u128);
         }
 
-        deserializer.deserialize_any(ConstScaleFpdecVistor(PhantomData))
+        // `deserialize_any` requires a SELF-DESCRIBING format. Asking bincode
+        // (and friends) for it fails outright with `DeserializeAnyNotSupported`,
+        // which is why the binary path used to be unusable in both directions.
+        // Human-readable formats keep the permissive any-visitor; binary formats
+        // read back exactly what `serialize` wrote: the mantissa.
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_any(ConstScaleFpdecVistor(PhantomData))
+        } else {
+            I::deserialize(deserializer).map(ConstScaleFpdec)
+        }
     }
 }
 

@@ -43,10 +43,18 @@ Less important, yet might also be what you need:
 - Supports negative scale. For example `ConstScaleFpdec<i8, -2>` represents
   numbers in range [-12800, 12700] with step 100.
 
-- Supports serde traits integration (`Serialize`/`Deserialize`) by optional
-  `serde` feature flag.
+- Optional integrations, each behind a feature flag:
 
-- `no-std` and `no-alloc`.
+  | feature | what it adds |
+  |---|---|
+  | `serde` | `Serialize`/`Deserialize`. Human-readable formats use an exact decimal string; binary formats use the raw mantissa (the scale is in the type). Neither goes through `f64`. |
+  | `num-traits-impls` | `Zero`, `One`, `Num`, `Bounded`, `Signed`, the `Checked*` family, `ToPrimitive`/`FromPrimitive` -- so `ConstScaleFpdec` works in code generic over `num_traits::Num`. |
+  | `zerocopy` | `IntoBytes`/`FromBytes`/`Immutable`/`KnownLayout`. `FromBytes` is sound because the type is `repr(transparent)` over `I` with no range invariant, so every bit pattern is a valid decimal. |
+  | `pyo3` | `IntoPyObject`/`FromPyObject` to and from Python's `decimal.Decimal`, exactly. Accepts `Decimal`, `str` and `int`; rejects `float` and `bool`. Implies `std`. |
+  | `std` | Opts out of `no_std`. Only needed by `pyo3`. |
+  | `full` | `std` + `serde` + `num-traits-impls` + `zerocopy` (not `pyo3`, which needs a Python toolchain). |
+
+- `no-std` and `no-alloc` by default.
 
 
 # Usage

@@ -1,3 +1,51 @@
+# Unreleased
+
+- **Add `num-traits-impls` feature**: `Zero`, `One`, `Num`, `Bounded`, `Signed`,
+  `CheckedAdd`/`Sub`/`Mul`/`Div`/`Rem`/`Neg`, `ToPrimitive`, `FromPrimitive`.
+  `NumCast`/`PrimInt` are deliberately not implemented -- a decimal is not an
+  integer, and `NumCast::from` would have to silently choose a rounding mode.
+
+- **Add `zerocopy` feature**: `IntoBytes`, `FromBytes`, `Immutable`,
+  `KnownLayout` for `ConstScaleFpdec` and `OobScaleFpdec`.
+
+- **Add `pyo3` feature**: `IntoPyObject`/`FromPyObject` for `ConstScaleFpdec`
+  and `OobFmt`, converting to and from Python's `decimal.Decimal` without loss.
+  Accepts `Decimal`, `str` and `int`; rejects `float` and `bool` (the latter is
+  an `int` subclass in Python). Implies the new `std` feature.
+
+- **Add `std` and `full` features.** The crate is still `no_std` by default;
+  `std` exists because PyO3 requires it.
+
+- **Fix: serde was lossy and broken on binary formats.** `Serialize` wrote an
+  `f64`, which holds ~15.9 significant digits where `ConstScaleFpdec<i128, 12>`
+  holds up to 39 -- so 123456789.123456789012 came back as 123456789.12345679.
+  `Deserialize` called `deserialize_any`, which non-self-describing formats
+  reject outright, so bincode and friends failed with
+  `DeserializeAnyNotSupported`. Binary formats now write and read the raw
+  mantissa: exact, 16 bytes for an `i128`, with the scale carried by the type.
+  Human-readable formats are unchanged (exact decimal string).
+
+  **This changes the binary wire format** (`f64` -> mantissa). Anything that
+  round-tripped through a *self-describing* binary format such as CBOR or
+  MessagePack must be re-encoded; non-self-describing formats could not
+  round-trip at all before, so nothing working is broken.
+
+  `Serialize` now requires `I: Serialize` and `Deserialize` requires
+  `I: Deserialize`. Every primitive integer satisfies both.
+
+- **Add `ConstScaleFpdec::checked_rem` and the `%` operator.** Required by
+  `num_traits::NumOps`, and useful on its own; both operands share a scale, so
+  the remainder is exact.
+
+- **Change: the integer `Mul`/`Div`/`MulAssign`/`DivAssign` impls now bound
+  `J: Into<I> + PrimInt` instead of `J: Into<I> + Num`.** `Num` was only ever a
+  disjointness marker ("the `Num` to avoid conflicting implementations only"),
+  and it worked because nothing implemented `Num` for a decimal --
+  `num-traits-impls` now does. `PrimInt` is already this crate's marker for
+  "primitive integer" (see `IntoRatioInt`) and states the intent directly. All
+  primitive integers still work; a custom `Num` type that was also `Into<I>`
+  would no longer.
+
 # v1.5.0 (2026-08-08)
 
 - Use div-pow10 crate.

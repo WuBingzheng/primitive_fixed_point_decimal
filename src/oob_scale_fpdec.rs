@@ -4,7 +4,7 @@ use crate::{IntoRatioInt, ParseError, Rounding};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
-use num_traits::{cast::FromPrimitive, float::FloatCore, Num, Signed};
+use num_traits::{cast::FromPrimitive, float::FloatCore, Num, PrimInt, Signed};
 
 /// Out-of-band-scale fixed-point decimal.
 ///
@@ -30,6 +30,18 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num, Signed};
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
+// Sound for the same reason as `ConstScaleFpdec`: `repr(transparent)` over `I`
+// with no invariant. Note the SCALE is not part of the bytes -- it is
+// out-of-band by design, so a caller reading these bytes must supply it.
+#[cfg_attr(
+    feature = "zerocopy",
+    derive(
+        zerocopy::IntoBytes,
+        zerocopy::FromBytes,
+        zerocopy::Immutable,
+        zerocopy::KnownLayout
+    )
+)]
 #[repr(transparent)]
 pub struct OobScaleFpdec<I>(I);
 
@@ -528,7 +540,7 @@ where
 impl<I, J> ops::Mul<J> for OobScaleFpdec<I>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     type Output = Self;
     fn mul(self, rhs: J) -> Self::Output {
@@ -562,7 +574,7 @@ where
 impl<I, J> ops::Div<J> for OobScaleFpdec<I>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     type Output = Self;
     fn div(self, rhs: J) -> Self::Output {
@@ -608,7 +620,7 @@ where
 impl<I, J> ops::MulAssign<J> for OobScaleFpdec<I>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     fn mul_assign(&mut self, rhs: J) {
         *self = *self * rhs;
@@ -628,7 +640,7 @@ where
 impl<I, J> ops::DivAssign<J> for OobScaleFpdec<I>
 where
     I: FpdecInner,
-    J: Into<I> + Num,
+    J: Into<I> + PrimInt,
 {
     fn div_assign(&mut self, rhs: J) {
         *self = *self / rhs;
