@@ -35,7 +35,7 @@ use num_traits::{cast::FromPrimitive, Num};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::sync::PyOnceLock;
-use pyo3::types::{PyBool, PyFloat, PyType};
+use pyo3::types::{PyBool, PyFloat, PyInt, PyType};
 
 use crate::const_scale_fpdec::ConstScaleFpdec;
 use crate::fpdec_inner::FpdecInner;
@@ -69,19 +69,35 @@ fn fixed_point_string(ob: Borrowed<'_, '_, PyAny>) -> PyResult<String> {
              would be lost); pass a decimal.Decimal, a string, or an int",
         ));
     }
-    let decimal = decimal_type(ob.py())?;
-    if ob.get_type().is(decimal) {
-        // Fast path: an EXACT `Decimal`. We require the exact type rather than
-        // `is_instance`, because a subclass may override `__format__` and return
-        // something that is not the numeric value; subclasses fall through.
-        ob.call_method1("__format__", ("f",))?.extract::<String>()
-    } else {
-        decimal
-            .call1((ob,))?
-            .call_method1("__format__", ("f",))?
-            .extract::<String>()
+    // `Decimal(int)` is quadratic in the digits (seconds for `10**1_000_000`), so a huge int is
+    // refused before it is converted. 4096 bits is ~1200 digits, far past any fixed-point range.
+    if ob.is_instance_of::<PyInt>() && ob.call_method0("bit_length")?.extract::<u64>()? > MAX_INT_BITS {
+        return Err(PyValueError::new_err("integer out of range"));
     }
+    let decimal = decimal_type(ob.py())?;
+    // An EXACT `Decimal` is used as is: a subclass may override `__format__` and return
+    // something that is not the numeric value, so anything else is converted first.
+    let dec = if ob.get_type().is(decimal) {
+        ob.to_owned()
+    } else {
+        decimal.call1((ob,))?
+    };
+    // `format(x, "f")` writes every digit, so `Decimal("1E+999999999")` (one line of Python, and
+    // possibly untrusted input) would build a gigabyte string only to fail the range check.
+    // Nothing a fixed-point type holds is anywhere near this long.
+    let adjusted = dec.call_method0("adjusted")?.extract::<i64>()?;
+    if adjusted.unsigned_abs() > MAX_ADJUSTED {
+        return Err(PyValueError::new_err("decimal exponent out of range"));
+    }
+    dec.call_method1("__format__", ("f",))?.extract::<String>()
 }
+
+/// `|Decimal.adjusted()|` above which a value cannot be a fixed-point decimal (at most 39
+/// integer digits and 200 fraction digits are ever meaningful).
+const MAX_ADJUSTED: u64 = 1000;
+
+/// `int.bit_length()` above which an int cannot be a fixed-point decimal.
+const MAX_INT_BITS: u64 = 4096;
 
 // ---------------------------------------------------------------------------
 // ConstScaleFpdec

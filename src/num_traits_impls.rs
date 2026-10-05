@@ -188,16 +188,34 @@ where
     f64: From<ConstScaleFpdec<I, S>>,
 {
     fn to_i64(&self) -> Option<i64> {
-        self.trunc_to_int()?.to_i64()
+        self.to_i128()?.to_i64()
     }
     fn to_u64(&self) -> Option<u64> {
-        self.trunc_to_int()?.to_u64()
+        self.to_u128()?.to_u64()
     }
     fn to_i128(&self) -> Option<i128> {
-        self.trunc_to_int()?.to_i128()
+        if S >= 0 {
+            self.trunc_to_int().to_i128()
+        } else {
+            // `m * 10^-S` can be too big for `I` (`i8` at scale -3: 1 is 1000) while
+            // fitting the target, so multiply in the target's width.
+            let m = self.mantissa().to_i128()?;
+            if m == 0 {
+                return Some(0);
+            }
+            m.checked_mul(10_i128.checked_pow(S.unsigned_abs())?)
+        }
     }
     fn to_u128(&self) -> Option<u128> {
-        self.trunc_to_int()?.to_u128()
+        if S >= 0 {
+            self.trunc_to_int().to_u128()
+        } else {
+            let m = self.mantissa().to_u128()?;
+            if m == 0 {
+                return Some(0);
+            }
+            m.checked_mul(10_u128.checked_pow(S.unsigned_abs())?)
+        }
     }
     /// Lossy above ~15.9 significant digits, as any `f64` conversion is.
     fn to_f64(&self) -> Option<f64> {
@@ -209,13 +227,10 @@ impl<I, const S: i32> ConstScaleFpdec<I, S>
 where
     I: FpdecInner,
 {
-    /// The integer part, truncated toward zero, as the inner integer type.
-    fn trunc_to_int(&self) -> Option<I> {
-        match S {
-            0 => Some(self.mantissa()),
-            s if s > 0 => Some(self.mantissa() / I::get_exp(s as usize)?),
-            s => self.mantissa().checked_mul(&I::get_exp((-s) as usize)?),
-        }
+    /// The integer part, truncated toward zero, for `S >= 0`.
+    fn trunc_to_int(&self) -> I {
+        // `10^S` not fitting in `I` means `|value| < 1`, which truncates to 0.
+        I::get_exp(S as usize).map_or(I::ZERO, |exp| self.mantissa() / exp)
     }
 }
 
@@ -225,12 +240,20 @@ where
 impl<I, const S: i32> FromPrimitive for ConstScaleFpdec<I, S>
 where
     I: FpdecInner + FromPrimitive,
-    ConstScaleFpdec<I, S>: TryFrom<i64> + TryFrom<u64> + TryFrom<f64>,
+    ConstScaleFpdec<I, S>: TryFrom<i64> + TryFrom<u64> + TryFrom<i128> + TryFrom<u128> + TryFrom<f64>,
 {
     fn from_i64(n: i64) -> Option<Self> {
         Self::try_from(n).ok()
     }
     fn from_u64(n: u64) -> Option<Self> {
+        Self::try_from(n).ok()
+    }
+    // The provided `from_i128`/`from_u128` go through `i64`/`u64`, which would
+    // reject every value above 2^63 even for a 128-bit inner type.
+    fn from_i128(n: i128) -> Option<Self> {
+        Self::try_from(n).ok()
+    }
+    fn from_u128(n: u128) -> Option<Self> {
         Self::try_from(n).ok()
     }
     fn from_f64(n: f64) -> Option<Self> {

@@ -255,17 +255,24 @@ impl FpdecInner for u64 {
         };
 
         if self.leading_zeros() + b.leading_zeros() >= 64 + 1 {
-            // happy path, (self * b + extra) is not overflow
-            let divident = self * b + extra;
-
-            // SAFETY:
-            //   i != 0, checked in checked_mul_ext() outside
-            //   i <= 19, checked by get_exp() before
-            unsafe { Some(bit64::unchecked_div_single(divident, i as u32)) }
-        } else {
-            let divident = self as u128 * b as u128 + extra as u128;
-            bit64::div_double(divident, i as u32).map(|(q, _r)| q)
+            // happy path: `self * b < 2^63`. `extra` is at most `10^i - 1`, so for
+            // `i <= 18` the sum stays below `2^63 + 10^18 < 2^64`. Only `i = 19`
+            // (`Ceiling` / `AwayFromZero`, `extra` up to `10^19 - 1`) can pass `u64::MAX`:
+            // there the add is checked, where `+` would panic in debug and wrap to a
+            // wrong quotient in release. Testing `i` rather than the sum is free for
+            // `ConstScaleFpdec`, whose `i` is a constant.
+            let prod = self * b;
+            let sum = if i < 19 { Some(prod + extra) } else { prod.checked_add(extra) };
+            if let Some(divident) = sum {
+                // SAFETY:
+                //   i != 0, checked in checked_mul_ext() outside
+                //   i <= 19, checked by get_exp() before
+                return unsafe { Some(bit64::unchecked_div_single(divident, i as u32)) };
+            }
         }
+
+        let divident = self as u128 * b as u128 + extra as u128;
+        bit64::div_double(divident, i as u32).map(|(q, _r)| q)
     }
 }
 

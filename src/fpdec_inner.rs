@@ -115,7 +115,7 @@ pub trait FpdecInner:
             self.calc_mul_div_exp(rhs, diff_scale as usize, rounding)
         } else if diff_scale < 0 {
             // self * rhs * diff_exp
-            let exp = Self::get_exp(-diff_scale as usize)?;
+            let exp = Self::get_exp(diff_scale.unsigned_abs() as usize)?;
             self.checked_mul(&rhs)?.checked_mul(&exp)
         } else {
             self.checked_mul(&rhs)
@@ -135,7 +135,7 @@ pub trait FpdecInner:
             // could do multiplication twice (with exp[DIGITS] and exp[-diff_scale-DIGITS])
             // to avoid returning `None` directly. But keep same with
             // `checked_mul()`, we do not handle this case which is rare.
-            let exp = Self::get_exp(-diff_scale as usize)?;
+            let exp = Self::get_exp(diff_scale.unsigned_abs() as usize)?;
             self.calc_mul_div(exp, rhs, rounding)
         } else {
             self.rounding_div(rhs, rounding)
@@ -143,16 +143,51 @@ pub trait FpdecInner:
     }
 
     // diff_scale = scale (src - dst)
-    fn round_diff_with_rounding(self, diff_scale: i32, rounding: Rounding) -> Self {
+    //
+    // Returns `None` if the rounded value is not representable: `i8` 127 rounded
+    // UP to hundreds is 200, and rounding any non-zero value away from zero at a
+    // scale beyond `Self::DIGITS` gives `+-10^diff_scale`.
+    fn checked_round_diff_with_rounding(self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
         if diff_scale <= 0 {
-            return self;
+            return Some(self);
         }
 
         match Self::get_exp(diff_scale as usize) {
-            None => Self::ZERO,
-            Some(exp) => {
-                // self / exp * exp
-                self.rounding_div(exp, rounding).unwrap() * exp
+            // `10^diff_scale` is bigger than every value of the type, so the
+            // quotient is 0 or +-1. A quotient of +-1 would be `+-10^diff_scale`
+            // itself, which is not representable.
+            None => {
+                if self.rounds_to_unit_beyond_range(diff_scale as usize, rounding) {
+                    None
+                } else {
+                    Some(Self::ZERO)
+                }
+            }
+            // self / exp * exp
+            Some(exp) => self.rounding_div(exp, rounding)?.checked_mul(&exp),
+        }
+    }
+
+    /// For `|self| < 10^i` where `10^i` does NOT fit in `Self` (`i > DIGITS`):
+    /// does `self / 10^i` round to a non-zero value (`+-1`)?
+    fn rounds_to_unit_beyond_range(self, i: usize, rounding: Rounding) -> bool {
+        if self.is_zero() {
+            return false;
+        }
+        match rounding {
+            Rounding::TowardsZero => false,
+            Rounding::AwayFromZero => true,
+            Rounding::Floor => self < Self::ZERO,
+            Rounding::Ceiling => self > Self::ZERO,
+            Rounding::Round => {
+                // `2 * |self| >= 10^i`. Since `Self::MAX < 10^(DIGITS+1)`, that can
+                // hold only for `i == DIGITS + 1`, where it reads
+                // `|self| >= 5 * 10^DIGITS` -- reachable for `u16` (65535 >= 50000)
+                // and impossible for the others. Divide instead of multiplying so
+                // nothing can overflow.
+                let five = <Self::Unsigned as num_traits::NumCast>::from(5u8).unwrap();
+                i == Self::DIGITS as usize + 1
+                    && self.unsigned_abs() / Self::MAX_POWERS.unsigned_abs() >= five
             }
         }
     }
@@ -256,7 +291,20 @@ pub trait FpdecInner:
     where
         Self: Num<FromStrRadixErr = ParseIntError>,
     {
-        let (num, raw_scale) = Self::try_from_str_only(s)?;
+        let (num, raw_scale) = match Self::try_from_str_only(s) {
+            Ok(parsed) => parsed,
+            // The digits alone do not fit in `Self`, and `try_from_str_only` cannot
+            // say whether that is a precision or an overflow problem because it
+            // does not know `scale`. More fraction digits than `scale` is
+            // precision; otherwise the number is simply too big.
+            Err(ParseError::Overflow | ParseError::Precision) => {
+                return match s.split_once('.') {
+                    Some((_, frac)) if frac.len() as i64 > scale as i64 => Err(ParseError::Precision),
+                    _ => Err(ParseError::Overflow),
+                };
+            }
+            Err(e) => return Err(e),
+        };
         if num.is_zero() {
             Ok(num)
         } else if raw_scale == scale {
@@ -264,8 +312,11 @@ pub trait FpdecInner:
         } else if raw_scale > scale {
             Err(ParseError::Precision)
         } else {
-            Self::get_exp((scale - raw_scale) as usize)
-                .ok_or(ParseError::Precision)?
+            // `num` is non-zero, so if `10^(scale - raw_scale)` itself does not fit
+            // then neither does the product.
+            // (i64: `scale - raw_scale` overflows i32 for scales near the i32 limits)
+            Self::get_exp((scale as i64 - raw_scale as i64) as usize)
+                .ok_or(ParseError::Overflow)?
                 .checked_mul(&num)
                 .ok_or(ParseError::Overflow)
         }
@@ -281,6 +332,25 @@ pub trait FpdecInner:
         }
 
         if let Some((int_str, frac_str)) = s.split_once('.') {
+            // The fraction is plain digits. `from_str_radix` would also take a sign
+            // there, so "1.+5" parsed as 1.05, "1.-5" as 0.95 and "0.-5" as -0.05.
+            if frac_str.is_empty() {
+                return Err(ParseError::Empty);
+            }
+            if !frac_str.bytes().all(|b| b.is_ascii_digit()) {
+                return Err(ParseError::Invalid);
+            }
+
+            // Any spelling of zero ("0.0", "-0.00", "+00.0"), for every inner type.
+            // `from_str_radix("-0")` is an error for unsigned types.
+            let int_digits = int_str.strip_prefix(|c| c == '+' || c == '-').unwrap_or(int_str);
+            if !int_digits.is_empty()
+                && int_digits.bytes().all(|b| b == b'0')
+                && frac_str.bytes().all(|b| b == b'0')
+            {
+                return Ok((Self::ZERO, frac_str.len() as i32));
+            }
+
             let int_num = Self::from_str_radix(int_str, 10)?;
 
             let frac_num = if s.as_bytes()[0] == b'-' {
@@ -303,8 +373,11 @@ pub trait FpdecInner:
             };
             Ok((inner, frac_str.len() as i32))
         } else {
-            // only integer part
-            if s == "0" || s == "-0" || s == "+0" {
+            // only integer part. Any spelling of zero: "0", "-0", "+0", "000", "-00".
+            // (Without this, "00" was `Empty`, because trimming its trailing zeros
+            // below leaves nothing to parse.)
+            let digits = s.strip_prefix(|c| c == '+' || c == '-').unwrap_or(s);
+            if !digits.is_empty() && digits.bytes().all(|b| b == b'0') {
                 return Ok((Self::ZERO, 0));
             }
             let new_int_str = s.trim_end_matches('0');
@@ -334,11 +407,19 @@ pub trait FpdecInner:
     }
 
     fn checked_from_int(self, scale: i32) -> Result<Self, ParseError> {
+        // Zero is representable at every scale. Without this, `0` is rejected whenever
+        // `10^scale` is not representable in the type (`Overflow` for a large
+        // positive scale, `Precision` for a large negative one), even though the
+        // string and float conversions accept it.
+        if self.is_zero() {
+            return Ok(self);
+        }
+
         if scale > 0 {
             let exp = Self::get_exp(scale as usize).ok_or(ParseError::Overflow)?;
             self.checked_mul(&exp).ok_or(ParseError::Overflow)
         } else if scale < 0 {
-            let exp = Self::get_exp(-scale as usize).ok_or(ParseError::Precision)?;
+            let exp = Self::get_exp(scale.unsigned_abs() as usize).ok_or(ParseError::Precision)?;
             if !(self % exp).is_zero() {
                 return Err(ParseError::Precision);
             }
@@ -421,7 +502,16 @@ where
                     dump_single(int, buf)
                 }
             }
-            None => dump_single(I::ZERO, buf),
+            // `10^scale` does not fit in `I`, so the value is below 1 -- but not
+            // necessarily below 0.5 (`u16` 65535 at scale 5 is 0.65535).
+            None => {
+                let rounded = if frac.rounds_to_unit_beyond_range(scale, Rounding::Round) {
+                    I::ONE
+                } else {
+                    I::ZERO
+                };
+                dump_single(rounded, buf)
+            }
         },
 
         // set precision > 0
@@ -448,7 +538,15 @@ where
 
                         frac
                     }
-                    None => I::ZERO,
+                    // `10^(scale - precision)` does not fit in `I`: the fraction is
+                    // below one unit of the last printed place, but may round up to it.
+                    None => {
+                        if frac.rounds_to_unit_beyond_range(scale - precision, Rounding::Round) {
+                            I::ONE
+                        } else {
+                            I::ZERO
+                        }
+                    }
                 };
                 dump_decimal(int, frac, precision, buf)
             }
@@ -848,4 +946,65 @@ mod tests {
         assert_eq!(149_u32.rounding_div(100_u32, Rounding::Round).unwrap(), 1);
         assert_eq!(150_u32.rounding_div(100_u32, Rounding::Round).unwrap(), 2);
     }
+}
+
+/// `a * b` at scale difference `diff`, where `b` may be of a DIFFERENT inner type than `a`.
+///
+/// The usual case (`b` fits `I`) is the plain call. Otherwise -- `I::from(b)?` used to make this
+/// `None`, so `0.0001 * 1000.00` (an `i16` times an `i64` of 100000) "overflowed" although the
+/// result, 0.1, fits -- the magnitudes are multiplied as `u128`, the sign applied, and the
+/// result narrowed to `I`.
+pub(crate) fn mul_ext_mixed<I: FpdecInner, J: FpdecInner>(a: I, b: J, diff: i32, rounding: Rounding) -> Option<I> {
+    match I::from(b) {
+        Some(b) => a.checked_mul_ext(b, diff, rounding),
+        None => via_magnitudes(a, b, diff, rounding, <u128 as FpdecInner>::checked_mul_ext),
+    }
+}
+
+/// `a / b` at scale difference `diff`, where `b` may be of a different inner type than `a`
+/// (see [`mul_ext_mixed`]): `0.0001 / 1000.00` is `0` in the result's scale, not `None`.
+pub(crate) fn div_ext_mixed<I: FpdecInner, J: FpdecInner>(a: I, b: J, diff: i32, rounding: Rounding) -> Option<I> {
+    match I::from(b) {
+        Some(b) => a.checked_div_ext(b, diff, rounding),
+        None => via_magnitudes(a, b, diff, rounding, <u128 as FpdecInner>::checked_div_ext),
+    }
+}
+
+/// `op` on the magnitudes of `a` and `b` (every primitive integer's magnitude fits `u128`),
+/// with the sign of the result applied afterwards, narrowed to `I`. `None` if it does not fit,
+/// or `diff` is out of `I`'s range (`op` would allow `u128`'s).
+fn via_magnitudes<I: FpdecInner, J: FpdecInner>(
+    a: I,
+    b: J,
+    diff: i32,
+    rounding: Rounding,
+    op: fn(u128, u128, i32, Rounding) -> Option<u128>,
+) -> Option<I> {
+    if diff.unsigned_abs() > I::DIGITS {
+        return None;
+    }
+    let negative = (a < I::ZERO) != (b < J::ZERO);
+    // `Floor` / `Ceiling` are about the signed value; the magnitude is rounded the same way
+    // as the value when it is positive and the opposite way when it is negative.
+    let rounding = match (rounding, negative) {
+        (Rounding::Floor, false) | (Rounding::Ceiling, true) => Rounding::TowardsZero,
+        (Rounding::Ceiling, false) | (Rounding::Floor, true) => Rounding::AwayFromZero,
+        (r, _) => r,
+    };
+    let (ua, ub) = (num_traits::NumCast::from(a.unsigned_abs())?, num_traits::NumCast::from(b.unsigned_abs())?);
+    let m = op(ua, ub, diff, rounding)?;
+    if !negative {
+        return I::from(m);
+    }
+    if m == 0 {
+        return Some(I::ZERO);
+    }
+    let v = if m <= i128::MAX as u128 {
+        -(m as i128)
+    } else if m == 1 << 127 {
+        i128::MIN
+    } else {
+        return None;
+    };
+    I::from(v)
 }

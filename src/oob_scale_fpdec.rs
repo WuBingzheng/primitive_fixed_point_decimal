@@ -1,10 +1,12 @@
 use crate::const_scale_fpdec::ConstScaleFpdec;
-use crate::fpdec_inner::FpdecInner;
+use crate::fpdec_inner::{div_ext_mixed, mul_ext_mixed, FpdecInner};
 use crate::{IntoRatioInt, ParseError, Rounding};
 
 use core::{fmt, num::ParseIntError, ops, str::FromStr};
 
-use num_traits::{cast::FromPrimitive, float::FloatCore, Num, PrimInt, Signed};
+#[allow(unused_imports)]
+use num_traits::float::FloatCore; // used only for `no_std`
+use num_traits::{cast::FromPrimitive, Num, PrimInt, Signed};
 
 /// Out-of-band-scale fixed-point decimal.
 ///
@@ -27,6 +29,13 @@ use num_traits::{cast::FromPrimitive, float::FloatCore, Num, PrimInt, Signed};
 /// - use [`OobFmt`] for `Display` and `FromStr`,
 /// - no associate const `SCALE`,
 /// - and others.
+///
+/// # Overflow
+///
+/// The operators (`+`, `-`, unary `-`, `abs`, `Sum`, ...) behave like the primitive integers:
+/// they panic on overflow when overflow checks are enabled (debug builds) and wrap around
+/// when they are not (release builds). Use the `checked_*` methods wherever an overflow is
+/// possible; they return `None` in every profile.
 ///
 /// See [the module-level documentation](super) for more information.
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Default, Debug)]
@@ -105,9 +114,7 @@ where
     where
         J: FpdecInner,
     {
-        self.0
-            .checked_mul_ext(I::from(rhs.0)?, diff_scale, rounding)
-            .map(Self)
+        mul_ext_mixed(self.0, rhs.0, diff_scale, rounding).map(Self)
     }
 
     /// Checked multiplication with `ConstScaleFpdec`.
@@ -158,9 +165,7 @@ where
     where
         J: FpdecInner,
     {
-        self.0
-            .checked_mul_ext(I::from(rhs.mantissa())?, S, rounding)
-            .map(Self)
+        mul_ext_mixed(self.0, rhs.mantissa(), S, rounding).map(Self)
     }
 
     /// Checked division.
@@ -212,9 +217,7 @@ where
     where
         J: FpdecInner,
     {
-        self.0
-            .checked_div_ext(I::from(rhs.0)?, diff_scale, rounding)
-            .map(Self)
+        div_ext_mixed(self.0, rhs.0, diff_scale, rounding).map(Self)
     }
 
     /// Checked division with `ConstScaleFpdec`.
@@ -264,17 +267,25 @@ where
     where
         J: FpdecInner,
     {
-        self.0
-            .checked_div_ext(I::from(rhs.mantissa())?, -S, rounding)
-            .map(Self)
+        div_ext_mixed(self.0, rhs.mantissa(), S.checked_neg()?, rounding).map(Self)
     }
 
     /// Round the decimal.
     ///
     /// Equivalent to [`Self::round_diff_ext`] with `Rounding::Round`.
+    ///
+    /// # Panics
+    ///
+    /// If the rounded value is not representable. See [`Self::checked_round_diff`].
     #[must_use]
     pub fn round_diff(self, diff_scale: i32) -> Self {
         self.round_diff_ext(diff_scale, Rounding::Round)
+    }
+
+    /// Checked [`Self::round_diff`]: `None` if the rounded value is not representable.
+    #[must_use]
+    pub fn checked_round_diff(self, diff_scale: i32) -> Option<Self> {
+        self.checked_round_diff_ext(diff_scale, Rounding::Round)
     }
 
     /// Round the decimal with rounding type.
@@ -296,9 +307,23 @@ where
     /// assert_eq!(price.round_diff_ext(8 - 6, Rounding::Floor),
     ///     fpdec!(12.123456, 8));
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the rounded value is not representable. See [`Self::checked_round_diff_ext`].
     #[must_use]
     pub fn round_diff_ext(self, diff_scale: i32, rounding: Rounding) -> Self {
-        Self(self.0.round_diff_with_rounding(diff_scale, rounding))
+        self.checked_round_diff_ext(diff_scale, rounding)
+            .expect("overflow in decimal rounding")
+    }
+
+    /// Checked [`Self::round_diff_ext`]: `None` if the rounded value is not
+    /// representable in `I` (e.g. `i8` `127` rounded up to hundreds is `200`).
+    #[must_use]
+    pub fn checked_round_diff_ext(self, diff_scale: i32, rounding: Rounding) -> Option<Self> {
+        self.0
+            .checked_round_diff_with_rounding(diff_scale, rounding)
+            .map(Self)
     }
 
     /// Read decimal from string.
@@ -343,14 +368,7 @@ where
     /// ```
     #[must_use]
     pub fn to_f32(self, scale: i32) -> f32 {
-        let f = self.0.to_f32().unwrap();
-        if scale > 0 {
-            f / 10.0.powi(scale)
-        } else if scale < 0 {
-            f * 10.0.powi(-scale)
-        } else {
-            f
-        }
+        crate::scale_f32(self.0.to_f32().unwrap(), scale.unsigned_abs(), scale > 0)
     }
 
     /// Convert into `f64`.
@@ -369,14 +387,7 @@ where
     /// ```
     #[must_use]
     pub fn to_f64(self, scale: i32) -> f64 {
-        let f = self.0.to_f64().unwrap();
-        if scale > 0 {
-            f / 10.0.powi(scale)
-        } else if scale < 0 {
-            f * 10.0.powi(-scale)
-        } else {
-            f
-        }
+        crate::scale_f64(self.0.to_f64().unwrap(), scale.unsigned_abs(), scale > 0)
     }
 }
 
@@ -459,7 +470,7 @@ convert_from_int!(u64);
 convert_from_int!(u128);
 
 macro_rules! convert_from_float {
-    ($float_type:ty, $from_fn:ident) => {
+    ($float_type:ty, $from_fn:ident, $scale:path) => {
         impl<I> TryFrom<($float_type, i32)> for OobScaleFpdec<I>
         where
             I: FromPrimitive + FpdecInner,
@@ -484,13 +495,7 @@ macro_rules! convert_from_float {
             /// ```
             fn try_from(t: ($float_type, i32)) -> Result<Self, Self::Error> {
                 let (f, scale) = t;
-                let inner_f = if scale > 0 {
-                    f * 10.0.powi(scale)
-                } else if scale < 0 {
-                    f / 10.0.powi(-scale)
-                } else {
-                    f
-                };
+                let inner_f = $scale(f, scale.unsigned_abs(), scale < 0);
                 I::$from_fn(inner_f.round())
                     .map(Self)
                     .ok_or(ParseError::Overflow)
@@ -499,8 +504,8 @@ macro_rules! convert_from_float {
     };
 }
 
-convert_from_float!(f32, from_f32);
-convert_from_float!(f64, from_f64);
+convert_from_float!(f32, from_f32, crate::scale_f32);
+convert_from_float!(f64, from_f64, crate::scale_f64);
 
 impl<I> ops::Neg for OobScaleFpdec<I>
 where
@@ -595,7 +600,7 @@ where
     type Output = Self;
     fn div(self, rhs: ConstScaleFpdec<J, S>) -> Self::Output {
         self.checked_div_const_scale(rhs)
-            .expect("overflow in decimal multiplication")
+            .expect("fail in decimal division")
     }
 }
 
@@ -801,16 +806,18 @@ where
     pub fn rescale(self, scale2: i32) -> Result<OobScaleFpdec<I>, ParseError> {
         let Self(dec, scale0) = self;
 
-        if scale2 == scale0 {
+        if scale2 == scale0 || dec.is_zero() {
+            // Zero is zero at every scale; `10^|scale2 - scale0|` need not be representable.
             Ok(dec)
         } else if scale2 > scale0 {
-            let inner = I::get_exp((scale2 - scale0) as usize)
+            // (i64 differences: `scale2 - scale0` overflows i32 for scales near the i32 limits)
+            let inner = I::get_exp((scale2 as i64 - scale0 as i64) as usize)
                 .ok_or(ParseError::Overflow)?
                 .checked_mul(&dec.0)
                 .ok_or(ParseError::Overflow)?;
             Ok(OobScaleFpdec(inner))
         } else {
-            let diff_exp = I::get_exp((scale0 - scale2) as usize).ok_or(ParseError::Precision)?;
+            let diff_exp = I::get_exp((scale0 as i64 - scale2 as i64) as usize).ok_or(ParseError::Precision)?;
             let inner = dec.0 / diff_exp;
             if (dec.0 % diff_exp).is_zero() {
                 Ok(OobScaleFpdec(inner))
@@ -889,7 +896,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate as primitive_fixed_point_decimal;
     use crate::fpdec;
 
     type Dec32 = OobScaleFpdec<i32>;

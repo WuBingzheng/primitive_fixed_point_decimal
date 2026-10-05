@@ -75,7 +75,7 @@ impl core::error::Error for ParseError {}
 /// Rounding kinds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Rounding {
-    /// towards the nearest integer
+    /// towards the nearest integer; a tie (exactly half-way) goes away from zero
     #[default]
     Round,
     /// towards negative infinity
@@ -110,10 +110,10 @@ pub enum Rounding {
 #[macro_export]
 macro_rules! fpdec {
     ($n:expr) => {
-        primitive_fixed_point_decimal::ConstScaleFpdec::try_from($n).unwrap()
+        $crate::ConstScaleFpdec::try_from($n).unwrap()
     };
     ($n:expr, $scale:expr) => {
-        primitive_fixed_point_decimal::OobScaleFpdec::try_from(($n, $scale)).unwrap()
+        $crate::OobScaleFpdec::try_from(($n, $scale)).unwrap()
     };
 }
 
@@ -131,3 +131,28 @@ where
         self.into()
     }
 }
+
+/// `f * 10^n`, or `f / 10^n` when `divide`, without ever forming a power of ten the float
+/// cannot hold (`f32` stops at `10^38`, `f64` at `10^308`): `n` is applied in chunks. A float
+/// is divided by `10^n` rather than multiplied by `10^-n`, which is not exact.
+#[allow(unused_imports)]
+use num_traits::float::FloatCore; // `powi` etc. for `no_std`
+
+macro_rules! pow10_scaler {
+    ($name:ident, $float:ty, $chunk:expr) => {
+        pub(crate) fn $name(mut f: $float, n: u32, divide: bool) -> $float {
+            let step = |f: $float, n: u32| {
+                let p = (10.0 as $float).powi(n as i32);
+                if divide { f / p } else { f * p }
+            };
+            let mut n = n;
+            while n > $chunk && f != 0.0 && f.is_finite() {
+                f = step(f, $chunk);
+                n -= $chunk;
+            }
+            step(f, n.min($chunk)) // once `f` is 0 / inf / NaN the rest cannot change it
+        }
+    };
+}
+pow10_scaler!(scale_f32, f32, 30);
+pow10_scaler!(scale_f64, f64, 300);

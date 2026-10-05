@@ -3,6 +3,28 @@ use div_pow10::bit128;
 use crate::fpdec_inner::FpdecInner;
 use crate::Rounding;
 
+/// `n / 10^i` for `1 <= i <= 38`, for ANY `n: u128`.
+///
+/// `unchecked_div_single_r1b` is the faster form but requires `n <= 2^127`; the
+/// callers below add a rounding `extra` of up to `10^i - 1` to a product that is only
+/// known to be below `2^126`. For `i <= 37` that sum is below `2^126 + 10^37 < 2^127`
+/// whatever the operands, so the fast form is always valid -- and testing `i` (a
+/// compile-time constant for `ConstScaleFpdec`) costs nothing, where testing `n` itself
+/// cost ~40% of an `i128` multiplication. Only `i = 38` can reach `2^127` (`10^38` is
+/// about `2^126.2`), and only there is the value checked.
+#[inline(always)]
+fn div_pow10(n: u128, i: usize) -> u128 {
+    // SAFETY: callers guarantee 1 <= i <= 38 (checked by `get_exp(i)`, and `i != 0`
+    // by `checked_mul_ext`'s `diff_scale > 0` branch).
+    unsafe {
+        if i < 38 || n <= 1_u128 << 127 {
+            bit128::unchecked_div_single_r1b(n, i as u32)
+        } else {
+            bit128::unchecked_div_single(n, i as u32)
+        }
+    }
+}
+
 impl FpdecInner for i128 {
     const MAX: Self = Self::MAX;
     const MIN: Self = Self::MIN;
@@ -138,11 +160,9 @@ impl FpdecInner for i128 {
             // happy path, (self * b + extra) is not overflow 128-bit
             let divident = ua * ub + extra;
 
-            // SAFETY:
-            //   i != 0, checked in checked_mul_ext() outside
-            //   i <= 38, checked by get_exp() before
-            //   divident < 2^127, checked by leading_zeros() before
-            unsafe { bit128::unchecked_div_single_r1b(divident, i as u32) }
+            // `divident < 2^126 + 10^38 < 2^128`: no wrap. It may exceed 2^127, which
+            // `div_pow10` handles.
+            div_pow10(divident, i)
         } else {
             // use double-128-bit
             let (q, _) = bit128::mul_div(ua, ub, extra, i as u32)?;
@@ -280,11 +300,9 @@ impl FpdecInner for u128 {
             // happy path, (self * b + extra) is not overflow
             let divident = self * b + extra;
 
-            // SAFETY:
-            //   i != 0, checked in checked_mul_ext() outside
-            //   i <= 38, checked by get_exp() before
-            //   divident < 2^127, checked by leading_zeros() before
-            unsafe { Some(bit128::unchecked_div_single_r1b(divident, i as u32)) }
+            // `divident < 2^126 + 10^38 < 2^128`: no wrap. It may exceed 2^127, which
+            // `div_pow10` handles.
+            Some(div_pow10(divident, i))
         } else {
             bit128::mul_div(self, b, extra as u128, i as u32).map(|(q, _r)| q)
         }
