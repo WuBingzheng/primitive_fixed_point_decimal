@@ -27,6 +27,9 @@ mod oob_scale_fpdec;
 #[cfg(feature = "serde")]
 mod serde_impl;
 
+#[cfg(feature = "bytemuck")]
+mod bytemuck_impl;
+
 pub use crate::const_scale_fpdec::ConstScaleFpdec;
 pub use crate::fpdec_inner::FpdecInner;
 pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
