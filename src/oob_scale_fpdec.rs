@@ -818,62 +818,6 @@ where
     }
 }
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-#[cfg(feature = "serde")]
-impl<I> Serialize for OobFmt<I>
-where
-    I: FpdecInner + fmt::Display,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.collect_str(self)
-    }
-}
-
-/// Because we need to guess the scale, so we can load from
-/// string only, but not integer or float numbers.
-#[cfg(feature = "serde")]
-impl<'de, I> Deserialize<'de> for OobFmt<I>
-where
-    I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use core::marker::PhantomData;
-        use core::str::FromStr;
-        use serde::de::{self, Visitor};
-
-        struct OobFmtVistor<I>(PhantomData<I>);
-
-        impl<'de, I> Visitor<'de> for OobFmtVistor<I>
-        where
-            I: FromPrimitive + FpdecInner + Num<FromStrRadixErr = ParseIntError>,
-        {
-            type Value = OobFmt<I>;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "decimal")
-            }
-
-            fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                OobFmt::from_str(s).map_err(E::custom)
-            }
-        }
-
-        // TODO:
-        // 1. why deserialize_any() works for ConstScaleFpdec?
-        // 2. move to serde.rs?
-        // 3. more rescale() to fpdec_inner.rs?
-        deserializer.deserialize_str(OobFmtVistor(PhantomData))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -24,13 +24,15 @@ mod inner_shorts;
 mod none_scale_common;
 mod oob_scale_fpdec;
 
+#[cfg(feature = "serde")]
+mod serde_impl;
+
 pub use crate::const_scale_fpdec::ConstScaleFpdec;
 pub use crate::fpdec_inner::FpdecInner;
 pub use crate::oob_scale_fpdec::{OobFmt, OobScaleFpdec};
 
 /// Error in converting from string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ParseError {
     /// Empty string.
     Empty,
