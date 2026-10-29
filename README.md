@@ -46,6 +46,10 @@ Less important, yet might also be what you need:
 - Supports serde traits integration (`Serialize`/`Deserialize`) by optional
   `serde` feature flag.
 
+- Supports bytemuck traits integration (`Zeroable`/`Pod`/`TransparentWrapper`)
+  by optional `bytemuck` feature flag. Note that byte casts use the native
+  endianness, so they are not a portable serialization format.
+
 - `no-std` and `no-alloc`.
 
 
