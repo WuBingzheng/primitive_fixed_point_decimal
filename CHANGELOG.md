@@ -1,3 +1,7 @@
+# v1.6.0 (2026-10-31)
+
+- Add `bytemuck` feature.
+
 # v1.5.0 (2026-08-08)
 
 - Use div-pow10 crate.
